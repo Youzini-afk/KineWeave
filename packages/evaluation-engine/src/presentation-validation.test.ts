@@ -128,6 +128,84 @@ describe("validatePresentationGraph", () => {
     );
   });
 
+  it("validates standard shape geometry and style contracts", () => {
+    const valid = graph();
+    const invalid = {
+      ...valid,
+      nodes: {
+        node_root: {
+          ...valid.nodes.node_root!,
+          primitive: STANDARD_PRESENTATION_PRIMITIVES.rectangle,
+          data: {
+            width: 0,
+            height: 20,
+            fill: 42,
+            strokeWidth: -1,
+            cornerRadius: -2
+          }
+        }
+      },
+      requiredFeatures: [
+        STANDARD_PRESENTATION_PRIMITIVES.rectangle,
+        STANDARD_COLOR_SPACES.srgb
+      ]
+    };
+
+    expect(validatePresentationGraph(invalid)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "presentation.rectangle.size-invalid" }),
+        expect.objectContaining({ code: "presentation.shape.style-invalid" }),
+        expect.objectContaining({ code: "presentation.shape.stroke-width-invalid" }),
+        expect.objectContaining({
+          code: "presentation.rectangle.corner-radius-invalid"
+        })
+      ])
+    );
+  });
+
+  it("requires ellipse radii and non-empty path data", () => {
+    const valid = graph();
+    const ellipse = {
+      ...valid,
+      nodes: {
+        node_root: {
+          ...valid.nodes.node_root!,
+          primitive: STANDARD_PRESENTATION_PRIMITIVES.ellipse,
+          data: { radiusX: 20, radiusY: Number.NaN }
+        }
+      },
+      requiredFeatures: [
+        STANDARD_PRESENTATION_PRIMITIVES.ellipse,
+        STANDARD_COLOR_SPACES.srgb
+      ]
+    };
+    expect(validatePresentationGraph(ellipse)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "presentation.ellipse.radius-invalid" })
+      ])
+    );
+
+    const path = {
+      ...valid,
+      nodes: {
+        node_root: {
+          ...valid.nodes.node_root!,
+          primitive: STANDARD_PRESENTATION_PRIMITIVES.path,
+          data: { path: "   " }
+        }
+      },
+      requiredFeatures: [
+        STANDARD_PRESENTATION_PRIMITIVES.path,
+        STANDARD_COLOR_SPACES.srgb
+      ]
+    };
+    expect(validatePresentationGraph(path)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "presentation.path.data-invalid" })
+      ])
+    );
+  });
+
   it("requires custom packet types to participate in feature negotiation", () => {
     const valid = graph();
     const packetType = "org.example.presentation/particles";

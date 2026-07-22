@@ -24,13 +24,17 @@ import {
   STANDARD_NODE_TYPES,
   STANDARD_SIGNAL_TYPES,
   STANDARD_VALUE_TYPES,
+  type Keyframe,
   type MotionNode,
   type PropertyBinding,
   type PropertyTrack,
   type StandardCompositionDocument
 } from "./model.js";
 import { validateStandardComposition } from "./validation.js";
-import { standardValueIssue } from "./value-semantics.js";
+import {
+  standardPropertyValueIssue,
+  standardValueIssue
+} from "./value-semantics.js";
 
 type ValueResult =
   | { readonly ok: true; readonly value: JsonValue }
@@ -78,41 +82,107 @@ function parseHexColor(
   return { channels, alpha: hex.length === 8 };
 }
 
+function cubicBezierCoordinate(t: number, first: number, second: number): number {
+  const inverse = 1 - t;
+  return (
+    3 * inverse * inverse * t * first +
+    3 * inverse * t * t * second +
+    t * t * t
+  );
+}
+
+function cubicBezierProgress(
+  progress: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+): number {
+  if (progress <= 0) return 0;
+  if (progress >= 1) return 1;
+  let lower = 0;
+  let upper = 1;
+  for (let iteration = 0; iteration < 32; iteration += 1) {
+    const midpoint = (lower + upper) / 2;
+    if (cubicBezierCoordinate(midpoint, x1, x2) < progress) lower = midpoint;
+    else upper = midpoint;
+  }
+  return cubicBezierCoordinate((lower + upper) / 2, y1, y2);
+}
+
+function easedProgress(
+  easing: Keyframe["easing"],
+  progress: number,
+  track: PropertyTrack,
+  documentId: string,
+  diagnostics: Diagnostic[]
+): number | undefined {
+  if (easing?.kind === STANDARD_KEYFRAME_EASINGS.hold) return undefined;
+  if (easing?.kind === STANDARD_KEYFRAME_EASINGS.linear) return progress;
+  if (easing?.kind === STANDARD_KEYFRAME_EASINGS.cubicBezier) {
+    const { x1, y1, x2, y2 } = easing;
+    if (
+      typeof x1 === "number" &&
+      Number.isFinite(x1) &&
+      x1 >= 0 &&
+      x1 <= 1 &&
+      typeof y1 === "number" &&
+      Number.isFinite(y1) &&
+      typeof x2 === "number" &&
+      Number.isFinite(x2) &&
+      x2 >= 0 &&
+      x2 <= 1 &&
+      typeof y2 === "number" &&
+      Number.isFinite(y2)
+    ) {
+      return cubicBezierProgress(progress, x1, y1, x2, y2);
+    }
+  }
+  diagnostics.push(
+    error(
+      "standard-motion.evaluation.easing-unsupported",
+      `Track ${track.trackId} uses invalid or unsupported easing ${String(easing?.kind)}`,
+      documentId
+    )
+  );
+  return Number.NaN;
+}
+
 function interpolateValue(
   track: PropertyTrack,
   left: JsonValue,
   right: JsonValue,
   progress: number,
-  easing: string,
+  easing: Keyframe["easing"],
   documentId: string,
   diagnostics: Diagnostic[]
 ): ValueResult {
-  if (easing === STANDARD_KEYFRAME_EASINGS.hold) return success(left);
-  if (easing !== STANDARD_KEYFRAME_EASINGS.linear) {
-    diagnostics.push(
-      error(
-        "standard-motion.evaluation.easing-unsupported",
-        `Track ${track.trackId} uses unsupported easing ${easing}`,
-        documentId
-      )
-    );
-    return { ok: false };
-  }
+  const adjustedProgress = easedProgress(
+    easing,
+    progress,
+    track,
+    documentId,
+    diagnostics
+  );
+  if (adjustedProgress === undefined) return success(left);
+  if (!Number.isFinite(adjustedProgress)) return { ok: false };
 
   if (
     track.valueType === STANDARD_VALUE_TYPES.number &&
     typeof left === "number" &&
     typeof right === "number"
   ) {
-    return success(left + (right - left) * progress);
+    return success(left + (right - left) * adjustedProgress);
   }
   if (track.valueType === STANDARD_VALUE_TYPES.vector2) {
     const leftVector = vector2(left);
     const rightVector = vector2(right);
     if (leftVector !== undefined && rightVector !== undefined) {
       return success([
-        leftVector[0]! + (rightVector[0]! - leftVector[0]!) * progress,
-        leftVector[1]! + (rightVector[1]! - leftVector[1]!) * progress
+        leftVector[0]! +
+          (rightVector[0]! - leftVector[0]!) * adjustedProgress,
+        leftVector[1]! +
+          (rightVector[1]! - leftVector[1]!) * adjustedProgress
       ]);
     }
   }
@@ -121,7 +191,10 @@ function interpolateValue(
     const rightColor = parseHexColor(right);
     if (leftColor !== undefined && rightColor !== undefined) {
       const channels = leftColor.channels.map((channel, index) =>
-        Math.round(channel + (rightColor.channels[index]! - channel) * progress)
+        Math.round(
+          channel +
+            (rightColor.channels[index]! - channel) * adjustedProgress
+        )
       );
       const includeAlpha = leftColor.alpha || rightColor.alpha;
       return success(
@@ -136,7 +209,7 @@ function interpolateValue(
   diagnostics.push(
     error(
       "standard-motion.evaluation.interpolation-unsupported",
-      `Track ${track.trackId} cannot linearly interpolate ${track.valueType}`,
+      `Track ${track.trackId} cannot interpolate ${track.valueType}`,
       documentId,
       `/data/tracks/${track.trackId}`
     )
@@ -206,7 +279,7 @@ function sampleTrack(
       left.value,
       right.value,
       progress,
-      left.easing?.kind ?? defaultEasing(track),
+      left.easing ?? { kind: defaultEasing(track) },
       documentId,
       diagnostics
     );
@@ -318,7 +391,18 @@ function property(
   const binding = node.properties[name];
   if (binding === undefined) return cloneJson(fallback);
   const resolved = resolveBinding(binding, document, request, diagnostics);
-  return resolved.ok ? resolved.value : cloneJson(fallback);
+  if (!resolved.ok) return cloneJson(fallback);
+  const issue = standardPropertyValueIssue(node.nodeType, name, resolved.value);
+  if (issue === undefined) return resolved.value;
+  diagnostics.push(
+    error(
+      "standard-motion.evaluation.property-value-invalid",
+      `Property ${node.nodeId}.${name} ${issue}`,
+      document.documentId,
+      `/data/nodes/${node.nodeId}/properties/${name}`
+    )
+  );
+  return cloneJson(fallback);
 }
 
 function evaluateComposition(
@@ -423,6 +507,14 @@ function evaluateComposition(
       request,
       diagnostics
     );
+    const visible = property(
+      node,
+      "visible",
+      true,
+      document,
+      request,
+      diagnostics
+    );
     if (position === undefined || scale === undefined || anchor === undefined) {
       diagnostics.push(
         error(
@@ -458,9 +550,55 @@ function evaluateComposition(
         )
       );
     }
+    if (typeof visible !== "boolean") {
+      diagnostics.push(
+        error(
+          "standard-motion.evaluation.visibility-type-invalid",
+          `Node ${nodeId} visible must be boolean`,
+          document.documentId,
+          `/data/nodes/${nodeId}/properties/visible`
+        )
+      );
+    }
 
     let primitive: string;
     let data: JsonObject;
+    const shapeStyle = (): JsonObject => {
+      const fill = property(
+        node,
+        "fill",
+        "#00000000",
+        document,
+        request,
+        diagnostics
+      );
+      const stroke = property(
+        node,
+        "stroke",
+        "#00000000",
+        document,
+        request,
+        diagnostics
+      );
+      const strokeWidth = property(
+        node,
+        "strokeWidth",
+        0,
+        document,
+        request,
+        diagnostics
+      );
+      return {
+        fill: typeof fill === "string" ? fill : "#00000000",
+        stroke: typeof stroke === "string" ? stroke : "#00000000",
+        strokeWidth:
+          typeof strokeWidth === "number" &&
+          Number.isFinite(strokeWidth) &&
+          strokeWidth >= 0
+            ? strokeWidth
+            : 0
+      };
+    };
     if (node.nodeType === STANDARD_NODE_TYPES.group) {
       primitive = STANDARD_PRESENTATION_PRIMITIVES.group;
       data = cloneJson(node.data);
@@ -525,6 +663,71 @@ function evaluateComposition(
             : 16,
         fill: typeof fill === "string" ? fill : "#000000"
       };
+    } else if (node.nodeType === STANDARD_NODE_TYPES.rectangle) {
+      primitive = STANDARD_PRESENTATION_PRIMITIVES.rectangle;
+      const size = vector2(
+        property(node, "size", [100, 100], document, request, diagnostics)
+      );
+      const cornerRadius = property(
+        node,
+        "cornerRadius",
+        0,
+        document,
+        request,
+        diagnostics
+      );
+      const width = size?.[0];
+      const height = size?.[1];
+      data = {
+        width:
+          typeof width === "number" && Number.isFinite(width) && width > 0
+            ? width
+            : 100,
+        height:
+          typeof height === "number" && Number.isFinite(height) && height > 0
+            ? height
+            : 100,
+        cornerRadius:
+          typeof cornerRadius === "number" &&
+          Number.isFinite(cornerRadius) &&
+          cornerRadius >= 0
+            ? cornerRadius
+            : 0,
+        ...shapeStyle()
+      };
+    } else if (node.nodeType === STANDARD_NODE_TYPES.ellipse) {
+      primitive = STANDARD_PRESENTATION_PRIMITIVES.ellipse;
+      const size = vector2(
+        property(node, "size", [100, 100], document, request, diagnostics)
+      );
+      const width = size?.[0];
+      const height = size?.[1];
+      data = {
+        radiusX:
+          typeof width === "number" && Number.isFinite(width) && width > 0
+            ? width / 2
+            : 50,
+        radiusY:
+          typeof height === "number" && Number.isFinite(height) && height > 0
+            ? height / 2
+            : 50,
+        ...shapeStyle()
+      };
+    } else if (node.nodeType === STANDARD_NODE_TYPES.path) {
+      primitive = STANDARD_PRESENTATION_PRIMITIVES.path;
+      const path = property(
+        node,
+        "path",
+        "M 0 0",
+        document,
+        request,
+        diagnostics
+      );
+      data = {
+        path:
+          typeof path === "string" && path.trim().length > 0 ? path : "M 0 0",
+        ...shapeStyle()
+      };
     } else {
       primitive = STANDARD_PRESENTATION_PRIMITIVES.custom;
       const resolvedProperties: JsonObject = {};
@@ -545,9 +748,14 @@ function evaluateComposition(
       presentationId: nodeId,
       primitive,
       children,
-      visible: true,
+      visible: typeof visible === "boolean" ? visible : true,
       opacity:
-        typeof opacity === "number" && Number.isFinite(opacity) ? opacity : 1,
+        typeof opacity === "number" &&
+        Number.isFinite(opacity) &&
+        opacity >= 0 &&
+        opacity <= 1
+          ? opacity
+          : 1,
       transform: {
         translation: position ?? [0, 0],
         scale: scale ?? [1, 1],

@@ -4,7 +4,12 @@ import {
   type EsmModuleNamespace
 } from "@kineweave/extension-host";
 import type { KineWeaveDistributionProfile } from "@kineweave/project-session";
-import { PRESENTATION_RENDERER_CAPABILITY_ID } from "@kineweave/render-engine";
+import {
+  INTERACTIVE_RENDERER_CAPABILITY_ID,
+  OUTPUT_RENDERER_CAPABILITY_ID
+} from "@kineweave/render-engine";
+import { CANVAS2D_RENDERER_PROVIDER_ID } from "@kineweave/canvas2d-renderer/descriptor";
+import { canvas2dRendererExtensionManifest } from "@kineweave/canvas2d-renderer/manifest";
 import { standardMotionExtensionManifest } from "@kineweave/standard-motion-document/manifest";
 import { SVG_RENDERER_PROVIDER_ID } from "@kineweave/svg-renderer/descriptor";
 import { svgRendererExtensionManifest } from "@kineweave/svg-renderer/manifest";
@@ -25,7 +30,8 @@ export function createOfficialDistributionProfile(): KineWeaveDistributionProfil
       profileId: OFFICIAL_DISTRIBUTION_PROFILE_ID,
       version: KINEWEAVE_VERSION,
       capabilityDefaults: {
-        [PRESENTATION_RENDERER_CAPABILITY_ID]: SVG_RENDERER_PROVIDER_ID
+        [OUTPUT_RENDERER_CAPABILITY_ID]: SVG_RENDERER_PROVIDER_ID,
+        [INTERACTIVE_RENDERER_CAPABILITY_ID]: CANVAS2D_RENDERER_PROVIDER_ID
       }
     },
     extensions: [
@@ -41,6 +47,13 @@ export function createOfficialDistributionProfile(): KineWeaveDistributionProfil
         async importEntrypoint(entrypoint): Promise<EsmModuleNamespace> {
           assertEntrypointModule(entrypoint.module, "./dist/index.js");
           return import("@kineweave/svg-renderer") as Promise<EsmModuleNamespace>;
+        }
+      }),
+      createEsmExtensionSource<KineWeaveExtensionContext>({
+        manifest: canvas2dRendererExtensionManifest,
+        async importEntrypoint(entrypoint): Promise<EsmModuleNamespace> {
+          assertEntrypointModule(entrypoint.module, "./dist/index.js");
+          return import("@kineweave/canvas2d-renderer") as Promise<EsmModuleNamespace>;
         }
       })
     ]

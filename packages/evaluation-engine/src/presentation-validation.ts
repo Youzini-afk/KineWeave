@@ -275,16 +275,52 @@ function validateNode(
   }
 
   const semanticFeatures: string[] = [];
-  if (primitive === STANDARD_PRESENTATION_PRIMITIVES.text) {
-    if (children.length > 0) {
+  const leafPrimitives = new Set<string>([
+    STANDARD_PRESENTATION_PRIMITIVES.text,
+    STANDARD_PRESENTATION_PRIMITIVES.rectangle,
+    STANDARD_PRESENTATION_PRIMITIVES.ellipse,
+    STANDARD_PRESENTATION_PRIMITIVES.path
+  ]);
+  if (primitive !== undefined && leafPrimitives.has(primitive) && children.length > 0) {
+    diagnostics.push(
+      error(
+        "presentation.node.children-unsupported",
+        `Leaf node ${nodeId} cannot contain child nodes`,
+        `${nodePointer}/children`
+      )
+    );
+  }
+
+  const validateShapeStyle = (): void => {
+    if (!isPlainObject(rawNode.data)) return;
+    for (const key of ["fill", "stroke"] as const) {
+      if (rawNode.data[key] !== undefined && typeof rawNode.data[key] !== "string") {
+        diagnostics.push(
+          error(
+            "presentation.shape.style-invalid",
+            `Shape node ${nodeId} data.${key} must be a string`,
+            `${nodePointer}/data/${key}`
+          )
+        );
+      }
+    }
+    if (
+      rawNode.data.strokeWidth !== undefined &&
+      (typeof rawNode.data.strokeWidth !== "number" ||
+        !Number.isFinite(rawNode.data.strokeWidth) ||
+        rawNode.data.strokeWidth < 0)
+    ) {
       diagnostics.push(
         error(
-          "presentation.node.children-unsupported",
-          `Text node ${nodeId} cannot contain child nodes`,
-          `${nodePointer}/children`
+          "presentation.shape.stroke-width-invalid",
+          `Shape node ${nodeId} data.strokeWidth must be a non-negative finite number`,
+          `${nodePointer}/data/strokeWidth`
         )
       );
     }
+  };
+
+  if (primitive === STANDARD_PRESENTATION_PRIMITIVES.text) {
     if (isPlainObject(rawNode.data)) {
       if (typeof rawNode.data.text !== "string") {
         diagnostics.push(
@@ -324,6 +360,75 @@ function validateNode(
           );
         }
       }
+    }
+  }
+  if (primitive === STANDARD_PRESENTATION_PRIMITIVES.rectangle) {
+    validateShapeStyle();
+    if (isPlainObject(rawNode.data)) {
+      for (const key of ["width", "height"] as const) {
+        if (
+          typeof rawNode.data[key] !== "number" ||
+          !Number.isFinite(rawNode.data[key]) ||
+          rawNode.data[key] <= 0
+        ) {
+          diagnostics.push(
+            error(
+              "presentation.rectangle.size-invalid",
+              `Rectangle node ${nodeId} data.${key} must be a positive finite number`,
+              `${nodePointer}/data/${key}`
+            )
+          );
+        }
+      }
+      if (
+        rawNode.data.cornerRadius !== undefined &&
+        (typeof rawNode.data.cornerRadius !== "number" ||
+          !Number.isFinite(rawNode.data.cornerRadius) ||
+          rawNode.data.cornerRadius < 0)
+      ) {
+        diagnostics.push(
+          error(
+            "presentation.rectangle.corner-radius-invalid",
+            `Rectangle node ${nodeId} data.cornerRadius must be a non-negative finite number`,
+            `${nodePointer}/data/cornerRadius`
+          )
+        );
+      }
+    }
+  }
+  if (primitive === STANDARD_PRESENTATION_PRIMITIVES.ellipse) {
+    validateShapeStyle();
+    if (isPlainObject(rawNode.data)) {
+      for (const key of ["radiusX", "radiusY"] as const) {
+        if (
+          typeof rawNode.data[key] !== "number" ||
+          !Number.isFinite(rawNode.data[key]) ||
+          rawNode.data[key] <= 0
+        ) {
+          diagnostics.push(
+            error(
+              "presentation.ellipse.radius-invalid",
+              `Ellipse node ${nodeId} data.${key} must be a positive finite number`,
+              `${nodePointer}/data/${key}`
+            )
+          );
+        }
+      }
+    }
+  }
+  if (primitive === STANDARD_PRESENTATION_PRIMITIVES.path) {
+    validateShapeStyle();
+    if (
+      isPlainObject(rawNode.data) &&
+      (typeof rawNode.data.path !== "string" || rawNode.data.path.trim().length === 0)
+    ) {
+      diagnostics.push(
+        error(
+          "presentation.path.data-invalid",
+          `Path node ${nodeId} requires non-empty string data.path`,
+          `${nodePointer}/data/path`
+        )
+      );
     }
   }
   if (primitive === STANDARD_PRESENTATION_PRIMITIVES.custom) {

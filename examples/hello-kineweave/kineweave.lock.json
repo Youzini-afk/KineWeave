@@ -1,13 +1,36 @@
 {
   "capabilityBindings": {
-    "org.kineweave.renderer/presentation": {
+    "org.kineweave.renderer/interactive": {
+      "defaultProviderId": "org.kineweave.renderer/canvas2d",
+      "providers": {
+        "org.kineweave.renderer/canvas2d": {
+          "contractVersion": "1.0.0",
+          "features": [
+            "org.kineweave.surface/canvas2d",
+            "org.kineweave.presentation/group",
+            "org.kineweave.presentation/text",
+            "org.kineweave.presentation/rectangle",
+            "org.kineweave.presentation/ellipse",
+            "org.kineweave.presentation/path",
+            "org.kineweave.color/srgb"
+          ],
+          "implementationVersion": "0.1.0",
+          "providerId": "org.kineweave.renderer/canvas2d"
+        }
+      }
+    },
+    "org.kineweave.renderer/output": {
       "defaultProviderId": "org.kineweave.renderer/svg",
       "providers": {
         "org.kineweave.renderer/svg": {
           "contractVersion": "1.0.0",
           "features": [
+            "org.kineweave.output/svg",
             "org.kineweave.presentation/group",
             "org.kineweave.presentation/text",
+            "org.kineweave.presentation/rectangle",
+            "org.kineweave.presentation/ellipse",
+            "org.kineweave.presentation/path",
             "org.kineweave.color/srgb"
           ],
           "implementationVersion": "0.1.0",
@@ -28,6 +51,13 @@
       "source": {
         "kind": "package",
         "packageName": "@kineweave/svg-renderer"
+      },
+      "version": "0.1.0"
+    },
+    "org.kineweave.canvas2d-renderer": {
+      "source": {
+        "kind": "package",
+        "packageName": "@kineweave/canvas2d-renderer"
       },
       "version": "0.1.0"
     }

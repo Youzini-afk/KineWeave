@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ExtensionManifest } from "@kineweave/protocol";
 import {
-  PRESENTATION_RENDERER_CAPABILITY_ID,
-  PRESENTATION_RENDERER_CONTRACT_VERSION
+  OUTPUT_RENDERER_CAPABILITY_ID,
+  OUTPUT_RENDERER_CONTRACT_VERSION
 } from "@kineweave/render-engine";
 import {
   createKineWeaveExtensionContributionAudit,
@@ -13,16 +13,21 @@ const documentType = "org.example.motion/composition";
 const operationType = "org.example.motion/set-value";
 const provider = {
   descriptor: {
-    capabilityId: PRESENTATION_RENDERER_CAPABILITY_ID,
+    capabilityId: OUTPUT_RENDERER_CAPABILITY_ID,
     providerId: "org.example.renderer/test",
     extensionId: "org.example.extension",
-    contractVersion: PRESENTATION_RENDERER_CONTRACT_VERSION,
+    contractVersion: OUTPUT_RENDERER_CONTRACT_VERSION,
     implementationVersion: "1.0.0",
     features: ["org.example.presentation/test"],
     lifetime: "project" as const
   },
-  render() {
-    return { mediaType: "text/plain", fileExtension: ".txt", text: "ok" };
+  renderOutput() {
+    return {
+      kind: "text" as const,
+      mediaType: "text/plain",
+      fileExtension: ".txt",
+      text: "ok"
+    };
   }
 };
 
@@ -59,7 +64,10 @@ function context(value: ExtensionManifest = manifest): KineWeaveExtensionContext
       registerPrecondition: () => () => {}
     },
     evaluation: { registerDocumentEvaluator: () => () => {} },
-    rendering: { registerRenderer: () => () => {} }
+    rendering: {
+      registerOutputRenderer: () => () => {},
+      registerInteractiveRenderer: () => () => {}
+    }
   };
 }
 
@@ -84,7 +92,7 @@ describe("KineWeave extension contribution audit", () => {
         throw new Error("not executed by this test");
       }
     });
-    audit.context.rendering.registerRenderer(provider);
+    audit.context.rendering.registerOutputRenderer(provider);
 
     expect(audit.diagnostics()).toEqual([]);
   });

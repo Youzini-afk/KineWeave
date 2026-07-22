@@ -7,7 +7,10 @@ import { activateStandardMotionExtension } from "./activation.js";
 import { standardMotionExtensionManifest } from "./manifest.js";
 import {
   constant,
+  createEllipseNode,
   createGroupNode,
+  createPathNode,
+  createRectangleNode,
   createStandardComposition,
   createTextNode,
   type StandardCompositionDocument
@@ -44,7 +47,10 @@ function activate(history: HistoryGraph, transactionEngine: TransactionEngine) {
     transactions: transactionEngine,
     evaluation: evaluationEngine,
     rendering: {
-      registerRenderer() {
+      registerOutputRenderer() {
+        return () => {};
+      },
+      registerInteractiveRenderer() {
         return () => {};
       }
     }
@@ -124,7 +130,7 @@ describe("Standard Motion Document", () => {
     const document = createStandardComposition();
     document.data.nodes.node_headline = {
       ...document.data.nodes.node_headline!,
-      schemaVersion: 2
+      schemaVersion: 3
     };
     document.data.tracks.track_position = {
       trackId: "track_position",
@@ -182,7 +188,7 @@ describe("Standard Motion Document", () => {
     const document = history.stateOfBranch("main")
       .document_main as unknown as StandardCompositionDocument;
     expect(document.data.rootNodeIds).toEqual([
-      "node_headline",
+      "node_scene",
       "node_subtitle"
     ]);
     expect(document.data.nodes.node_subtitle?.properties.content).toEqual(
@@ -245,7 +251,7 @@ describe("Standard Motion Document", () => {
     ).rejects.toThrow(/subtree/i);
     const document = history.stateOfBranch("main")
       .document_main as unknown as StandardCompositionDocument;
-    expect(document.data.rootNodeIds).toEqual(["node_headline", "node_group"]);
+    expect(document.data.rootNodeIds).toEqual(["node_scene", "node_group"]);
     expect(document.data.nodes.node_group?.children).toEqual(["node_child"]);
   });
 
@@ -264,6 +270,23 @@ describe("Standard Motion Document", () => {
       )
     ).rejects.toThrow(/validation/i);
     expect(history.getBranchHead("main")).toBe(before);
+  });
+
+  it("models standard rectangle, ellipse and path nodes without custom packets", () => {
+    const document = createStandardComposition();
+    const rectangle = createRectangleNode("node_rectangle", 320, 180);
+    const ellipse = createEllipseNode("node_ellipse", 160, 100);
+    const path = createPathNode("node_path", "M 0 -20 L 20 20 L -20 20 Z");
+    document.data.rootNodeIds.push(
+      rectangle.nodeId,
+      ellipse.nodeId,
+      path.nodeId
+    );
+    document.data.nodes[rectangle.nodeId] = rectangle;
+    document.data.nodes[ellipse.nodeId] = ellipse;
+    document.data.nodes[path.nodeId] = path;
+
+    expect(validateStandardComposition(document)).toEqual([]);
   });
 
   it("removes a subtree and tracks targeting it", async () => {
@@ -297,7 +320,8 @@ describe("Standard Motion Document", () => {
     );
     const after = replacementHistory.stateOfBranch("main")
       .document_main as unknown as StandardCompositionDocument;
-    expect(after.data.nodes).toEqual({});
+    expect(after.data.nodes.node_headline).toBeUndefined();
+    expect(after.data.nodes.node_scene?.children).not.toContain("node_headline");
     expect(after.data.tracks).toEqual({});
   });
 });

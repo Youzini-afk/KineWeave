@@ -67,12 +67,20 @@ describe("official distribution", () => {
     expect(mainEvaluation.graph.nodes.node_headline?.data.text).toBe(
       "Hello KineWeave"
     );
-    const rendered = await session.render({
+    const profile = bundle.manifest.outputProfiles.svg!;
+    const rendered = await session.renderOutput({
       graph: mainEvaluation.graph,
-      evaluationMode: "deterministic"
+      evaluationMode: "deterministic",
+      target: profile.target,
+      ...(profile.requiredFeatures === undefined
+        ? {}
+        : { requiredFeatures: profile.requiredFeatures })
     });
     expect(rendered.provider.providerId).toBe("org.kineweave.renderer/svg");
-    expect(rendered.artifact.text).toContain("Hello KineWeave");
+    expect(rendered.artifact.kind).toBe("text");
+    if (rendered.artifact.kind === "text") {
+      expect(rendered.artifact.text).toContain("Hello KineWeave");
+    }
 
     session.createBranch("proposal/alternate");
     const proposal: TransactionProposal = {

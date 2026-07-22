@@ -24,8 +24,10 @@ import {
 } from "@kineweave/protocol";
 import {
   RenderEngine,
-  type RenderExecutionRequest,
-  type RenderExecutionResult
+  type InteractiveRenderSession,
+  type InteractiveRenderSessionOpenRequest,
+  type OutputRenderExecutionRequest,
+  type OutputRenderExecutionResult
 } from "@kineweave/render-engine";
 import {
   TransactionEngine,
@@ -238,9 +240,18 @@ export class ProjectSession {
     return this.evaluation.evaluate(request);
   }
 
-  render(request: RenderExecutionRequest): Promise<RenderExecutionResult> {
+  renderOutput(
+    request: OutputRenderExecutionRequest
+  ): Promise<OutputRenderExecutionResult> {
     this.#assertOpen();
-    return this.rendering.render(request);
+    return this.rendering.renderOutput(request);
+  }
+
+  openInteractiveSession(
+    request: InteractiveRenderSessionOpenRequest
+  ): Promise<InteractiveRenderSession> {
+    this.#assertOpen();
+    return this.rendering.openInteractiveSession(request);
   }
 
   undo(branchName = this.history.mainBranchName): BranchRef | undefined {
@@ -280,8 +291,21 @@ export class ProjectSession {
 
   async dispose(): Promise<void> {
     if (this.#disposed) return;
-    await this.extensions.deactivateAll();
+    const failures: unknown[] = [];
+    try {
+      await this.rendering.dispose();
+    } catch (caught) {
+      failures.push(caught);
+    }
+    try {
+      await this.extensions.deactivateAll();
+    } catch (caught) {
+      failures.push(caught);
+    }
     this.#disposed = true;
+    if (failures.length > 0) {
+      throw new AggregateError(failures, "Project session disposal failed");
+    }
   }
 
   #assertOpen(): void {

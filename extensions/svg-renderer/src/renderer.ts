@@ -5,7 +5,7 @@ import {
   type ResolvedPresentationGraph
 } from "@kineweave/protocol";
 import {
-  type RendererProvider
+  type OutputRendererProvider
 } from "@kineweave/render-engine";
 import { SVG_RENDERER_PROVIDER_ID, svgRendererDescriptor } from "./descriptor.js";
 
@@ -32,12 +32,24 @@ function stringData(data: JsonObject, key: string, fallback?: string): string {
   throw new TypeError(`SVG text primitive requires string ${key}`);
 }
 
-function numberData(data: JsonObject, key: string): number {
+function numberData(data: JsonObject, key: string, fallback?: number): number {
   const value = data[key];
+  if (value === undefined && fallback !== undefined) return fallback;
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new TypeError(`SVG text primitive requires numeric ${key}`);
+    throw new TypeError(`SVG primitive requires numeric ${key}`);
   }
   return value;
+}
+
+function shapeStyle(data: JsonObject): string {
+  const fill = stringData(data, "fill", "#00000000");
+  const stroke = stringData(data, "stroke", "#00000000");
+  const strokeWidth = numberData(data, "strokeWidth", 0);
+  return [
+    `fill="${escapeAttribute(fill)}"`,
+    `stroke="${escapeAttribute(stroke)}"`,
+    `stroke-width="${number(strokeWidth)}"`
+  ].join(" ");
 }
 
 function transform(node: PresentationNode): string {
@@ -96,6 +108,24 @@ function renderNode(
     );
     return `${indentation}<text ${nodeAttributes(node)} x="0" y="0" fill="${escapeAttribute(fill)}" font-family="${escapeAttribute(fontFamily)}" font-size="${number(fontSize)}" text-anchor="${escapeAttribute(textAnchor)}" dominant-baseline="${escapeAttribute(dominantBaseline)}">${escapeText(text)}</text>`;
   }
+  if (children.length > 0) {
+    throw new Error(`SVG leaf node ${nodeId} cannot contain child nodes`);
+  }
+  if (node.primitive === STANDARD_PRESENTATION_PRIMITIVES.rectangle) {
+    const width = numberData(node.data, "width");
+    const height = numberData(node.data, "height");
+    const cornerRadius = numberData(node.data, "cornerRadius", 0);
+    return `${indentation}<rect ${nodeAttributes(node)} x="${number(-width / 2)}" y="${number(-height / 2)}" width="${number(width)}" height="${number(height)}" rx="${number(cornerRadius)}" ${shapeStyle(node.data)} />`;
+  }
+  if (node.primitive === STANDARD_PRESENTATION_PRIMITIVES.ellipse) {
+    const radiusX = numberData(node.data, "radiusX");
+    const radiusY = numberData(node.data, "radiusY");
+    return `${indentation}<ellipse ${nodeAttributes(node)} cx="0" cy="0" rx="${number(radiusX)}" ry="${number(radiusY)}" ${shapeStyle(node.data)} />`;
+  }
+  if (node.primitive === STANDARD_PRESENTATION_PRIMITIVES.path) {
+    const path = stringData(node.data, "path");
+    return `${indentation}<path ${nodeAttributes(node)} d="${escapeAttribute(path)}" ${shapeStyle(node.data)} />`;
+  }
   throw new Error(`SVG renderer does not support primitive ${node.primitive}`);
 }
 
@@ -130,9 +160,9 @@ function background(
   return `  <rect width="${number(width)}" height="${number(height)}" fill="${escapeAttribute(value)}" />`;
 }
 
-export const svgRendererProvider: RendererProvider = {
+export const svgRendererProvider: OutputRendererProvider = {
   descriptor: svgRendererDescriptor,
-  render({ graph }) {
+  renderOutput({ graph }) {
     const canvas = canvasSize(graph);
     const body = [
       background(graph.background, canvas.width, canvas.height),
@@ -146,6 +176,7 @@ export const svgRendererProvider: RendererProvider = {
       ""
     ].join("\n");
     return {
+      kind: "text",
       mediaType: "image/svg+xml",
       fileExtension: ".svg",
       text: svg,

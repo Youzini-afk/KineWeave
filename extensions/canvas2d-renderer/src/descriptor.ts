@@ -3,21 +3,22 @@ import {
   STANDARD_PRESENTATION_PRIMITIVES
 } from "@kineweave/protocol";
 import {
-  OUTPUT_RENDERER_CAPABILITY_ID,
-  OUTPUT_RENDERER_CONTRACT_VERSION
+  INTERACTIVE_RENDERER_CAPABILITY_ID,
+  INTERACTIVE_RENDERER_CONTRACT_VERSION
 } from "@kineweave/render-engine";
 
-export const SVG_RENDERER_PROVIDER_ID = "org.kineweave.renderer/svg";
-export const SVG_OUTPUT_TARGET = "org.kineweave.output/svg";
+export const CANVAS2D_RENDERER_PROVIDER_ID =
+  "org.kineweave.renderer/canvas2d";
+export const CANVAS2D_SURFACE_TYPE = "org.kineweave.surface/canvas2d";
 
-export const svgRendererDescriptor = {
-  capabilityId: OUTPUT_RENDERER_CAPABILITY_ID,
-  providerId: SVG_RENDERER_PROVIDER_ID,
-  extensionId: "org.kineweave.svg-renderer",
-  contractVersion: OUTPUT_RENDERER_CONTRACT_VERSION,
+export const canvas2dRendererDescriptor = {
+  capabilityId: INTERACTIVE_RENDERER_CAPABILITY_ID,
+  providerId: CANVAS2D_RENDERER_PROVIDER_ID,
+  extensionId: "org.kineweave.canvas2d-renderer",
+  contractVersion: INTERACTIVE_RENDERER_CONTRACT_VERSION,
   implementationVersion: "0.1.0",
   features: [
-    SVG_OUTPUT_TARGET,
+    CANVAS2D_SURFACE_TYPE,
     STANDARD_PRESENTATION_PRIMITIVES.group,
     STANDARD_PRESENTATION_PRIMITIVES.text,
     STANDARD_PRESENTATION_PRIMITIVES.rectangle,
@@ -28,7 +29,7 @@ export const svgRendererDescriptor = {
   lifetime: "project",
   priority: 100,
   environment: {
-    hostKinds: ["desktop", "web", "cli", "render-node"],
+    hostKinds: ["desktop", "web"],
     evaluationModes: ["interactive", "deterministic", "live"]
   }
 } as const;

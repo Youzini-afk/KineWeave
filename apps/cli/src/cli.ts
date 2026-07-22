@@ -515,19 +515,25 @@ async function renderCommand(
     const profileId =
       profileOption.value ??
       (snapshot.bundle.manifest.outputProfiles.svg === undefined
-        ? undefined
+        ? Object.keys(snapshot.bundle.manifest.outputProfiles).sort()[0]
         : "svg");
     const profile =
       profileId === undefined
         ? undefined
         : snapshot.bundle.manifest.outputProfiles[profileId];
-    if (profileOption.value !== undefined && profile === undefined) {
-      throw new TypeError(`Unknown output profile ${profileOption.value}`);
+    if (profile === undefined) {
+      throw new TypeError(
+        profileId === undefined
+          ? "Project defines no output profile"
+          : `Unknown output profile ${profileId}`
+      );
     }
-    const rendered = await runtime.render({
+    const rendered = await runtime.renderOutput({
       graph: evaluation.graph,
       evaluationMode: mode,
-      settings: profile?.settings ?? {},
+      target: profile.target,
+      requiredFeatures: profile.requiredFeatures ?? [],
+      settings: profile.settings,
       ...(providerOption.value === undefined
         ? {}
         : { preferredProviderIds: [providerOption.value] })
@@ -542,13 +548,18 @@ async function renderCommand(
       );
     }
     await mkdir(path.dirname(absoluteOutputPath), { recursive: true });
-    await writeFile(absoluteOutputPath, rendered.artifact.text, "utf8");
+    if (rendered.artifact.kind === "text") {
+      await writeFile(absoluteOutputPath, rendered.artifact.text, "utf8");
+    } else {
+      await writeFile(absoluteOutputPath, rendered.artifact.bytes);
+    }
     if (options.json) {
       io.stdout(
         `${JSON.stringify(
           {
             outputPath: absoluteOutputPath,
             mediaType: rendered.artifact.mediaType,
+            artifactKind: rendered.artifact.kind,
             rendererProviderId: rendered.provider.providerId,
             presentationNodeCount: Object.keys(evaluation.graph.nodes).length
           },

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.kineweave.dev/standard-motion/composition/v1",
-  "title": "KineWeave Standard Motion Composition v1",
+  "$id": "https://schemas.kineweave.dev/standard-motion/composition/v2",
+  "title": "KineWeave Standard Motion Composition v2",
   "type": "object",
   "required": ["documentId", "documentType", "schemaVersion", "data"],
   "properties": {
@@ -9,7 +9,7 @@
     "documentType": {
       "const": "org.kineweave.standard-motion/composition"
     },
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "data": {
       "type": "object",
       "required": [
@@ -204,8 +204,29 @@
                 "type": "object",
                 "required": ["kind"],
                 "properties": {
-                  "kind": { "type": "string", "minLength": 1 }
+                  "kind": { "enum": ["linear", "hold", "cubic-bezier"] },
+                  "x1": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "y1": { "type": "number" },
+                  "x2": { "type": "number", "minimum": 0, "maximum": 1 },
+                  "y2": { "type": "number" }
                 },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": { "kind": { "const": "cubic-bezier" } },
+                      "required": ["kind"]
+                    },
+                    "then": {
+                      "properties": {
+                        "x1": {},
+                        "y1": {},
+                        "x2": {},
+                        "y2": {}
+                      },
+                      "required": ["x1", "y1", "x2", "y2"]
+                    }
+                  }
+                ],
                 "additionalProperties": true
               }
             },

@@ -6,6 +6,9 @@ export const PRESENTATION_GRAPH_VERSION = 1;
 export const STANDARD_PRESENTATION_PRIMITIVES = {
   group: "org.kineweave.presentation/group",
   text: "org.kineweave.presentation/text",
+  rectangle: "org.kineweave.presentation/rectangle",
+  ellipse: "org.kineweave.presentation/ellipse",
+  path: "org.kineweave.presentation/path",
   custom: "org.kineweave.presentation/custom"
 } as const;
 

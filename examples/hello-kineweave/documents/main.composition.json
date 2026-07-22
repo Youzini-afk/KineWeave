@@ -50,7 +50,7 @@
             ]
           }
         },
-        "schemaVersion": 1
+        "schemaVersion": 2
       }
     },
     "rootNodeIds": [
@@ -61,5 +61,5 @@
   },
   "documentId": "document_main",
   "documentType": "org.kineweave.standard-motion/composition",
-  "schemaVersion": 1
+  "schemaVersion": 2
 }

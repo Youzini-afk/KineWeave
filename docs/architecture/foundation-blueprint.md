@@ -401,25 +401,26 @@ Evaluation Request 明确包含：
 
 Presentation Graph 同时允许：
 
-- 标准 Primitive：group、transform、text、path、image、video frame、mask、blend、filter；
+- 标准 Primitive：当前实现 group、text、rectangle、ellipse、path；image、video frame、mask、blend、filter 在建立载荷与降级语义后继续加入；
 - Namespaced Custom Packet：WebGPU、3D、浏览器组件或外部渲染资源。
 
-Renderer 必须声明契约版本、支持的 Primitive/Feature、颜色和确定性能力。缺失能力时由 Output Policy 决定拒绝、替代或显式降级；不得静默产生不同语义。
+Renderer 必须声明契约版本、支持的 Primitive/Feature、颜色和确定性能力。一次性持久化输出使用 Output Renderer，长生命周期 Stage 使用 Interactive Renderer；二者分别协商 Output Target 或 Surface Type，不能以同一含混接口承载。缺失能力时由 Output Policy 决定拒绝、替代或显式降级；不得静默产生不同语义。
 
 当前 Graph v1 规定 `requiredFeatures` 至少包含每个节点的 Primitive、Graph Color Space，以及 Custom Packet 的 `packetType`。背景当前只接受颜色字符串或 `null`；渐变、图像和程序化背景在有明确 Primitive/Feature 契约后直接修改当前格式，不用宽泛 JSON 占位。标准 text/custom Packet 的载荷结构在 Renderer 选择前校验，第三方 Evaluator 返回缺字段、错误对象类型或循环 JSON 时转换为结构化诊断，不允许裸异常越过扩展边界。
 
 ### 9.4 当前参考链路
 
-截至 2026-07-22，仓库已经贯通以下可执行路径：
+截至 2026-07-23，仓库已经贯通以下可执行路径：
 
 1. ProjectSession 统一装配 History、Transaction、Extension、Evaluation 和 Render 服务；Node 宿主通过持久化会话连续保存，CLI 与后续 Studio 不再各自组合运行时。
 2. Evaluation Engine 从当前 Branch 或指定 Commit 重建工程状态，并校验 Evaluation Request 与文档 Envelope。
-3. Standard Motion 在提交和求值前统一校验 Binding 完整性、标准属性/Track/Signal 值类型、目标双向关系、已知内部 Schema 版本和层级约束，再以 Rational 时间采样常量、关键帧 Track 和显式 External Signal Snapshot；当前支持 group、text 与自定义 Packet 的图输出。
-4. Evaluation Engine 校验 Presentation Graph 的运行时结构、Primitive Payload、层级、变换、来源引用、完整 Feature 声明以及请求/结果对应关系。
-5. Render Engine 根据图所需 Feature、运行环境、输出 Profile 与 Lockfile 生成 Capability 选择；锁定 Provider 不兼容时直接拒绝。
-6. `org.kineweave.renderer/svg` 将同一 Presentation Graph 确定性序列化为 SVG，并保留节点 ID 与来源 Resource URI 以便诊断。
+3. Standard Motion v2 在提交和求值前统一校验 Binding 完整性、标准属性/Track/Signal 值类型、目标双向关系、已知内部 Schema 版本和层级约束，再以 Rational 时间采样常量、关键帧 Track 和显式 External Signal Snapshot；当前直接输出 group、text、rectangle、ellipse、path 与自定义 Packet，并支持可见性和确定性 cubic-bezier 缓动。
+4. Evaluation Engine 校验 Presentation Graph 的运行时结构、标准文字/形状 Primitive Payload、层级、变换、来源引用、完整 Feature 声明以及请求/结果对应关系。
+5. Render Engine 分别解析 Output 与 Interactive Capability。Output 请求合并 Graph Feature、Profile Feature 与 Target；Interactive 会话合并 Graph Feature、Surface Type，统一管理帧更新、Resize、命中测试和释放。锁定 Provider 不兼容时直接拒绝。
+6. `org.kineweave.renderer/svg` 将同一 Presentation Graph 确定性序列化为 SVG，并保留节点 ID 与来源 Resource URI；产物契约显式区分 UTF-8 文本和二进制字节。
+7. `org.kineweave.renderer/canvas2d` 在宿主提供的 Canvas2D Surface 上执行高 DPI contain 布局、层级变换、透明度与全部当前标准 Primitive 绘制，并以逆绘制顺序返回源节点命中结果。
 
-这条链路用于持续施压边界，不表示 Presentation Graph 或 Standard Motion 已经封口。下一种异构 Renderer 应覆盖 SVG 没有暴露的即时绘制、像素密度或交互预览压力；候选实现会在对应宿主开工时确定。
+这两条渲染链路用于持续施压边界，不表示 Presentation Graph 或 Standard Motion 已经封口。下一步由 Studio 的连续播放、选择、Resize 和编辑反馈继续检验交互会话及求值缓存边界。
 
 ## 10. 可靠性边界
 

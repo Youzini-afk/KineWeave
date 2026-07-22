@@ -51,6 +51,18 @@ importers:
         specifier: workspace:*
         version: link:../../packages/transaction-engine
 
+  extensions/canvas2d-renderer:
+    dependencies:
+      '@kineweave/extension-api':
+        specifier: workspace:*
+        version: link:../../packages/extension-api
+      '@kineweave/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@kineweave/render-engine':
+        specifier: workspace:*
+        version: link:../../packages/render-engine
+
   extensions/standard-motion-document:
     dependencies:
       '@kineweave/evaluation-engine':
@@ -158,6 +170,9 @@ importers:
 
   packages/official-distribution:
     dependencies:
+      '@kineweave/canvas2d-renderer':
+        specifier: workspace:*
+        version: link:../../extensions/canvas2d-renderer
       '@kineweave/extension-api':
         specifier: workspace:*
         version: link:../extension-api

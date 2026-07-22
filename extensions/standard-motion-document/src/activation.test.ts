@@ -27,7 +27,8 @@ describe("activateStandardMotionExtension", () => {
         registerDocumentEvaluator: registerHandler
       },
       rendering: {
-        registerRenderer: registerHandler
+        registerOutputRenderer: registerHandler,
+        registerInteractiveRenderer: registerHandler
       }
     };
 

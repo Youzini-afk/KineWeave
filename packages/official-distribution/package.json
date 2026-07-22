@@ -13,6 +13,7 @@
   },
   "files": ["dist"],
   "dependencies": {
+    "@kineweave/canvas2d-renderer": "workspace:*",
     "@kineweave/extension-api": "workspace:*",
     "@kineweave/extension-host": "workspace:*",
     "@kineweave/history-engine": "workspace:*",

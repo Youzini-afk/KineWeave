@@ -9,7 +9,29 @@ const COMMON_PROPERTY_VALUE_TYPES: Readonly<Record<string, string>> = {
   scale: STANDARD_VALUE_TYPES.vector2,
   anchor: STANDARD_VALUE_TYPES.vector2,
   rotation: STANDARD_VALUE_TYPES.number,
-  opacity: STANDARD_VALUE_TYPES.number
+  opacity: STANDARD_VALUE_TYPES.number,
+  visible: STANDARD_VALUE_TYPES.boolean
+};
+
+const SHAPE_PROPERTY_VALUE_TYPES: Readonly<Record<string, string>> = {
+  fill: STANDARD_VALUE_TYPES.color,
+  stroke: STANDARD_VALUE_TYPES.color,
+  strokeWidth: STANDARD_VALUE_TYPES.number
+};
+
+const SIZED_SHAPE_PROPERTY_VALUE_TYPES: Readonly<Record<string, string>> = {
+  ...SHAPE_PROPERTY_VALUE_TYPES,
+  size: STANDARD_VALUE_TYPES.vector2
+};
+
+const RECTANGLE_PROPERTY_VALUE_TYPES: Readonly<Record<string, string>> = {
+  ...SIZED_SHAPE_PROPERTY_VALUE_TYPES,
+  cornerRadius: STANDARD_VALUE_TYPES.number
+};
+
+const PATH_PROPERTY_VALUE_TYPES: Readonly<Record<string, string>> = {
+  ...SHAPE_PROPERTY_VALUE_TYPES,
+  path: STANDARD_VALUE_TYPES.string
 };
 
 const TEXT_PROPERTY_VALUE_TYPES: Readonly<Record<string, string>> = {
@@ -28,7 +50,13 @@ export function expectedStandardPropertyValueType(
     COMMON_PROPERTY_VALUE_TYPES[property] ??
     (nodeType === STANDARD_NODE_TYPES.text
       ? TEXT_PROPERTY_VALUE_TYPES[property]
-      : undefined)
+      : nodeType === STANDARD_NODE_TYPES.rectangle
+        ? RECTANGLE_PROPERTY_VALUE_TYPES[property]
+        : nodeType === STANDARD_NODE_TYPES.ellipse
+          ? SIZED_SHAPE_PROPERTY_VALUE_TYPES[property]
+          : nodeType === STANDARD_NODE_TYPES.path
+            ? PATH_PROPERTY_VALUE_TYPES[property]
+            : undefined)
   );
 }
 
@@ -64,6 +92,9 @@ export function standardValueIssue(
       ? undefined
       : "must be a #RRGGBB or #RRGGBBAA color";
   }
+  if (valueType === STANDARD_VALUE_TYPES.boolean) {
+    return typeof value === "boolean" ? undefined : "must be a boolean";
+  }
   return undefined;
 }
 
@@ -81,6 +112,20 @@ export function standardPropertyValueIssue(
   }
   if (property === "fontSize" && typeof value === "number") {
     return value > 0 ? undefined : "must be positive";
+  }
+  if (
+    (property === "strokeWidth" || property === "cornerRadius") &&
+    typeof value === "number"
+  ) {
+    return value >= 0 ? undefined : "must be non-negative";
+  }
+  if (property === "size" && Array.isArray(value)) {
+    return value.every((item) => typeof item === "number" && item > 0)
+      ? undefined
+      : "must contain positive dimensions";
+  }
+  if (property === "path" && typeof value === "string") {
+    return value.trim().length > 0 ? undefined : "must be non-empty";
   }
   return undefined;
 }

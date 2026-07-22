@@ -9,7 +9,7 @@ import {
   type ProjectDocumentEnvelope
 } from "@kineweave/protocol";
 import { Ajv2020, type ErrorObject } from "ajv/dist/2020.js";
-import compositionSchema from "./schemas/composition-v1.schema.json" with { type: "json" };
+import compositionSchema from "./schemas/composition-v2.schema.json" with { type: "json" };
 import {
   STANDARD_KEYFRAME_EASINGS,
   STANDARD_NODE_SCHEMA_VERSION,
@@ -30,6 +30,13 @@ import {
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
 const validateSchema = ajv.compile(compositionSchema);
+const STANDARD_NODE_TYPE_SET = new Set<string>(Object.values(STANDARD_NODE_TYPES));
+const LEAF_NODE_TYPE_SET = new Set<string>([
+  STANDARD_NODE_TYPES.text,
+  STANDARD_NODE_TYPES.rectangle,
+  STANDARD_NODE_TYPES.ellipse,
+  STANDARD_NODE_TYPES.path
+]);
 
 function error(
   code: string,
@@ -320,8 +327,7 @@ export function validateStandardComposition(
       );
     }
     if (
-      (node.nodeType === STANDARD_NODE_TYPES.group ||
-        node.nodeType === STANDARD_NODE_TYPES.text) &&
+      STANDARD_NODE_TYPE_SET.has(node.nodeType) &&
       node.schemaVersion !== STANDARD_NODE_SCHEMA_VERSION
     ) {
       result.push(
@@ -352,27 +358,52 @@ export function validateStandardComposition(
         result
       );
     }
-    if (node.nodeType === STANDARD_NODE_TYPES.text) {
+    if (LEAF_NODE_TYPE_SET.has(node.nodeType)) {
       if (node.children.length > 0) {
         result.push(
           error(
-            "standard-motion.text.children-unsupported",
-            `Text node ${nodeId} cannot contain child nodes`,
+            "standard-motion.leaf.children-unsupported",
+            `Leaf node ${nodeId} cannot contain child nodes`,
             document.documentId,
             `/data/nodes/${nodeId}/children`
           )
         );
       }
-      const content = node.properties.content;
-      if (content === undefined) {
-        result.push(
-          error(
-            "standard-motion.text.content-missing",
-            `Text node ${nodeId} requires a content binding`,
-            document.documentId,
-            `/data/nodes/${nodeId}/properties/content`
-          )
-        );
+    }
+    const requiredProperty =
+      node.nodeType === STANDARD_NODE_TYPES.text
+        ? "content"
+        : node.nodeType === STANDARD_NODE_TYPES.rectangle ||
+            node.nodeType === STANDARD_NODE_TYPES.ellipse
+          ? "size"
+          : node.nodeType === STANDARD_NODE_TYPES.path
+            ? "path"
+            : undefined;
+    if (
+      requiredProperty !== undefined &&
+      node.properties[requiredProperty] === undefined
+    ) {
+      result.push(
+        error(
+          "standard-motion.node.property-required",
+          `${node.name} node ${nodeId} requires a ${requiredProperty} binding`,
+          document.documentId,
+          `/data/nodes/${nodeId}/properties/${requiredProperty}`
+        )
+      );
+    }
+    if (node.nodeType === STANDARD_NODE_TYPES.group) {
+      for (const property of ["size", "path", "fill", "stroke", "strokeWidth"]) {
+        if (node.properties[property] !== undefined) {
+          result.push(
+            error(
+              "standard-motion.group.property-unsupported",
+              `Group node ${nodeId} cannot define shape property ${property}`,
+              document.documentId,
+              `/data/nodes/${nodeId}/properties/${property}`
+            )
+          );
+        }
       }
     }
   }
@@ -524,7 +555,8 @@ export function validateStandardComposition(
       if (
         keyframe.easing !== undefined &&
         keyframe.easing.kind !== STANDARD_KEYFRAME_EASINGS.linear &&
-        keyframe.easing.kind !== STANDARD_KEYFRAME_EASINGS.hold
+        keyframe.easing.kind !== STANDARD_KEYFRAME_EASINGS.hold &&
+        keyframe.easing.kind !== STANDARD_KEYFRAME_EASINGS.cubicBezier
       ) {
         result.push(
           error(
@@ -536,13 +568,14 @@ export function validateStandardComposition(
         );
       }
       if (
-        keyframe.easing?.kind === STANDARD_KEYFRAME_EASINGS.linear &&
+        (keyframe.easing?.kind === STANDARD_KEYFRAME_EASINGS.linear ||
+          keyframe.easing?.kind === STANDARD_KEYFRAME_EASINGS.cubicBezier) &&
         !isStandardInterpolatedValueType(track.valueType)
       ) {
         result.push(
           error(
             "standard-motion.keyframe.easing-value-type-invalid",
-            `Track ${trackId} cannot linearly interpolate ${track.valueType}`,
+            `Track ${trackId} cannot interpolate ${track.valueType}`,
             document.documentId,
             `/data/tracks/${trackId}/keyframes/${keyframeId}/easing/kind`
           )

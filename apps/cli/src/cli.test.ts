@@ -89,7 +89,7 @@ describe("KineWeave CLI", () => {
         "utf8"
       )
     ) as { data: { rootNodeIds: string[] } };
-    expect(undoneDocument.data.rootNodeIds).toEqual(["node_headline"]);
+    expect(undoneDocument.data.rootNodeIds).toEqual(["node_scene"]);
     expect(await runCli(["redo", projectPath], capture.io)).toBe(0);
     expect(await runCli(["history", projectPath, "--json"], capture.io)).toBe(
       0
@@ -107,7 +107,7 @@ describe("KineWeave CLI", () => {
       };
     };
     expect(document.data.rootNodeIds).toEqual([
-      "node_headline",
+      "node_scene",
       "node_subtitle"
     ]);
     expect(document.data.nodes.node_headline?.properties.content).toEqual({

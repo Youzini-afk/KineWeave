@@ -5,7 +5,10 @@ import type {
   ExtensionManifest,
   JsonValue
 } from "@kineweave/protocol";
-import type { RendererProvider } from "@kineweave/render-engine";
+import type {
+  InteractiveRendererProvider,
+  OutputRendererProvider
+} from "@kineweave/render-engine";
 import type {
   DocumentValidator,
   OperationHandler
@@ -102,12 +105,19 @@ export function createKineWeaveExtensionContributionAudit(
         )
     },
     rendering: {
-      registerRenderer: (provider: RendererProvider) =>
+      registerOutputRenderer: (provider: OutputRendererProvider) =>
         trackedRegistration(
           provider.descriptor,
           provider.descriptor.providerId,
           capabilities,
-          () => context.rendering.registerRenderer(provider)
+          () => context.rendering.registerOutputRenderer(provider)
+        ),
+      registerInteractiveRenderer: (provider: InteractiveRendererProvider) =>
+        trackedRegistration(
+          provider.descriptor,
+          provider.descriptor.providerId,
+          capabilities,
+          () => context.rendering.registerInteractiveRenderer(provider)
         )
     }
   };
