@@ -1,0 +1,76 @@
+{
+  "branches": {
+    "main": "commit_root"
+  },
+  "commits": {},
+  "historyFormatVersion": 1,
+  "mainBranchName": "main",
+  "rootCommitId": "commit_root",
+  "rootDocuments": {
+    "document_main": {
+      "data": {
+        "canvas": {
+          "background": {
+            "kind": "constant",
+            "value": "#111318"
+          },
+          "colorSpace": "org.kineweave.color/srgb",
+          "height": 1080,
+          "pixelAspectRatio": {
+            "denominator": "1",
+            "numerator": "1"
+          },
+          "width": 1920
+        },
+        "duration": {
+          "domain": "org.kineweave.time/seconds",
+          "value": {
+            "denominator": "1",
+            "numerator": "5"
+          }
+        },
+        "name": "Main Composition",
+        "nodes": {
+          "node_headline": {
+            "children": [],
+            "data": {},
+            "enabled": true,
+            "name": "Text",
+            "nodeId": "node_headline",
+            "nodeType": "org.kineweave.standard-motion/text",
+            "properties": {
+              "content": {
+                "kind": "constant",
+                "value": "Hello KineWeave"
+              },
+              "fill": {
+                "kind": "constant",
+                "value": "#ffffff"
+              },
+              "fontSize": {
+                "kind": "constant",
+                "value": 96
+              },
+              "position": {
+                "kind": "constant",
+                "value": [
+                  960,
+                  540
+                ]
+              }
+            },
+            "schemaVersion": 1
+          }
+        },
+        "rootNodeIds": [
+          "node_headline"
+        ],
+        "signals": {},
+        "tracks": {}
+      },
+      "documentId": "document_main",
+      "documentType": "org.kineweave.standard-motion/composition",
+      "schemaVersion": 1
+    }
+  }
+}

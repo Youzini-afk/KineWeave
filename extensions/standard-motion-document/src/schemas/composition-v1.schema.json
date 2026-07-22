@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kineweave.dev/standard-motion/composition/v1",
+  "title": "KineWeave Standard Motion Composition v1",
+  "type": "object",
+  "required": ["documentId", "documentType", "schemaVersion", "data"],
+  "properties": {
+    "documentId": { "$ref": "#/$defs/stableId" },
+    "documentType": {
+      "const": "org.kineweave.standard-motion/composition"
+    },
+    "schemaVersion": { "const": 1 },
+    "data": {
+      "type": "object",
+      "required": [
+        "name",
+        "duration",
+        "canvas",
+        "rootNodeIds",
+        "nodes",
+        "tracks",
+        "signals"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "duration": { "$ref": "#/$defs/timeValue" },
+        "canvas": {
+          "type": "object",
+          "required": ["width", "height", "pixelAspectRatio", "colorSpace"],
+          "properties": {
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 },
+            "pixelAspectRatio": { "$ref": "#/$defs/rational" },
+            "colorSpace": { "$ref": "#/$defs/qualifiedName" },
+            "background": { "$ref": "#/$defs/propertyBinding" }
+          },
+          "additionalProperties": true
+        },
+        "rootNodeIds": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/stableId" },
+          "uniqueItems": true
+        },
+        "nodes": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/stableId" },
+          "additionalProperties": { "$ref": "#/$defs/node" }
+        },
+        "tracks": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/stableId" },
+          "additionalProperties": { "$ref": "#/$defs/track" }
+        },
+        "signals": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/stableId" },
+          "additionalProperties": { "$ref": "#/$defs/signal" }
+        },
+        "metadata": { "type": "object" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,127}$"
+    },
+    "qualifiedName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+\\/[a-z][a-z0-9-]*(?:[.-][a-z0-9-]+)*$"
+    },
+    "rational": {
+      "type": "object",
+      "required": ["numerator", "denominator"],
+      "properties": {
+        "numerator": {
+          "type": "string",
+          "pattern": "^-?(0|[1-9][0-9]*)$"
+        },
+        "denominator": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "timeValue": {
+      "type": "object",
+      "required": ["value", "domain"],
+      "properties": {
+        "value": { "$ref": "#/$defs/rational" },
+        "domain": { "$ref": "#/$defs/qualifiedName" }
+      },
+      "additionalProperties": true
+    },
+    "propertyBinding": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["constant", "track", "signal"] },
+        "value": {},
+        "trackId": { "$ref": "#/$defs/stableId" },
+        "signalId": { "$ref": "#/$defs/stableId" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "constant" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": { "value": {} },
+            "required": ["value"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "track" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": { "trackId": { "$ref": "#/$defs/stableId" } },
+            "required": ["trackId"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "kind": { "const": "signal" } },
+            "required": ["kind"]
+          },
+          "then": {
+            "properties": { "signalId": { "$ref": "#/$defs/stableId" } },
+            "required": ["signalId"]
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "node": {
+      "type": "object",
+      "required": [
+        "nodeId",
+        "nodeType",
+        "schemaVersion",
+        "name",
+        "enabled",
+        "children",
+        "properties",
+        "data"
+      ],
+      "properties": {
+        "nodeId": { "$ref": "#/$defs/stableId" },
+        "nodeType": { "$ref": "#/$defs/qualifiedName" },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "enabled": { "type": "boolean" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/stableId" },
+          "uniqueItems": true
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/propertyBinding" }
+        },
+        "data": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "track": {
+      "type": "object",
+      "required": [
+        "trackId",
+        "valueType",
+        "target",
+        "keyframes"
+      ],
+      "properties": {
+        "trackId": { "$ref": "#/$defs/stableId" },
+        "valueType": { "$ref": "#/$defs/qualifiedName" },
+        "target": {
+          "type": "object",
+          "required": ["nodeId", "property"],
+          "properties": {
+            "nodeId": { "$ref": "#/$defs/stableId" },
+            "property": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        "keyframes": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": { "$ref": "#/$defs/stableId" },
+          "additionalProperties": {
+            "type": "object",
+            "required": ["keyframeId", "time", "value"],
+            "properties": {
+              "keyframeId": { "$ref": "#/$defs/stableId" },
+              "time": { "$ref": "#/$defs/timeValue" },
+              "value": {},
+              "easing": {
+                "type": "object",
+                "required": ["kind"],
+                "properties": {
+                  "kind": { "type": "string", "minLength": 1 }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "signal": {
+      "type": "object",
+      "required": [
+        "signalId",
+        "signalType",
+        "schemaVersion",
+        "valueType",
+        "data"
+      ],
+      "properties": {
+        "signalId": { "$ref": "#/$defs/stableId" },
+        "signalType": { "$ref": "#/$defs/qualifiedName" },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "valueType": { "$ref": "#/$defs/qualifiedName" },
+        "data": { "type": "object" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kineweave.dev/lockfile/v1",
+  "title": "KineWeave Lockfile v1",
+  "type": "object",
+  "required": [
+    "lockfileFormatVersion",
+    "projectId",
+    "protocolVersion",
+    "extensions",
+    "capabilityBindings",
+    "resources"
+  ],
+  "properties": {
+    "lockfileFormatVersion": { "const": 1 },
+    "projectId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,127}$"
+    },
+    "protocolVersion": { "type": "string", "minLength": 1 },
+    "extensions": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["version", "source"],
+        "properties": {
+          "version": { "type": "string", "minLength": 1 },
+          "source": { "type": "object" },
+          "integrity": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": true
+      }
+    },
+    "capabilityBindings": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?:\\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)?$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["providers"],
+        "properties": {
+          "defaultProviderId": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?:\\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)?$"
+          },
+          "providers": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?:\\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)?$"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "required": [
+                "providerId",
+                "contractVersion",
+                "implementationVersion",
+                "features"
+              ],
+              "properties": {
+                "providerId": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?:\\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)?$"
+                },
+                "contractVersion": { "type": "string", "minLength": 1 },
+                "implementationVersion": { "type": "string", "minLength": 1 },
+                "features": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?:\\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)?$"
+                  },
+                  "uniqueItems": true
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "resources": {
+      "type": "object",
+      "propertyNames": { "pattern": "^kw://" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["contentHash"],
+        "properties": {
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*:[A-Fa-f0-9]+$"
+          },
+          "source": { "type": "object" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

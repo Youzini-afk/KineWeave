@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../../packages/protocol" },
+    { "path": "../../packages/content-hash" },
+    { "path": "../../packages/evaluation-engine" },
+    { "path": "../../packages/extension-api" },
+    { "path": "../../packages/extension-host" },
+    { "path": "../../packages/history-engine" },
+    { "path": "../../packages/transaction-engine" },
+    { "path": "../../packages/project-repository-node" },
+    { "path": "../../packages/render-engine" },
+    { "path": "../../extensions/standard-motion-document" },
+    { "path": "../../extensions/svg-renderer" }
+  ]
+}

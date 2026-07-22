@@ -1,0 +1,5 @@
+export const KINEWEAVE_PROTOCOL_VERSION = "0.1.0";
+
+export const PROJECT_FORMAT_VERSION = 1;
+export const LOCKFILE_FORMAT_VERSION = 1;
+export const HISTORY_FORMAT_VERSION = 1;

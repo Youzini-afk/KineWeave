@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kineweave.dev/document-envelope/v1",
+  "title": "KineWeave Document Envelope v1",
+  "type": "object",
+  "required": ["documentId", "documentType", "schemaVersion", "data"],
+  "properties": {
+    "documentId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,127}$"
+    },
+    "documentType": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+\\/[a-z][a-z0-9-]*(?:[.-][a-z0-9-]+)*$"
+    },
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "data": { "type": "object" }
+  },
+  "additionalProperties": true
+}

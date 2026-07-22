@@ -1,0 +1,52 @@
+# KineWeave / 织时
+
+KineWeave 是一个本地优先、模型无关、可编程的时间视觉创作环境。它以开放工程、统一事务、精确时间、可替换扩展和渲染无关的求值体系为基础，面向视频、动态图形、数据视觉、交互动画和实时视觉。
+
+当前仓库从空目录开始建设。我们采用“愿景约束下的演进式设计”：不做抛弃式 MVP，也不假设现在就能设计出永久正确的架构。每一阶段根据已有场景做出足够支撑施工的判断，在实现和验证中继续修正。开发期代码接口、持久化数据和消息协议都只认仓库当前版本；设计变化时直接修改 Schema、实现和全部调用方，并重建 Fixture、样例与开发工程，不建立兼容垫片或草稿迁移链。第一次公开格式基线发布后才开始承担真实兼容责任。
+
+## 当前施工状态
+
+第一条可执行纵向链路已经贯通，但各子系统仍会随真实编辑与渲染场景继续扩展：
+
+1. 身份、资源 URI、Rational、开放工程格式和当前版本校验；
+2. Schema、未知字段往返和带 Journal 的原子 Project Repository；
+3. 宿主/Runtime 感知的扩展生命周期、全局回溯 Capability Planning、确定性绑定和 Lockfile；
+4. Operation、事务、Patch、持久化 Commit DAG、Branch、Undo/Redo；
+5. Standard Motion Document、精确时间求值和 Presentation Graph；
+6. Renderer Capability 选择与首个 SVG 参考 Renderer；
+7. CLI 参考宿主贯通工程编辑、历史、求值和文件渲染。
+
+下一施工焦点是补强 Standard Motion 的可表达范围，并接入第二种异构 Renderer/预览宿主来检验 Presentation Graph 边界；具体实现会根据测得的语义与性能压力调整，不预先冻结为终局结构。
+
+总体施工蓝图见 [foundation-blueprint.md](docs/architecture/foundation-blueprint.md)，兼容政策见 [RFC-000](docs/rfcs/RFC-000-compatibility-and-evolution.md)。
+
+## 技术基线
+
+- TypeScript：协议、Kernel、SDK、编辑器与 CLI；
+- Rust：后续媒体、帧传输、原生桥接和性能敏感模块；
+- pnpm workspace；
+- Node.js 22+ 作为首个 CLI/桌面宿主基线。
+
+仓库当前仍处于基础设施施工期；README 只描述已经确定的方向，不宣称尚未实现的产品能力。
+
+## 当前可运行入口
+
+```bash
+pnpm install
+pnpm test
+pnpm example:validate
+
+pnpm cli init ./playground-projects/hello --name "Hello KineWeave"
+pnpm cli validate ./playground-projects/hello
+pnpm cli inspect ./playground-projects/hello
+pnpm cli evaluate ./playground-projects/hello document_main 1/2 --json
+pnpm cli render ./playground-projects/hello document_main 1/2 ./playground-projects/frame.svg --json
+pnpm cli history ./playground-projects/hello
+pnpm cli set-property ./playground-projects/hello document_main node_headline content '"你好，织时"'
+pnpm cli insert-text ./playground-projects/hello document_main node_subtitle "Subtitle" --index 1
+pnpm cli branch create ./playground-projects/hello proposal/alternate
+pnpm cli undo ./playground-projects/hello
+pnpm cli redo ./playground-projects/hello
+```
+
+CLI 通过 Project Repository、Extension Host、Transaction Engine、Evaluation Engine、Render Engine 和官方扩展完成操作，不维护独立的文件修改或求值逻辑。文档与 `.kineweave/history/history.json` 中的 Commit DAG/Branch Ref 在同一个文件事务中保存；`evaluate` 可读取当前 Branch 或指定 Commit，`render` 再通过 Capability/Lockfile 选择兼容 Renderer。Primitive、Custom Packet 和 Color Space 都进入 Feature 协商，缺失能力或扩展输出结构错误时会在 Renderer 执行前明确拒绝。

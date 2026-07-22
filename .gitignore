@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+
+# Local KineWeave runtime state
+.kineweave/cache/
+.kineweave/proxies/
+.kineweave/thumbnails/
+.kineweave/user/
+
+# Local scratch projects
+playground-projects/

@@ -1,0 +1,24 @@
+{
+  "name": "@kineweave/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "kineweave": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@kineweave/content-hash": "workspace:*",
+    "@kineweave/evaluation-engine": "workspace:*",
+    "@kineweave/extension-api": "workspace:*",
+    "@kineweave/extension-host": "workspace:*",
+    "@kineweave/history-engine": "workspace:*",
+    "@kineweave/project-repository-node": "workspace:*",
+    "@kineweave/protocol": "workspace:*",
+    "@kineweave/render-engine": "workspace:*",
+    "@kineweave/standard-motion-document": "workspace:*",
+    "@kineweave/svg-renderer": "workspace:*",
+    "@kineweave/transaction-engine": "workspace:*"
+  }
+}

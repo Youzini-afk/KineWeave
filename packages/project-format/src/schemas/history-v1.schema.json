@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kineweave.dev/history/v1",
+  "title": "KineWeave History v1",
+  "type": "object",
+  "required": [
+    "historyFormatVersion",
+    "rootCommitId",
+    "mainBranchName",
+    "rootDocuments",
+    "commits",
+    "branches"
+  ],
+  "properties": {
+    "historyFormatVersion": { "type": "integer", "minimum": 1 },
+    "rootCommitId": { "$ref": "#/$defs/stableId" },
+    "mainBranchName": { "$ref": "#/$defs/branchName" },
+    "rootDocuments": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/stableId" },
+      "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+    },
+    "commits": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/stableId" },
+      "additionalProperties": { "$ref": "#/$defs/historyCommit" }
+    },
+    "branches": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/branchName" },
+      "additionalProperties": { "$ref": "#/$defs/stableId" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,127}$"
+    },
+    "branchName": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9._/-]{0,127}$"
+    },
+    "jsonValue": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/jsonValue" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        }
+      ]
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": ["severity", "code", "message"],
+      "properties": {
+        "severity": { "enum": ["info", "warning", "error"] },
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string" },
+        "resourceUri": { "type": "string" },
+        "documentId": { "type": "string" },
+        "jsonPointer": { "type": "string" },
+        "source": { "type": "string" },
+        "details": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "precondition": {
+      "type": "object",
+      "required": ["type", "schemaVersion", "payload"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "payload": { "$ref": "#/$defs/jsonValue" }
+      },
+      "additionalProperties": true
+    },
+    "operation": {
+      "type": "object",
+      "required": [
+        "operationId",
+        "operationType",
+        "schemaVersion",
+        "targets",
+        "payload"
+      ],
+      "properties": {
+        "operationId": { "$ref": "#/$defs/stableId" },
+        "operationType": { "type": "string", "minLength": 1 },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "targets": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "payload": { "$ref": "#/$defs/jsonValue" },
+        "preconditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/precondition" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "transaction": {
+      "type": "object",
+      "required": ["transactionId", "branchName", "origin", "operations"],
+      "properties": {
+        "transactionId": { "$ref": "#/$defs/stableId" },
+        "branchName": { "$ref": "#/$defs/branchName" },
+        "origin": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "enum": ["user", "ai", "script", "plugin"] },
+            "actorId": { "type": "string" },
+            "toolId": { "type": "string" },
+            "providerId": { "type": "string" },
+            "modelId": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "intent": { "type": "string" },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/operation" }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "patchOperation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["op", "path", "value"],
+          "properties": {
+            "op": { "const": "add" },
+            "path": { "type": "string" },
+            "value": { "$ref": "#/$defs/jsonValue" }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["op", "path"],
+          "properties": {
+            "op": { "const": "remove" },
+            "path": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "required": ["op", "path", "value"],
+          "properties": {
+            "op": { "const": "replace" },
+            "path": { "type": "string" },
+            "value": { "$ref": "#/$defs/jsonValue" }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "contentHash": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      ]
+    },
+    "documentPatch": {
+      "type": "object",
+      "required": [
+        "documentId",
+        "beforeHash",
+        "afterHash",
+        "forward",
+        "inverse"
+      ],
+      "properties": {
+        "documentId": { "$ref": "#/$defs/stableId" },
+        "beforeHash": { "$ref": "#/$defs/contentHash" },
+        "afterHash": { "$ref": "#/$defs/contentHash" },
+        "forward": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/patchOperation" }
+        },
+        "inverse": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/patchOperation" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "historyCommit": {
+      "type": "object",
+      "required": [
+        "commitId",
+        "parentCommitIds",
+        "transaction",
+        "committedAt",
+        "patches",
+        "diagnostics"
+      ],
+      "properties": {
+        "commitId": { "$ref": "#/$defs/stableId" },
+        "parentCommitIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/stableId" }
+        },
+        "transaction": { "$ref": "#/$defs/transaction" },
+        "committedAt": { "type": "string", "minLength": 1 },
+        "patches": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/documentPatch" }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/diagnostic" }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "capabilityBindings": {
+    "org.kineweave.renderer/presentation": {
+      "defaultProviderId": "org.kineweave.renderer/svg",
+      "providers": {
+        "org.kineweave.renderer/svg": {
+          "contractVersion": "1.0.0",
+          "features": [
+            "org.kineweave.presentation/group",
+            "org.kineweave.presentation/text",
+            "org.kineweave.color/srgb"
+          ],
+          "implementationVersion": "0.1.0",
+          "providerId": "org.kineweave.renderer/svg"
+        }
+      }
+    }
+  },
+  "extensions": {
+    "org.kineweave.standard-motion": {
+      "source": {
+        "kind": "package",
+        "packageName": "@kineweave/standard-motion-document"
+      },
+      "version": "0.1.0"
+    },
+    "org.kineweave.svg-renderer": {
+      "source": {
+        "kind": "package",
+        "packageName": "@kineweave/svg-renderer"
+      },
+      "version": "0.1.0"
+    }
+  },
+  "lockfileFormatVersion": 1,
+  "projectId": "project_hello",
+  "protocolVersion": "0.1.0",
+  "resources": {}
+}

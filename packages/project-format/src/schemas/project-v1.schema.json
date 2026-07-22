@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kineweave.dev/project/v1",
+  "title": "KineWeave Project Manifest v1",
+  "type": "object",
+  "required": [
+    "projectFormatVersion",
+    "projectId",
+    "name",
+    "entryDocumentId",
+    "documents",
+    "extensionRequirements",
+    "capabilityRequirements",
+    "outputProfiles"
+  ],
+  "properties": {
+    "projectFormatVersion": { "const": 1 },
+    "projectId": { "$ref": "#/$defs/stableId" },
+    "name": { "type": "string", "minLength": 1 },
+    "entryDocumentId": { "$ref": "#/$defs/stableId" },
+    "documents": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/stableId" },
+      "additionalProperties": { "$ref": "#/$defs/documentDescriptor" }
+    },
+    "extensionRequirements": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/extensionId" },
+      "additionalProperties": { "$ref": "#/$defs/extensionRequirement" }
+    },
+    "capabilityRequirements": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/namespacedId" },
+      "additionalProperties": { "$ref": "#/$defs/capabilityRequirement" }
+    },
+    "outputProfiles": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/stableId" },
+      "additionalProperties": { "$ref": "#/$defs/outputProfile" }
+    },
+    "metadata": { "type": "object" }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,127}$"
+    },
+    "extensionId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
+    },
+    "qualifiedName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+\\/[a-z][a-z0-9-]*(?:[.-][a-z0-9-]+)*$"
+    },
+    "namespacedId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?:\\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*)?$"
+    },
+    "documentDescriptor": {
+      "type": "object",
+      "required": ["documentType", "schemaVersion", "path"],
+      "properties": {
+        "documentType": { "$ref": "#/$defs/qualifiedName" },
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "optional": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "extensionRequirement": {
+      "type": "object",
+      "required": ["versionRange"],
+      "properties": {
+        "versionRange": { "type": "string", "minLength": 1 },
+        "optional": { "type": "boolean" },
+        "source": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["kind", "packageName"],
+              "properties": {
+                "kind": { "const": "package" },
+                "packageName": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "required": ["kind", "url"],
+              "properties": {
+                "kind": { "const": "git" },
+                "url": { "type": "string", "minLength": 1 },
+                "revision": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "required": ["kind", "path"],
+              "properties": {
+                "kind": { "const": "project" },
+                "path": { "type": "string", "minLength": 1 }
+              },
+              "additionalProperties": true
+            }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "capabilityRequirement": {
+      "type": "object",
+      "required": ["contractVersion"],
+      "properties": {
+        "contractVersion": { "type": "string", "minLength": 1 },
+        "requiredFeatures": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/namespacedId" },
+          "uniqueItems": true
+        },
+        "preferredProvider": { "$ref": "#/$defs/namespacedId" },
+        "optional": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "outputProfile": {
+      "type": "object",
+      "required": ["target", "settings"],
+      "properties": {
+        "target": { "$ref": "#/$defs/namespacedId" },
+        "requiredFeatures": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/namespacedId" },
+          "uniqueItems": true
+        },
+        "settings": { "type": "object" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@kineweave/standard-motion-document",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "@kineweave/evaluation-engine": "workspace:*",
+    "@kineweave/extension-api": "workspace:*",
+    "@kineweave/protocol": "workspace:*",
+    "@kineweave/transaction-engine": "workspace:*",
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "@kineweave/history-engine": "workspace:*"
+  }
+}
