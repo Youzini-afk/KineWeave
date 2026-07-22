@@ -1,5 +1,6 @@
 import {
   assertExtensionId,
+  assertQualifiedName,
   type Diagnostic,
   type ExtensionEntrypoint,
   type ExtensionLifecycleState,
@@ -18,6 +19,7 @@ import type {
 } from "./types.js";
 
 const EXTENSION_RUNTIMES = new Set([
+  "in-process",
   "workbench",
   "worker",
   "external-process",
@@ -140,6 +142,69 @@ function validateManifest(manifest: ExtensionManifest): void {
         `Extension ${manifest.extensionId} entrypoint ${index} has invalid hostKinds`
       );
     }
+  }
+
+  const assertVersions = (
+    versions: readonly number[],
+    label: string
+  ): void => {
+    if (
+      versions.length === 0 ||
+      versions.some((version) => !Number.isSafeInteger(version) || version <= 0) ||
+      new Set(versions).size !== versions.length
+    ) {
+      throw new TypeError(`${label} must contain unique positive integer versions`);
+    }
+  };
+  const contributionKeys = new Set<string>();
+  for (const item of manifest.contributes.documentTypes ?? []) {
+    assertQualifiedName(item.documentType, "document type contribution");
+    assertVersions(item.schemaVersions, `${item.documentType} schemaVersions`);
+    const key = `document:${item.documentType}`;
+    if (contributionKeys.has(key)) throw new TypeError(`Duplicate contribution ${key}`);
+    contributionKeys.add(key);
+  }
+  for (const item of manifest.contributes.documentEvaluators ?? []) {
+    assertQualifiedName(item.documentType, "document evaluator contribution");
+    assertVersions(item.schemaVersions, `${item.documentType} evaluator schemaVersions`);
+    assertVersions(
+      item.presentationGraphVersions,
+      `${item.documentType} presentationGraphVersions`
+    );
+    const key = `evaluator:${item.documentType}`;
+    if (contributionKeys.has(key)) throw new TypeError(`Duplicate contribution ${key}`);
+    contributionKeys.add(key);
+  }
+  for (const item of manifest.contributes.operationTypes ?? []) {
+    assertQualifiedName(item.operationType, "operation type contribution");
+    assertVersions(item.schemaVersions, `${item.operationType} schemaVersions`);
+    const key = `operation:${item.operationType}`;
+    if (contributionKeys.has(key)) throw new TypeError(`Duplicate contribution ${key}`);
+    contributionKeys.add(key);
+  }
+  for (const item of manifest.contributes.capabilities ?? []) {
+    assertQualifiedName(item.capabilityId, "capability contribution id");
+    assertQualifiedName(item.providerId, "capability provider contribution id");
+    assertExtensionId(item.extensionId, "capability provider extension id");
+    if (item.extensionId !== manifest.extensionId) {
+      throw new TypeError(
+        `Capability provider ${item.providerId} belongs to ${item.extensionId}, expected ${manifest.extensionId}`
+      );
+    }
+    if (valid(item.contractVersion) === null || valid(item.implementationVersion) === null) {
+      throw new TypeError(
+        `Capability provider ${item.providerId} has invalid contract or implementation version`
+      );
+    }
+    if (new Set(item.features).size !== item.features.length) {
+      throw new TypeError(`Capability provider ${item.providerId} has duplicate features`);
+    }
+    for (const feature of item.features) {
+      assertQualifiedName(feature, `feature of ${item.providerId}`);
+    }
+    const key = `capability:${item.providerId}`;
+    if (contributionKeys.has(key)) throw new TypeError(`Duplicate contribution ${key}`);
+    contributionKeys.add(key);
   }
 }
 

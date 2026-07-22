@@ -155,6 +155,71 @@ describe("KineWeave CLI", () => {
     expect(capture.output().stderr).toMatch(/valid JSON/i);
   });
 
+  it("commits edits to a selected branch without replacing the materialized main document", async () => {
+    const projectPath = await temporaryProjectPath();
+    const capture = captureIo();
+    await runCli(["init", projectPath], capture.io);
+    await runCli(
+      ["branch", "create", projectPath, "proposal/alternate"],
+      capture.io
+    );
+
+    expect(
+      await runCli(
+        [
+          "set-property",
+          projectPath,
+          "document_main",
+          "node_headline",
+          "content",
+          '"Branch Version"',
+          "--branch",
+          "proposal/alternate"
+        ],
+        capture.io
+      )
+    ).toBe(0);
+    const materialized = JSON.parse(
+      await readFile(
+        path.join(projectPath, "documents", "main.composition.json"),
+        "utf8"
+      )
+    ) as { data: { nodes: Record<string, { properties: Record<string, unknown> }> } };
+    expect(materialized.data.nodes.node_headline?.properties.content).toEqual({
+      kind: "constant",
+      value: "Hello KineWeave"
+    });
+
+    const branchCapture = captureIo();
+    expect(
+      await runCli(
+        [
+          "evaluate",
+          projectPath,
+          "document_main",
+          "0",
+          "--branch",
+          "proposal/alternate",
+          "--json"
+        ],
+        branchCapture.io
+      )
+    ).toBe(0);
+    const graph = JSON.parse(branchCapture.output().stdout) as {
+      nodes: Record<string, { data: { text: string } }>;
+    };
+    expect(graph.nodes.node_headline?.data.text).toBe("Branch Version");
+
+    const history = JSON.parse(
+      await readFile(
+        path.join(projectPath, ".kineweave", "history", "history.json"),
+        "utf8"
+      )
+    ) as { branches: Record<string, string> };
+    expect(history.branches["proposal/alternate"]).not.toBe(history.branches.main);
+    expect(capture.output().stderr).toBe("");
+  });
+
   it("evaluates a project into a presentation graph", async () => {
     const projectPath = await temporaryProjectPath();
     await runCli(["init", projectPath], captureIo().io);

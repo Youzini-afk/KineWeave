@@ -1,5 +1,5 @@
 {
-  "name": "@kineweave/svg-renderer",
+  "name": "@kineweave/project-session",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,20 +9,17 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./manifest": {
-      "types": "./dist/manifest.d.ts",
-      "import": "./dist/manifest.js"
-    },
-    "./descriptor": {
-      "types": "./dist/descriptor.d.ts",
-      "import": "./dist/descriptor.js"
     }
   },
   "files": ["dist"],
   "dependencies": {
+    "@kineweave/evaluation-engine": "workspace:*",
     "@kineweave/extension-api": "workspace:*",
+    "@kineweave/extension-host": "workspace:*",
+    "@kineweave/history-engine": "workspace:*",
+    "@kineweave/project-format": "workspace:*",
     "@kineweave/protocol": "workspace:*",
-    "@kineweave/render-engine": "workspace:*"
+    "@kineweave/render-engine": "workspace:*",
+    "@kineweave/transaction-engine": "workspace:*"
   }
 }

@@ -10,13 +10,12 @@
     { "path": "../../packages/protocol" },
     { "path": "../../packages/content-hash" },
     { "path": "../../packages/evaluation-engine" },
-    { "path": "../../packages/extension-api" },
-    { "path": "../../packages/extension-host" },
-    { "path": "../../packages/history-engine" },
     { "path": "../../packages/transaction-engine" },
     { "path": "../../packages/project-repository-node" },
+    { "path": "../../packages/project-session" },
+    { "path": "../../packages/project-session-node" },
+    { "path": "../../packages/official-distribution" },
     { "path": "../../packages/render-engine" },
-    { "path": "../../extensions/standard-motion-document" },
-    { "path": "../../extensions/svg-renderer" }
+    { "path": "../../extensions/standard-motion-document" }
   ]
 }

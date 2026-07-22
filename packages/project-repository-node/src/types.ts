@@ -1,20 +1,9 @@
 import type {
-  Diagnostic,
-  JsonObject,
-  KineWeaveHistory,
-  KineWeaveLockfile,
-  KineWeaveProjectManifest,
-  ProjectDocumentEnvelope
+  Diagnostic
 } from "@kineweave/protocol";
+import type { LoadedProjectBundle } from "@kineweave/project-format";
 
-export interface LoadedProjectBundle {
-  readonly manifest: KineWeaveProjectManifest;
-  readonly lockfile: KineWeaveLockfile;
-  readonly history: KineWeaveHistory;
-  readonly documents: Readonly<
-    Record<string, ProjectDocumentEnvelope<JsonObject>>
-  >;
-}
+export type { LoadedProjectBundle } from "@kineweave/project-format";
 
 export interface ProjectSnapshot {
   readonly rootPath: string;

@@ -1,5 +1,6 @@
 export * from "./capability.js";
 export * from "./diagnostic.js";
+export * from "./distribution.js";
 export * from "./evaluation.js";
 export * from "./extension.js";
 export * from "./history.js";

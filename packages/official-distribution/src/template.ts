@@ -1,12 +1,11 @@
-import { randomUUID } from "node:crypto";
 import { HistoryGraph } from "@kineweave/history-engine";
+import type { LoadedProjectBundle } from "@kineweave/project-format";
 import {
   KINEWEAVE_PROTOCOL_VERSION,
   LOCKFILE_FORMAT_VERSION,
   PROJECT_FORMAT_VERSION,
   type JsonObject
 } from "@kineweave/protocol";
-import type { LoadedProjectBundle } from "@kineweave/project-repository-node";
 import { PRESENTATION_RENDERER_CAPABILITY_ID } from "@kineweave/render-engine";
 import {
   createStandardComposition,
@@ -18,16 +17,14 @@ import {
   svgRendererDescriptor
 } from "@kineweave/svg-renderer";
 
-export interface ProjectTemplateOptions {
+export interface OfficialProjectTemplateOptions {
   readonly name: string;
-  readonly projectId?: string;
+  readonly projectId: string;
 }
 
-export function createProjectTemplate(
-  options: ProjectTemplateOptions
+export function createOfficialProjectTemplate(
+  options: OfficialProjectTemplateOptions
 ): LoadedProjectBundle {
-  const projectId =
-    options.projectId ?? `project_${randomUUID().replaceAll("-", "")}`;
   const document = createStandardComposition("document_main", "Main Composition");
   const history = new HistoryGraph({
     [document.documentId]: document as unknown as JsonObject
@@ -35,7 +32,7 @@ export function createProjectTemplate(
   return {
     manifest: {
       projectFormatVersion: PROJECT_FORMAT_VERSION,
-      projectId,
+      projectId: options.projectId,
       name: options.name,
       entryDocumentId: document.documentId,
       documents: {
@@ -78,7 +75,7 @@ export function createProjectTemplate(
     },
     lockfile: {
       lockfileFormatVersion: LOCKFILE_FORMAT_VERSION,
-      projectId,
+      projectId: options.projectId,
       protocolVersion: KINEWEAVE_PROTOCOL_VERSION,
       extensions: {
         "org.kineweave.standard-motion": {

@@ -17,7 +17,7 @@ export const standardMotionExtensionManifest: ExtensionManifest = {
   dependencies: {},
   entrypoints: [
     {
-      runtime: "worker",
+      runtime: "in-process",
       module: "./dist/index.js",
       exportName: "activateStandardMotionExtension",
       hostKinds: ["desktop", "web", "cli", "render-node"]

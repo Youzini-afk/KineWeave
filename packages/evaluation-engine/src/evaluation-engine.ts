@@ -164,6 +164,22 @@ export class EvaluationEngine implements EvaluationContributionRegistry {
   }
 
   registerDocumentEvaluator(evaluator: DocumentEvaluator): () => void {
+    assertQualifiedName(evaluator.documentType, "evaluator document type");
+    if (!Number.isSafeInteger(evaluator.schemaVersion) || evaluator.schemaVersion <= 0) {
+      throw new TypeError("Evaluator schemaVersion must be a positive integer");
+    }
+    if (
+      evaluator.presentationGraphVersions.length === 0 ||
+      evaluator.presentationGraphVersions.some(
+        (version) => !Number.isSafeInteger(version) || version <= 0
+      ) ||
+      new Set(evaluator.presentationGraphVersions).size !==
+        evaluator.presentationGraphVersions.length
+    ) {
+      throw new TypeError(
+        "Evaluator presentationGraphVersions must contain unique positive integers"
+      );
+    }
     const key = evaluatorKey(evaluator.documentType, evaluator.schemaVersion);
     if (this.#evaluators.has(key)) {
       throw new Error(`Document evaluator ${key} is already registered`);
@@ -277,6 +293,14 @@ export class EvaluationEngine implements EvaluationContributionRegistry {
       throw new EvaluationRejectedError("Evaluation output is invalid", diagnostics);
     }
     const graph = output.graph as ResolvedPresentationGraph;
+    if (!evaluator.presentationGraphVersions.includes(graph.presentationGraphVersion)) {
+      diagnostics.push(
+        error(
+          "evaluation.graph.version-unsupported",
+          `Evaluator returned Presentation Graph v${graph.presentationGraphVersion}, but declares ${evaluator.presentationGraphVersions.join(", ")}`
+        )
+      );
+    }
     if (graph.documentId !== normalized.documentId) {
       diagnostics.push(
         error(

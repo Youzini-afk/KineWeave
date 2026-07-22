@@ -26,6 +26,7 @@ export interface DocumentEvaluationOutput {
 export interface DocumentEvaluator {
   readonly documentType: string;
   readonly schemaVersion: number;
+  readonly presentationGraphVersions: readonly number[];
   evaluate(
     document: ProjectDocumentEnvelope<JsonObject>,
     request: EvaluationRequest,

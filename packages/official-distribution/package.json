@@ -1,0 +1,26 @@
+{
+  "name": "@kineweave/official-distribution",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "dependencies": {
+    "@kineweave/extension-api": "workspace:*",
+    "@kineweave/extension-host": "workspace:*",
+    "@kineweave/history-engine": "workspace:*",
+    "@kineweave/project-format": "workspace:*",
+    "@kineweave/project-session": "workspace:*",
+    "@kineweave/protocol": "workspace:*",
+    "@kineweave/render-engine": "workspace:*",
+    "@kineweave/standard-motion-document": "workspace:*",
+    "@kineweave/svg-renderer": "workspace:*"
+  }
+}

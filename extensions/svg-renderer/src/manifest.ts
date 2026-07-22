@@ -1,5 +1,5 @@
 import type { ExtensionManifest } from "@kineweave/protocol";
-import { svgRendererDescriptor } from "./renderer.js";
+import { svgRendererDescriptor } from "./descriptor.js";
 
 export const svgRendererExtensionManifest: ExtensionManifest = {
   manifestVersion: 1,
@@ -10,7 +10,7 @@ export const svgRendererExtensionManifest: ExtensionManifest = {
   dependencies: {},
   entrypoints: [
     {
-      runtime: "worker",
+      runtime: "in-process",
       module: "./dist/index.js",
       exportName: "activateSvgRendererExtension",
       hostKinds: ["desktop", "web", "cli", "render-node"]

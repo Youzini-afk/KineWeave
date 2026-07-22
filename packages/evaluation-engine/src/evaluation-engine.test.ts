@@ -89,6 +89,7 @@ describe("EvaluationEngine", () => {
     engine.registerDocumentEvaluator({
       documentType: DOCUMENT_TYPE,
       schemaVersion: 1,
+      presentationGraphVersions: [PRESENTATION_GRAPH_VERSION],
       evaluate(document) {
         return { graph: graph(document.data.value as string) };
       }
@@ -119,6 +120,7 @@ describe("EvaluationEngine", () => {
     engine.registerDocumentEvaluator({
       documentType: DOCUMENT_TYPE,
       schemaVersion: 1,
+      presentationGraphVersions: [PRESENTATION_GRAPH_VERSION],
       evaluate() {
         const invalid = graph();
         return {
@@ -142,6 +144,7 @@ describe("EvaluationEngine", () => {
     engine.registerDocumentEvaluator({
       documentType: DOCUMENT_TYPE,
       schemaVersion: 1,
+      presentationGraphVersions: [PRESENTATION_GRAPH_VERSION],
       evaluate() {
         return { graph: null } as never;
       }

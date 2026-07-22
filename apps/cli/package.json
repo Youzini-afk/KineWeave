@@ -11,14 +11,13 @@
   "dependencies": {
     "@kineweave/content-hash": "workspace:*",
     "@kineweave/evaluation-engine": "workspace:*",
-    "@kineweave/extension-api": "workspace:*",
-    "@kineweave/extension-host": "workspace:*",
-    "@kineweave/history-engine": "workspace:*",
+    "@kineweave/official-distribution": "workspace:*",
     "@kineweave/project-repository-node": "workspace:*",
+    "@kineweave/project-session": "workspace:*",
+    "@kineweave/project-session-node": "workspace:*",
     "@kineweave/protocol": "workspace:*",
     "@kineweave/render-engine": "workspace:*",
     "@kineweave/standard-motion-document": "workspace:*",
-    "@kineweave/svg-renderer": "workspace:*",
     "@kineweave/transaction-engine": "workspace:*"
   }
 }

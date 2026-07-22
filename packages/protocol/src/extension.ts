@@ -7,6 +7,7 @@ export type ApiStability =
   | "deprecated";
 
 export type ExtensionRuntimeKind =
+  | "in-process"
   | "workbench"
   | "worker"
   | "external-process"

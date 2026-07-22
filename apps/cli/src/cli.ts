@@ -6,12 +6,14 @@ import {
   EvaluationRejectedError,
   type EvaluationExecutionResult
 } from "@kineweave/evaluation-engine";
+import { createOfficialProjectTemplate } from "@kineweave/official-distribution";
 import {
   NodeProjectRepository,
   ProjectRepositoryError,
-  type LoadedProjectBundle,
   type ProjectSnapshot
 } from "@kineweave/project-repository-node";
+import type { ProjectSession } from "@kineweave/project-session";
+import type { NodeProjectSession } from "@kineweave/project-session-node";
 import {
   createProjectResourceUri,
   hasErrorDiagnostics,
@@ -22,9 +24,7 @@ import {
   type EvaluationMode,
   type JsonObject,
   type JsonValue,
-  type KineWeaveHistory,
   type Rational,
-  type ProjectDocumentEnvelope,
   type TransactionProposal
 } from "@kineweave/protocol";
 import { RenderRejectedError } from "@kineweave/render-engine";
@@ -39,11 +39,7 @@ import {
   BUILTIN_PRECONDITIONS,
   TransactionRejectedError
 } from "@kineweave/transaction-engine";
-import {
-  bootstrapProjectRuntime,
-  type ProjectRuntime
-} from "./runtime.js";
-import { createProjectTemplate } from "./template.js";
+import { openCliProject } from "./runtime.js";
 
 export interface CliIo {
   readonly stdout: (text: string) => void;
@@ -69,8 +65,8 @@ Usage:
   kineweave branch list <project> [--json]
   kineweave branch create <project> <name> [--from <commitId>]
   kineweave branch delete <project> <name>
-  kineweave set-property <project> <documentId> <nodeId> <property> <jsonValue> [--expect-hash <sha256:...>]
-  kineweave insert-text <project> <documentId> <nodeId> <text> [--index <number>]
+  kineweave set-property <project> <documentId> <nodeId> <property> <jsonValue> [--branch <name>] [--expect-hash <sha256:...>]
+  kineweave insert-text <project> <documentId> <nodeId> <text> [--branch <name>] [--index <number>]
 `;
 
 function option(
@@ -189,29 +185,17 @@ function writeDiagnostics(
 async function openValidProject(
   repository: NodeProjectRepository,
   projectPath: string
-): Promise<{ readonly snapshot: ProjectSnapshot; readonly runtime: ProjectRuntime }> {
-  const result = await repository.read(projectPath);
-  if (
-    result.snapshot === undefined ||
-    hasErrorDiagnostics(result.diagnostics)
-  ) {
-    throw new ProjectRepositoryError(
-      "Project validation failed",
-      result.diagnostics
-    );
+): Promise<NodeProjectSession> {
+  const result = await openCliProject(projectPath, repository);
+  if (result.project === undefined || hasErrorDiagnostics(result.diagnostics)) {
+    throw new ProjectRepositoryError("Project validation failed", result.diagnostics);
   }
-  const bootstrap = await bootstrapProjectRuntime(result.snapshot);
-  const diagnostics = [...result.diagnostics, ...bootstrap.diagnostics];
-  if (hasErrorDiagnostics(diagnostics)) {
-    await bootstrap.runtime.dispose();
-    throw new ProjectRepositoryError("Project validation failed", diagnostics);
-  }
-  return { snapshot: result.snapshot, runtime: bootstrap.runtime };
+  return result.project;
 }
 
 async function evaluateRuntime(
   snapshot: ProjectSnapshot,
-  runtime: ProjectRuntime,
+  runtime: ProjectSession,
   documentId: string,
   rawTime: string,
   options: EvaluationCliOptions
@@ -252,7 +236,7 @@ async function evaluateRuntime(
     options.height === undefined
       ? (standardComposition?.data.canvas.height ?? 1080)
       : positiveIntegerArgument(options.height, "--height");
-  const result = await runtime.evaluation.evaluate({
+  const result = await runtime.evaluate({
     documentId,
     ...(options.branchName === undefined
       ? options.commitId === undefined
@@ -283,39 +267,8 @@ async function evaluateRuntime(
   return { result, mode };
 }
 
-function nextBundle(
-  snapshot: ProjectSnapshot,
-  state: Readonly<Record<string, JsonValue>>,
-  history: KineWeaveHistory
-): LoadedProjectBundle {
-  return {
-    ...snapshot.bundle,
-    history,
-    documents: Object.fromEntries(
-      Object.entries(state).map(([documentId, document]) => [
-        documentId,
-        document as unknown as ProjectDocumentEnvelope<JsonObject>
-      ])
-    )
-  };
-}
-
-async function persistRuntime(
-  repository: NodeProjectRepository,
-  snapshot: ProjectSnapshot,
-  runtime: ProjectRuntime
-): Promise<void> {
-  await repository.save(
-    snapshot,
-    nextBundle(
-      snapshot,
-      runtime.history.stateOfBranch(runtime.history.mainBranchName),
-      runtime.history.toSnapshot()
-    )
-  );
-}
-
 function operationProposal(
+  branchName: string,
   operationType: string,
   targets: readonly string[],
   payload: JsonObject,
@@ -324,7 +277,7 @@ function operationProposal(
   const transactionId = `transaction_${randomUUID().replaceAll("-", "")}`;
   return {
     transactionId,
-    branchName: "main",
+    branchName,
     origin: { kind: "user", actorId: "cli-local" },
     operations: [
       {
@@ -347,7 +300,10 @@ async function initCommand(args: readonly string[], io: CliIo): Promise<number> 
   const repository = new NodeProjectRepository();
   const snapshot = await repository.initialize(
     projectPath,
-    createProjectTemplate({ name })
+    createOfficialProjectTemplate({
+      name,
+      projectId: `project_${randomUUID().replaceAll("-", "")}`
+    })
   );
   io.stdout(
     `Initialized ${snapshot.bundle.manifest.name} at ${snapshot.rootPath}\n`
@@ -363,18 +319,9 @@ async function validateCommand(
   const positional = args.filter((item) => item !== "--json");
   if (positional.length !== 1) throw new TypeError(HELP);
   const repository = new NodeProjectRepository();
-  const result = await repository.read(positional[0]!);
+  const result = await openCliProject(positional[0]!, repository);
   const diagnostics: Diagnostic[] = [...result.diagnostics];
-  let runtime: ProjectRuntime | undefined;
   try {
-    if (
-      result.snapshot !== undefined &&
-      !hasErrorDiagnostics(result.diagnostics)
-    ) {
-      const bootstrap = await bootstrapProjectRuntime(result.snapshot);
-      runtime = bootstrap.runtime;
-      diagnostics.push(...bootstrap.diagnostics);
-    }
     writeDiagnostics(io, diagnostics, json);
     if (!hasErrorDiagnostics(diagnostics)) {
       if (!json) io.stdout("Project is valid.\n");
@@ -382,7 +329,7 @@ async function validateCommand(
     }
     return 1;
   } finally {
-    await runtime?.dispose();
+    await result.project?.dispose();
   }
 }
 
@@ -394,10 +341,8 @@ async function inspectCommand(
   const positional = args.filter((item) => item !== "--json");
   if (positional.length !== 1) throw new TypeError(HELP);
   const repository = new NodeProjectRepository();
-  const { snapshot, runtime } = await openValidProject(
-    repository,
-    positional[0]!
-  );
+  const project = await openValidProject(repository, positional[0]!);
+  const { snapshot, session: runtime } = project;
   try {
     const documents = Object.entries(snapshot.bundle.documents).map(
       ([documentId, document]) => {
@@ -440,7 +385,7 @@ async function inspectCommand(
     }
     return 0;
   } finally {
-    await runtime.dispose();
+    await project.dispose();
   }
 }
 
@@ -452,7 +397,8 @@ async function historyCommand(
   const positional = args.filter((item) => item !== "--json");
   if (positional.length !== 1) throw new TypeError(HELP);
   const repository = new NodeProjectRepository();
-  const { runtime } = await openValidProject(repository, positional[0]!);
+  const project = await openValidProject(repository, positional[0]!);
+  const runtime = project.session;
   try {
     const persisted = runtime.history.toSnapshot();
     const summary = {
@@ -490,7 +436,7 @@ async function historyCommand(
     }
     return 0;
   } finally {
-    await runtime.dispose();
+    await project.dispose();
   }
 }
 
@@ -510,7 +456,8 @@ async function evaluateCommand(
   }
 
   const repository = new NodeProjectRepository();
-  const { snapshot, runtime } = await openValidProject(repository, projectPath);
+  const project = await openValidProject(repository, projectPath);
+  const { snapshot, session: runtime } = project;
   try {
     const { result } = await evaluateRuntime(
       snapshot,
@@ -531,7 +478,7 @@ async function evaluateCommand(
     }
     return 0;
   } finally {
-    await runtime.dispose();
+    await project.dispose();
   }
 }
 
@@ -555,7 +502,8 @@ async function renderCommand(
   }
 
   const repository = new NodeProjectRepository();
-  const { snapshot, runtime } = await openValidProject(repository, projectPath);
+  const project = await openValidProject(repository, projectPath);
+  const { snapshot, session: runtime } = project;
   try {
     const { result: evaluation, mode } = await evaluateRuntime(
       snapshot,
@@ -576,7 +524,7 @@ async function renderCommand(
     if (profileOption.value !== undefined && profile === undefined) {
       throw new TypeError(`Unknown output profile ${profileOption.value}`);
     }
-    const rendered = await runtime.rendering.render({
+    const rendered = await runtime.render({
       graph: evaluation.graph,
       evaluationMode: mode,
       settings: profile?.settings ?? {},
@@ -615,7 +563,7 @@ async function renderCommand(
     }
     return 0;
   } finally {
-    await runtime.dispose();
+    await project.dispose();
   }
 }
 
@@ -628,18 +576,19 @@ async function undoCommand(
   if (projectPath === undefined || extra.length > 0) throw new TypeError(HELP);
   const branchName = branchOption.value ?? "main";
   const repository = new NodeProjectRepository();
-  const { snapshot, runtime } = await openValidProject(repository, projectPath);
+  const project = await openValidProject(repository, projectPath);
+  const runtime = project.session;
   try {
-    const branch = runtime.history.undo(branchName);
+    const branch = runtime.undo(branchName);
     if (branch === undefined) {
       io.stdout(`Nothing to undo on ${branchName}.\n`);
       return 0;
     }
-    await persistRuntime(repository, snapshot, runtime);
+    await project.save();
     io.stdout(`Moved ${branch.name} to ${branch.headCommitId}.\n`);
     return 0;
   } finally {
-    await runtime.dispose();
+    await project.dispose();
   }
 }
 
@@ -653,18 +602,19 @@ async function redoCommand(
   if (projectPath === undefined || extra.length > 0) throw new TypeError(HELP);
   const branchName = branchOption.value ?? "main";
   const repository = new NodeProjectRepository();
-  const { snapshot, runtime } = await openValidProject(repository, projectPath);
+  const project = await openValidProject(repository, projectPath);
+  const runtime = project.session;
   try {
-    const branch = runtime.history.redo(branchName, commitOption.value);
+    const branch = runtime.redo(branchName, commitOption.value);
     if (branch === undefined) {
       io.stdout(`Nothing to redo on ${branchName}.\n`);
       return 0;
     }
-    await persistRuntime(repository, snapshot, runtime);
+    await project.save();
     io.stdout(`Moved ${branch.name} to ${branch.headCommitId}.\n`);
     return 0;
   } finally {
-    await runtime.dispose();
+    await project.dispose();
   }
 }
 
@@ -678,7 +628,8 @@ async function branchCommand(
     const positional = rest.filter((item) => item !== "--json");
     if (positional.length !== 1) throw new TypeError(HELP);
     const repository = new NodeProjectRepository();
-    const { runtime } = await openValidProject(repository, positional[0]!);
+    const project = await openValidProject(repository, positional[0]!);
+    const runtime = project.session;
     try {
       const branches = runtime.history.listBranches();
       if (json) io.stdout(`${JSON.stringify({ branches }, null, 2)}\n`);
@@ -689,7 +640,7 @@ async function branchCommand(
       }
       return 0;
     } finally {
-      await runtime.dispose();
+      await project.dispose();
     }
   }
 
@@ -704,14 +655,15 @@ async function branchCommand(
       throw new TypeError(HELP);
     }
     const repository = new NodeProjectRepository();
-    const { snapshot, runtime } = await openValidProject(repository, projectPath);
+    const project = await openValidProject(repository, projectPath);
+    const runtime = project.session;
     try {
-      const branch = runtime.history.createBranch(branchName, fromOption.value);
-      await persistRuntime(repository, snapshot, runtime);
+      const branch = runtime.createBranch(branchName, fromOption.value);
+      await project.save();
       io.stdout(`Created ${branch.name} at ${branch.headCommitId}.\n`);
       return 0;
     } finally {
-      await runtime.dispose();
+      await project.dispose();
     }
   }
 
@@ -725,14 +677,15 @@ async function branchCommand(
       throw new TypeError(HELP);
     }
     const repository = new NodeProjectRepository();
-    const { snapshot, runtime } = await openValidProject(repository, projectPath);
+    const project = await openValidProject(repository, projectPath);
+    const runtime = project.session;
     try {
-      runtime.history.deleteBranch(branchName);
-      await persistRuntime(repository, snapshot, runtime);
+      runtime.deleteBranch(branchName);
+      await project.save();
       io.stdout(`Deleted ${branchName}.\n`);
       return 0;
     } finally {
-      await runtime.dispose();
+      await project.dispose();
     }
   }
 
@@ -743,7 +696,8 @@ async function setPropertyCommand(
   args: readonly string[],
   io: CliIo
 ): Promise<number> {
-  const expectedHashOption = option(args, "--expect-hash");
+  const branchOption = option(args, "--branch");
+  const expectedHashOption = option(branchOption.remaining, "--expect-hash");
   const [projectPath, documentId, nodeId, property, rawValue, ...extra] =
     expectedHashOption.remaining;
   if (
@@ -756,6 +710,7 @@ async function setPropertyCommand(
   ) {
     throw new TypeError(HELP);
   }
+  const branchName = branchOption.value ?? "main";
   let value: JsonValue;
   try {
     value = JSON.parse(rawValue) as JsonValue;
@@ -766,7 +721,8 @@ async function setPropertyCommand(
   }
 
   const repository = new NodeProjectRepository();
-  const { snapshot, runtime } = await openValidProject(repository, projectPath);
+  const project = await openValidProject(repository, projectPath);
+  const runtime = project.session;
   try {
     const preconditions =
       expectedHashOption.value === undefined
@@ -778,8 +734,9 @@ async function setPropertyCommand(
               payload: { documentId, expectedHash: expectedHashOption.value }
             }
           ];
-    const result = await runtime.engine.execute(
+    const result = await runtime.execute(
       operationProposal(
+        branchName,
         STANDARD_MOTION_OPERATIONS.setProperty,
         [
           createProjectResourceUri("document", documentId, ["node", nodeId])
@@ -793,13 +750,13 @@ async function setPropertyCommand(
         preconditions
       )
     );
-    await persistRuntime(repository, snapshot, runtime);
+    await project.save();
     io.stdout(
       `Committed ${result.commit.commitId}; updated ${documentId}/${nodeId}.${property}\n`
     );
     return 0;
   } finally {
-    await runtime.dispose();
+    await project.dispose();
   }
 }
 
@@ -807,7 +764,8 @@ async function insertTextCommand(
   args: readonly string[],
   io: CliIo
 ): Promise<number> {
-  const indexOption = option(args, "--index");
+  const branchOption = option(args, "--branch");
+  const indexOption = option(branchOption.remaining, "--index");
   const [projectPath, documentId, nodeId, text, ...extra] =
     indexOption.remaining;
   if (
@@ -819,16 +777,19 @@ async function insertTextCommand(
   ) {
     throw new TypeError(HELP);
   }
+  const branchName = branchOption.value ?? "main";
   const index = indexOption.value === undefined ? 1 : Number(indexOption.value);
   if (!Number.isSafeInteger(index) || index < 0) {
     throw new TypeError("--index must be a non-negative integer");
   }
 
   const repository = new NodeProjectRepository();
-  const { snapshot, runtime } = await openValidProject(repository, projectPath);
+  const project = await openValidProject(repository, projectPath);
+  const runtime = project.session;
   try {
-    const result = await runtime.engine.execute(
+    const result = await runtime.execute(
       operationProposal(
+        branchName,
         STANDARD_MOTION_OPERATIONS.insertNode,
         [createProjectResourceUri("document", documentId)],
         {
@@ -839,11 +800,11 @@ async function insertTextCommand(
         }
       )
     );
-    await persistRuntime(repository, snapshot, runtime);
+    await project.save();
     io.stdout(`Committed ${result.commit.commitId}; inserted ${nodeId}\n`);
     return 0;
   } finally {
-    await runtime.dispose();
+    await project.dispose();
   }
 }
 

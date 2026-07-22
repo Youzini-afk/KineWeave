@@ -15,6 +15,9 @@
     { "path": "./packages/project-repository-node" },
     { "path": "./extensions/standard-motion-document" },
     { "path": "./extensions/svg-renderer" },
+    { "path": "./packages/project-session" },
+    { "path": "./packages/project-session-node" },
+    { "path": "./packages/official-distribution" },
     { "path": "./apps/cli" }
   ]
 }

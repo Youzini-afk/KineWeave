@@ -26,18 +26,18 @@ importers:
       '@kineweave/evaluation-engine':
         specifier: workspace:*
         version: link:../../packages/evaluation-engine
-      '@kineweave/extension-api':
+      '@kineweave/official-distribution':
         specifier: workspace:*
-        version: link:../../packages/extension-api
-      '@kineweave/extension-host':
-        specifier: workspace:*
-        version: link:../../packages/extension-host
-      '@kineweave/history-engine':
-        specifier: workspace:*
-        version: link:../../packages/history-engine
+        version: link:../../packages/official-distribution
       '@kineweave/project-repository-node':
         specifier: workspace:*
         version: link:../../packages/project-repository-node
+      '@kineweave/project-session':
+        specifier: workspace:*
+        version: link:../../packages/project-session
+      '@kineweave/project-session-node':
+        specifier: workspace:*
+        version: link:../../packages/project-session-node
       '@kineweave/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -47,9 +47,6 @@ importers:
       '@kineweave/standard-motion-document':
         specifier: workspace:*
         version: link:../../extensions/standard-motion-document
-      '@kineweave/svg-renderer':
-        specifier: workspace:*
-        version: link:../../extensions/svg-renderer
       '@kineweave/transaction-engine':
         specifier: workspace:*
         version: link:../../packages/transaction-engine
@@ -159,6 +156,36 @@ importers:
         specifier: workspace:*
         version: link:../protocol
 
+  packages/official-distribution:
+    dependencies:
+      '@kineweave/extension-api':
+        specifier: workspace:*
+        version: link:../extension-api
+      '@kineweave/extension-host':
+        specifier: workspace:*
+        version: link:../extension-host
+      '@kineweave/history-engine':
+        specifier: workspace:*
+        version: link:../history-engine
+      '@kineweave/project-format':
+        specifier: workspace:*
+        version: link:../project-format
+      '@kineweave/project-session':
+        specifier: workspace:*
+        version: link:../project-session
+      '@kineweave/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@kineweave/render-engine':
+        specifier: workspace:*
+        version: link:../render-engine
+      '@kineweave/standard-motion-document':
+        specifier: workspace:*
+        version: link:../../extensions/standard-motion-document
+      '@kineweave/svg-renderer':
+        specifier: workspace:*
+        version: link:../../extensions/svg-renderer
+
   packages/patch:
     dependencies:
       '@kineweave/content-hash':
@@ -195,6 +222,49 @@ importers:
       '@kineweave/protocol':
         specifier: workspace:*
         version: link:../protocol
+
+  packages/project-session:
+    dependencies:
+      '@kineweave/evaluation-engine':
+        specifier: workspace:*
+        version: link:../evaluation-engine
+      '@kineweave/extension-api':
+        specifier: workspace:*
+        version: link:../extension-api
+      '@kineweave/extension-host':
+        specifier: workspace:*
+        version: link:../extension-host
+      '@kineweave/history-engine':
+        specifier: workspace:*
+        version: link:../history-engine
+      '@kineweave/project-format':
+        specifier: workspace:*
+        version: link:../project-format
+      '@kineweave/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@kineweave/render-engine':
+        specifier: workspace:*
+        version: link:../render-engine
+      '@kineweave/transaction-engine':
+        specifier: workspace:*
+        version: link:../transaction-engine
+
+  packages/project-session-node:
+    dependencies:
+      '@kineweave/project-repository-node':
+        specifier: workspace:*
+        version: link:../project-repository-node
+      '@kineweave/project-session':
+        specifier: workspace:*
+        version: link:../project-session
+      '@kineweave/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      '@kineweave/official-distribution':
+        specifier: workspace:*
+        version: link:../official-distribution
 
   packages/protocol: {}
 

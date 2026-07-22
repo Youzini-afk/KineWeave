@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../protocol" },
+    { "path": "../project-format" },
+    { "path": "../history-engine" },
+    { "path": "../transaction-engine" },
+    { "path": "../evaluation-engine" },
+    { "path": "../render-engine" },
+    { "path": "../extension-host" },
+    { "path": "../extension-api" }
+  ]
+}

@@ -608,6 +608,7 @@ function evaluateComposition(
 export const standardMotionDocumentEvaluator: DocumentEvaluator = {
   documentType: STANDARD_COMPOSITION_TYPE,
   schemaVersion: STANDARD_COMPOSITION_SCHEMA_VERSION,
+  presentationGraphVersions: [PRESENTATION_GRAPH_VERSION],
   evaluate(document, request) {
     return evaluateComposition(document as StandardCompositionDocument, request);
   }
