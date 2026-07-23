@@ -88,6 +88,8 @@ test("authors motion, aligns layers, and reopens the saved project", async () =>
     await expect.poll(() => window.locator("#timecode").textContent()).not.toBe(initialTimecode);
     await window.locator("#play").click();
     await expect.poll(() => attribute(application!, ".studio-shell", "data-playing")).toBe("false");
+    await setPlayhead(window, 0);
+    await expect.poll(() => window.locator("#timecode").textContent()).toBe("00:00.000");
 
     const positionRow = window.locator('.timeline-property-row[data-property="position"]');
     const positionToggle = positionRow.locator('.property-key-toggle[data-property="position"]');
