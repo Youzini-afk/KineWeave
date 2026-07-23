@@ -223,8 +223,10 @@ export function validateStandardComposition(
     );
   }
 
+  let parsedDuration: ReturnType<typeof parseRational> | undefined;
   try {
     const duration = parseRational(document.data.duration.value);
+    parsedDuration = duration;
     if (compareRational(duration, rational(0)) <= 0) {
       result.push(
         error(
@@ -480,6 +482,20 @@ export function validateStandardComposition(
             error(
               "standard-motion.keyframe.time-negative",
               `Keyframe ${keyframeId} has negative time`,
+              document.documentId,
+              `/data/tracks/${trackId}/keyframes/${keyframeId}/time`
+            )
+          );
+        }
+        if (
+          parsedDuration !== undefined &&
+          keyframe.time.domain === document.data.duration.domain &&
+          compareRational(time, parsedDuration) > 0
+        ) {
+          result.push(
+            error(
+              "standard-motion.keyframe.after-duration",
+              `Keyframe ${keyframeId} occurs after the composition duration`,
               document.documentId,
               `/data/tracks/${trackId}/keyframes/${keyframeId}/time`
             )
