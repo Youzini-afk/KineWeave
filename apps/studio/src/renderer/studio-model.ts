@@ -39,7 +39,18 @@ export interface TimelineProperty {
 }
 
 type Matrix = readonly [number, number, number, number, number, number];
-type Point = readonly [number, number];
+export type StagePoint = readonly [number, number];
+
+export interface StageSelectionBounds {
+  readonly minimumX: number;
+  readonly minimumY: number;
+  readonly maximumX: number;
+  readonly maximumY: number;
+  readonly width: number;
+  readonly height: number;
+  readonly center: StagePoint;
+  readonly polygon: readonly StagePoint[];
+}
 
 export function compositionDurationSeconds(document: StandardCompositionDocument): number {
   return rationalToNumberLossy(document.data.duration.value);
@@ -238,7 +249,7 @@ function multiply(left: Matrix, right: Matrix): Matrix {
   ];
 }
 
-function point(matrix: Matrix, value: Point): Point {
+function point(matrix: Matrix, value: StagePoint): StagePoint {
   return [
     matrix[0] * value[0] + matrix[2] * value[1] + matrix[4],
     matrix[1] * value[0] + matrix[3] * value[1] + matrix[5]
@@ -273,7 +284,7 @@ function graphCanvasSize(graph: ResolvedPresentationGraph): {
   return { width: graph.viewport.width, height: graph.viewport.height };
 }
 
-function localBounds(node: PresentationNode): readonly Point[] {
+function localBounds(node: PresentationNode): readonly StagePoint[] {
   let halfWidth = 32;
   let halfHeight = 32;
   if (node.primitive === STANDARD_PRESENTATION_PRIMITIVES.rectangle) {
@@ -315,6 +326,23 @@ function parentMap(graph: ResolvedPresentationGraph): ReadonlyMap<string, string
   return result;
 }
 
+function nodeIsEffectivelyVisible(
+  graph: ResolvedPresentationGraph,
+  nodeId: string,
+  parents: ReadonlyMap<string, string>
+): boolean {
+  const visited = new Set<string>();
+  let currentId: string | undefined = nodeId;
+  while (currentId !== undefined) {
+    if (visited.has(currentId)) return false;
+    visited.add(currentId);
+    const node = graph.nodes[currentId];
+    if (node === undefined || !node.visible) return false;
+    currentId = parents.get(currentId);
+  }
+  return true;
+}
+
 function worldMatrix(
   graph: ResolvedPresentationGraph,
   nodeId: string,
@@ -341,22 +369,14 @@ export function selectionPolygon(
   graph: ResolvedPresentationGraph,
   nodeId: string,
   surface: { readonly width: number; readonly height: number }
-): readonly Point[] | undefined {
+): readonly StagePoint[] | undefined {
   const selected = graph.nodes[nodeId];
   if (selected === undefined) return undefined;
-  const canvas = graphCanvasSize(graph);
-  const scale = Math.min(surface.width / canvas.width, surface.height / canvas.height);
-  const view: Matrix = [
-    scale,
-    0,
-    0,
-    scale,
-    (surface.width - canvas.width * scale) / 2,
-    (surface.height - canvas.height * scale) / 2
-  ];
+  const view = graphViewMatrix(graph, surface);
   const parents = parentMap(graph);
+  if (!nodeIsEffectivelyVisible(graph, nodeId, parents)) return undefined;
   const cache = new Map<string, Matrix>();
-  const collect = (currentId: string): Point[] => {
+  const collect = (currentId: string): StagePoint[] => {
     const node = graph.nodes[currentId];
     if (node === undefined || !node.visible) return [];
     if (node.primitive === STANDARD_PRESENTATION_PRIMITIVES.group) {
@@ -384,4 +404,237 @@ export function selectionPolygon(
     [maximumX, maximumY],
     [minimumX, maximumY]
   ];
+}
+
+function graphViewMatrix(
+  graph: ResolvedPresentationGraph,
+  surface: { readonly width: number; readonly height: number }
+): Matrix {
+  const canvas = graphCanvasSize(graph);
+  const scale = Math.min(surface.width / canvas.width, surface.height / canvas.height);
+  return [
+    scale,
+    0,
+    0,
+    scale,
+    (surface.width - canvas.width * scale) / 2,
+    (surface.height - canvas.height * scale) / 2
+  ];
+}
+
+export function compositionSurfaceBounds(
+  graph: ResolvedPresentationGraph,
+  surface: { readonly width: number; readonly height: number }
+): StageSelectionBounds {
+  const canvas = graphCanvasSize(graph);
+  const view = graphViewMatrix(graph, surface);
+  const topLeft = point(view, [0, 0]);
+  const bottomRight = point(view, [canvas.width, canvas.height]);
+  const polygon: readonly StagePoint[] = [
+    topLeft,
+    [bottomRight[0], topLeft[1]],
+    bottomRight,
+    [topLeft[0], bottomRight[1]]
+  ];
+  return {
+    minimumX: topLeft[0],
+    minimumY: topLeft[1],
+    maximumX: bottomRight[0],
+    maximumY: bottomRight[1],
+    width: bottomRight[0] - topLeft[0],
+    height: bottomRight[1] - topLeft[1],
+    center: [(topLeft[0] + bottomRight[0]) / 2, (topLeft[1] + bottomRight[1]) / 2],
+    polygon
+  };
+}
+
+function inverseLinear(matrix: Matrix): Matrix | undefined {
+  const determinant = matrix[0] * matrix[3] - matrix[1] * matrix[2];
+  if (Math.abs(determinant) < 1e-12) return undefined;
+  return [
+    matrix[3] / determinant,
+    -matrix[1] / determinant,
+    -matrix[2] / determinant,
+    matrix[0] / determinant,
+    0,
+    0
+  ];
+}
+
+function delta(matrix: Matrix, value: StagePoint): StagePoint {
+  return [matrix[0] * value[0] + matrix[2] * value[1], matrix[1] * value[0] + matrix[3] * value[1]];
+}
+
+export function selectionBounds(
+  graph: ResolvedPresentationGraph,
+  nodeIds: readonly string[],
+  surface: { readonly width: number; readonly height: number }
+): StageSelectionBounds | undefined {
+  const points = nodeIds.flatMap((nodeId) => selectionPolygon(graph, nodeId, surface) ?? []);
+  if (points.length === 0) return undefined;
+  const xs = points.map((item) => item[0]);
+  const ys = points.map((item) => item[1]);
+  const minimumX = Math.min(...xs);
+  const maximumX = Math.max(...xs);
+  const minimumY = Math.min(...ys);
+  const maximumY = Math.max(...ys);
+  const polygon: readonly StagePoint[] = [
+    [minimumX, minimumY],
+    [maximumX, minimumY],
+    [maximumX, maximumY],
+    [minimumX, maximumY]
+  ];
+  return {
+    minimumX,
+    minimumY,
+    maximumX,
+    maximumY,
+    width: maximumX - minimumX,
+    height: maximumY - minimumY,
+    center: [(minimumX + maximumX) / 2, (minimumY + maximumY) / 2],
+    polygon
+  };
+}
+
+export function nodeAnchorSurfacePoint(
+  graph: ResolvedPresentationGraph,
+  nodeId: string,
+  surface: { readonly width: number; readonly height: number }
+): StagePoint | undefined {
+  const node = graph.nodes[nodeId];
+  if (node === undefined) return undefined;
+  const parents = parentMap(graph);
+  const world = worldMatrix(graph, nodeId, parents, new Map());
+  if (world === undefined) return undefined;
+  return point(multiply(graphViewMatrix(graph, surface), world), [
+    node.transform.anchor[0] ?? 0,
+    node.transform.anchor[1] ?? 0
+  ]);
+}
+
+export function surfaceDeltaToParentDelta(
+  graph: ResolvedPresentationGraph,
+  nodeId: string,
+  surface: { readonly width: number; readonly height: number },
+  surfaceDelta: StagePoint
+): StagePoint | undefined {
+  if (graph.nodes[nodeId] === undefined) return undefined;
+  const parents = parentMap(graph);
+  const parentId = parents.get(nodeId);
+  const parentWorld =
+    parentId === undefined
+      ? ([1, 0, 0, 1, 0, 0] as const)
+      : worldMatrix(graph, parentId, parents, new Map());
+  if (parentWorld === undefined) return undefined;
+  const inverse = inverseLinear(multiply(graphViewMatrix(graph, surface), parentWorld));
+  return inverse === undefined ? undefined : delta(inverse, surfaceDelta);
+}
+
+export function surfaceDeltaToLocalDelta(
+  graph: ResolvedPresentationGraph,
+  nodeId: string,
+  surface: { readonly width: number; readonly height: number },
+  surfaceDelta: StagePoint
+): StagePoint | undefined {
+  const parents = parentMap(graph);
+  const world = worldMatrix(graph, nodeId, parents, new Map());
+  if (world === undefined) return undefined;
+  const inverse = inverseLinear(multiply(graphViewMatrix(graph, surface), world));
+  return inverse === undefined ? undefined : delta(inverse, surfaceDelta);
+}
+
+export function stageRotationDirection(
+  graph: ResolvedPresentationGraph,
+  nodeId: string
+): 1 | -1 | undefined {
+  if (graph.nodes[nodeId] === undefined) return undefined;
+  const parents = parentMap(graph);
+  const parentId = parents.get(nodeId);
+  const parentWorld =
+    parentId === undefined
+      ? ([1, 0, 0, 1, 0, 0] as const)
+      : worldMatrix(graph, parentId, parents, new Map());
+  if (parentWorld === undefined) return undefined;
+  const firstLength = Math.hypot(parentWorld[0], parentWorld[1]);
+  const secondLength = Math.hypot(parentWorld[2], parentWorld[3]);
+  if (firstLength < 1e-9 || secondLength < 1e-9) return undefined;
+  const scale = Math.max(firstLength, secondLength);
+  const dot = parentWorld[0] * parentWorld[2] + parentWorld[1] * parentWorld[3];
+  if (
+    Math.abs(firstLength - secondLength) > scale * 1e-6 ||
+    Math.abs(dot) > firstLength * secondLength * 1e-6
+  ) {
+    return undefined;
+  }
+  return parentWorld[0] * parentWorld[3] - parentWorld[1] * parentWorld[2] < 0 ? -1 : 1;
+}
+
+export function nodesInsideStageRect(
+  graph: ResolvedPresentationGraph,
+  surface: { readonly width: number; readonly height: number },
+  start: StagePoint,
+  end: StagePoint
+): readonly string[] {
+  const minimumX = Math.min(start[0], end[0]);
+  const maximumX = Math.max(start[0], end[0]);
+  const minimumY = Math.min(start[1], end[1]);
+  const maximumY = Math.max(start[1], end[1]);
+  const parents = parentMap(graph);
+  return Object.values(graph.nodes)
+    .filter(
+      (node) =>
+        node.primitive !== STANDARD_PRESENTATION_PRIMITIVES.group &&
+        nodeIsEffectivelyVisible(graph, node.presentationId, parents)
+    )
+    .filter((node) => {
+      const polygon = selectionPolygon(graph, node.presentationId, surface);
+      if (polygon === undefined) return false;
+      const xs = polygon.map((item) => item[0]);
+      const ys = polygon.map((item) => item[1]);
+      return !(
+        Math.max(...xs) < minimumX ||
+        Math.min(...xs) > maximumX ||
+        Math.max(...ys) < minimumY ||
+        Math.min(...ys) > maximumY
+      );
+    })
+    .map((node) => node.presentationId);
+}
+
+export function nodeIsAncestor(
+  document: StandardCompositionDocument,
+  ancestorId: string,
+  candidateId: string
+): boolean {
+  const visited = new Set<string>();
+  const visit = (nodeId: string): boolean => {
+    if (visited.has(nodeId)) return false;
+    visited.add(nodeId);
+    const node = document.data.nodes[nodeId];
+    if (node === undefined) return false;
+    return node.children.some((childId) => childId === candidateId || visit(childId));
+  };
+  return visit(ancestorId);
+}
+
+export function updateNodeSelection(
+  document: StandardCompositionDocument,
+  current: readonly string[],
+  nodeId: string | undefined,
+  mode: "replace" | "toggle" | "add" = "replace"
+): readonly string[] {
+  const existing = current.filter(
+    (id, index) => document.data.nodes[id] !== undefined && current.indexOf(id) === index
+  );
+  if (nodeId === undefined || document.data.nodes[nodeId] === undefined) {
+    return mode === "replace" ? [] : existing;
+  }
+  if (mode === "replace") return [nodeId];
+  if (mode === "toggle" && existing.includes(nodeId)) {
+    return existing.filter((id) => id !== nodeId);
+  }
+  const withoutRelated = existing.filter(
+    (id) => !nodeIsAncestor(document, id, nodeId) && !nodeIsAncestor(document, nodeId, id)
+  );
+  return [...withoutRelated, nodeId];
 }

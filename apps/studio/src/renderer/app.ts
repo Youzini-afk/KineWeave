@@ -2,6 +2,7 @@ import "./styles.css";
 import type { JsonValue } from "@kineweave/protocol";
 import type { MotionNode } from "@kineweave/standard-motion-document";
 import type { StudioCommand } from "../bridge.js";
+import type { StageAlignment } from "./stage-controller.js";
 import { StudioController, type StudioSnapshot } from "./studio-controller.js";
 import {
   defaultPropertyValue,
@@ -68,6 +69,13 @@ root.innerHTML = `
         <div class="tool-group">
           <button class="tool active" type="button" title="Select">↖</button>
           <button class="tool" type="button" title="Hand" disabled>✋</button>
+          <span class="tool-divider"></span>
+          <button class="tool align-tool" data-align="left" type="button" title="Align left" disabled>⇤</button>
+          <button class="tool align-tool" data-align="horizontal-center" type="button" title="Align horizontal centers" disabled>↔</button>
+          <button class="tool align-tool" data-align="right" type="button" title="Align right" disabled>⇥</button>
+          <button class="tool align-tool" data-align="top" type="button" title="Align top" disabled>↥</button>
+          <button class="tool align-tool" data-align="vertical-center" type="button" title="Align vertical centers" disabled>↕</button>
+          <button class="tool align-tool" data-align="bottom" type="button" title="Align bottom" disabled>↧</button>
         </div>
         <div id="canvas-summary" class="canvas-summary">—</div>
         <div class="stage-badges"><span>Fit</span><span id="stage-scale">100%</span></div>
@@ -341,18 +349,27 @@ function renderLayers(snapshot: StudioSnapshot): void {
   const fragment = window.document.createDocumentFragment();
   for (const item of flattenLayerTree(composition)) {
     const row = window.document.createElement("div");
-    row.className = `layer-row${item.node.nodeId === snapshot.selectedNodeId ? " selected" : ""}`;
+    const selected = snapshot.selectedNodeIds.includes(item.node.nodeId);
+    row.className = `layer-row${selected ? " selected" : ""}`;
     row.dataset.nodeId = item.node.nodeId;
     row.dataset.nodeType = item.node.nodeType;
     row.style.setProperty("--depth", String(item.depth));
     row.setAttribute("role", "treeitem");
-    row.setAttribute("aria-selected", String(item.node.nodeId === snapshot.selectedNodeId));
+    row.setAttribute("aria-selected", String(selected));
     row.tabIndex = 0;
-    row.addEventListener("click", () => controller.selectNode(item.node.nodeId));
+    row.addEventListener("click", (event) =>
+      controller.selectNode(
+        item.node.nodeId,
+        event.ctrlKey || event.metaKey ? "toggle" : event.shiftKey ? "add" : "replace"
+      )
+    );
     row.addEventListener("keydown", (event) => {
       if (event.target === row && (event.key === "Enter" || event.key === " ")) {
         event.preventDefault();
-        controller.selectNode(item.node.nodeId);
+        controller.selectNode(
+          item.node.nodeId,
+          event.ctrlKey || event.metaKey ? "toggle" : event.shiftKey ? "add" : "replace"
+        );
       }
     });
     const disclosure = window.document.createElement("span");
@@ -508,8 +525,11 @@ function render(snapshot: StudioSnapshot): void {
   elements.save.disabled = !ready || snapshot.saving || !snapshot.dirty;
   elements.save.textContent = snapshot.saving ? "Saving…" : "Save";
   elements.deleteNode.disabled = snapshot.selectedNodeId === undefined;
-  elements.moveUp.disabled = snapshot.selectedNodeId === undefined;
-  elements.moveDown.disabled = snapshot.selectedNodeId === undefined;
+  elements.moveUp.disabled = snapshot.selectedNodeIds.length !== 1;
+  elements.moveDown.disabled = snapshot.selectedNodeIds.length !== 1;
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-align]")) {
+    button.disabled = !ready || snapshot.selectedNodeIds.length < 2;
+  }
   elements.timecode.textContent = formatTime(snapshot.playheadSeconds);
   elements.durationLabel.textContent = `${snapshot.durationSeconds.toFixed(2)}s`;
   if (!scrubbing) {
@@ -584,6 +604,12 @@ for (const button of document.querySelectorAll<HTMLButtonElement>("[data-add-nod
     if (kind === "text" || kind === "rectangle" || kind === "ellipse" || kind === "path") {
       run(controller.addNode(kind));
     }
+  });
+}
+for (const button of document.querySelectorAll<HTMLButtonElement>("[data-align]")) {
+  button.addEventListener("click", () => {
+    const alignment = button.dataset.align as StageAlignment | undefined;
+    if (alignment !== undefined) run(controller.alignSelection(alignment));
   });
 }
 

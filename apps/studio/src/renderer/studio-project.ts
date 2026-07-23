@@ -364,10 +364,19 @@ export class StudioProject {
   }
 
   removeNode(nodeId: string): Promise<void> {
-    return this.#execute(STANDARD_MOTION_OPERATIONS.removeNode, {
-      documentId: this.documentId,
-      nodeId
-    });
+    return this.removeNodes([nodeId]);
+  }
+
+  removeNodes(nodeIds: readonly string[]): Promise<void> {
+    return this.#executeOperations(
+      nodeIds
+        .filter((nodeId, index) => nodeIds.indexOf(nodeId) === index)
+        .map((nodeId) => ({
+          operationType: STANDARD_MOTION_OPERATIONS.removeNode,
+          payload: { documentId: this.documentId, nodeId }
+        })),
+      "Remove nodes"
+    );
   }
 
   moveNode(nodeId: string, parentNodeId: string | null, index: number): Promise<void> {

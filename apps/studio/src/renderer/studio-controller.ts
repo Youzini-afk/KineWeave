@@ -15,14 +15,18 @@ import {
   type StandardCompositionDocument
 } from "@kineweave/standard-motion-document";
 import type { StudioHostApi } from "../bridge.js";
-import { StageController } from "./stage-controller.js";
+import {
+  type StageAlignment,
+  StageController,
+  type StageSelectionMode
+} from "./stage-controller.js";
 import {
   compositionDurationSeconds,
-  constantBindingValue,
   defaultPropertyValue,
   findLayerParent,
   flattenLayerTree,
-  resolvedPropertyValue
+  resolvedPropertyValue,
+  updateNodeSelection
 } from "./studio-model.js";
 import {
   type StudioHistoryEntry,
@@ -46,6 +50,7 @@ export interface StudioSnapshot {
   readonly document?: StandardCompositionDocument;
   readonly presentation?: ResolvedPresentationGraph;
   readonly selectedNodeId?: string;
+  readonly selectedNodeIds: readonly string[];
   readonly playheadSeconds: number;
   readonly durationSeconds: number;
   readonly playing: boolean;
@@ -89,6 +94,7 @@ export class StudioController {
   #presentation: ResolvedPresentationGraph | undefined;
   #phase: StudioPhase = "welcome";
   #selectedNodeId: string | undefined;
+  #selectedNodeIds: readonly string[] = [];
   #playheadSeconds = 0;
   #durationSeconds = 1;
   #playing = false;
@@ -114,9 +120,13 @@ export class StudioController {
   constructor(host: StudioHostApi, canvas: HTMLCanvasElement, selection: SVGPolygonElement) {
     this.#host = host;
     this.#stage = new StageController(canvas, selection, {
-      onSelect: (nodeId) => this.selectNode(nodeId),
-      movablePosition: (nodeId) => this.#movablePosition(nodeId),
-      onMove: (nodeId, position) => this.setProperty(nodeId, "position", [...position]),
+      onGestureStart: async () => {
+        this.pause();
+        await this.#requestEvaluation();
+      },
+      onSelect: (nodeId, mode) => this.selectNode(nodeId, mode),
+      onMarqueeSelect: (nodeIds, mode) => this.selectNodes(nodeIds, mode),
+      onTransform: (edits, message) => this.setProperties(edits, message),
       onError: (error) => this.reportError(error)
     });
   }
@@ -139,6 +149,7 @@ export class StudioController {
       ...(this.#document === undefined ? {} : { document: this.#document }),
       ...(this.#presentation === undefined ? {} : { presentation: this.#presentation }),
       ...(this.#selectedNodeId === undefined ? {} : { selectedNodeId: this.#selectedNodeId }),
+      selectedNodeIds: this.#selectedNodeIds,
       playheadSeconds: this.#playheadSeconds,
       durationSeconds: this.#durationSeconds,
       playing: this.#playing,
@@ -162,6 +173,7 @@ export class StudioController {
   async openProject(rootPath: string): Promise<void> {
     if (this.#phase === "opening" || this.#prepareClosePromise !== undefined) return;
     this.pause();
+    this.#stage.cancelActiveGesture();
     const previousProject = this.#project;
     let candidate: StudioProject | undefined;
     let stageWasTouched = false;
@@ -170,7 +182,11 @@ export class StudioController {
     this.#diagnostics = [];
     this.#emit();
     try {
-      if (previousProject !== undefined && this.#dirty) await this.save();
+      await this.#mutationQueue;
+      await this.#evaluationLoop?.catch(() => {});
+      if (previousProject !== undefined && (this.#dirty || this.#savePromise !== undefined)) {
+        await this.save();
+      }
       candidate = await StudioProject.open(rootPath, this.#host);
       const document = candidate.document();
       const durationSeconds = Math.max(0.001, compositionDurationSeconds(document));
@@ -192,6 +208,7 @@ export class StudioController {
       this.#durationSeconds = durationSeconds;
       this.#playheadSeconds = 0;
       this.#selectedNodeId = selectedNodeId;
+      this.#selectedNodeIds = selectedNodeId === undefined ? [] : [selectedNodeId];
       this.#dirty = false;
       this.#saving = false;
       this.#phase = "ready";
@@ -201,7 +218,7 @@ export class StudioController {
         kind: "success",
         message: `Opened ${project.name}`
       };
-      this.#stage.select(this.#selectedNodeId);
+      this.#stage.select(this.#selectedNodeIds);
       this.#emit();
       if (previousProject !== undefined) {
         try {
@@ -228,7 +245,7 @@ export class StudioController {
           );
           await this.#stage.present(previousProject.session, restored.graph);
           this.#presentation = restored.graph;
-          this.#stage.select(this.#selectedNodeId);
+          this.#stage.select(this.#selectedNodeIds);
         } catch (restoreError) {
           openError = new AggregateError(
             [openError, restoreError],
@@ -243,18 +260,41 @@ export class StudioController {
     }
   }
 
-  selectNode(nodeId: string | undefined): void {
-    if (nodeId !== undefined && this.#document?.data.nodes[nodeId] === undefined) {
+  selectNode(nodeId: string | undefined, mode: StageSelectionMode = "replace"): void {
+    const document = this.#document;
+    const next =
+      document === undefined
+        ? []
+        : updateNodeSelection(document, this.#selectedNodeIds, nodeId, mode);
+    this.#applySelection(next);
+  }
+
+  selectNodes(nodeIds: readonly string[], mode: StageSelectionMode = "replace"): void {
+    const document = this.#document;
+    if (document === undefined) return;
+    let next = mode === "replace" ? [] : [...this.#selectedNodeIds];
+    for (const nodeId of nodeIds) {
+      next = [...updateNodeSelection(document, next, nodeId, mode === "toggle" ? "toggle" : "add")];
+    }
+    this.#applySelection(next);
+  }
+
+  #applySelection(nodeIds: readonly string[]): void {
+    if (
+      nodeIds.length === this.#selectedNodeIds.length &&
+      nodeIds.every((nodeId, index) => nodeId === this.#selectedNodeIds[index])
+    ) {
       return;
     }
-    if (this.#selectedNodeId === nodeId) return;
-    this.#selectedNodeId = nodeId;
+    this.#selectedNodeIds = [...nodeIds];
+    this.#selectedNodeId = this.#selectedNodeIds.at(-1);
     this.#panelRevision += 1;
-    this.#stage.select(nodeId);
+    this.#stage.select(this.#selectedNodeIds);
     this.#emit();
   }
 
   setPlayhead(seconds: number): void {
+    if (this.#phase !== "ready") return;
     const next = Math.min(Math.max(0, seconds), this.#durationSeconds);
     if (Math.abs(next - this.#playheadSeconds) < 1e-6) return;
     this.#playheadSeconds = next;
@@ -273,7 +313,12 @@ export class StudioController {
   }
 
   play(): void {
-    if (this.#playing || this.#project === undefined || this.#prepareClosePromise !== undefined) {
+    if (
+      this.#playing ||
+      this.#phase !== "ready" ||
+      this.#project === undefined ||
+      this.#prepareClosePromise !== undefined
+    ) {
       return;
     }
     this.#playing = true;
@@ -322,6 +367,13 @@ export class StudioController {
       () => this.#requiredProject().setPropertiesAtTime(edits, this.#playheadSeconds),
       message
     );
+  }
+
+  async alignSelection(alignment: StageAlignment): Promise<void> {
+    if (this.#phase !== "ready") return;
+    this.pause();
+    await this.#requestEvaluation();
+    await this.#stage.align(alignment);
   }
 
   toggleKeyframe(nodeId: string, property: string): Promise<void> {
@@ -421,11 +473,15 @@ export class StudioController {
   }
 
   async removeSelectedNode(): Promise<void> {
+    const nodeIds = this.#selectedNodeIds;
     const nodeId = this.#selectedNodeId;
-    if (nodeId === undefined) return;
+    if (nodeId === undefined || nodeIds.length === 0) return;
     const document = this.#requiredDocument();
     const parent = findLayerParent(document, nodeId)?.parentNodeId;
-    await this.#mutate(() => this.#requiredProject().removeNode(nodeId), "Removed layer");
+    await this.#mutate(
+      () => this.#requiredProject().removeNodes(nodeIds),
+      nodeIds.length === 1 ? "Removed layer" : "Removed layers"
+    );
     this.selectNode(parent ?? undefined);
   }
 
@@ -516,6 +572,7 @@ export class StudioController {
   prepareToClose(): Promise<void> {
     if (this.#prepareClosePromise !== undefined) return this.#prepareClosePromise;
     this.pause();
+    this.#stage.cancelActiveGesture();
     if (this.#autoSaveTimer !== undefined) {
       clearTimeout(this.#autoSaveTimer);
       this.#autoSaveTimer = undefined;
@@ -534,24 +591,22 @@ export class StudioController {
     return preparation;
   }
 
-  #movablePosition(nodeId: string): readonly [number, number] | undefined {
-    const binding = this.#document?.data.nodes[nodeId]?.properties.position;
-    const value = constantBindingValue(binding);
-    return Array.isArray(value) &&
-      value.length === 2 &&
-      value.every((coordinate) => typeof coordinate === "number")
-      ? [value[0] as number, value[1] as number]
-      : binding === undefined
-        ? [0, 0]
-        : undefined;
-  }
-
   #mutate(action: () => Promise<void>, message: string): Promise<void> {
     if (this.#prepareClosePromise !== undefined) {
       return Promise.reject(new StudioProjectError("Studio is preparing to close"));
     }
+    const project = this.#project;
+    if (this.#phase !== "ready" || project === undefined) {
+      return Promise.reject(new StudioProjectError("No project is ready for editing"));
+    }
     const operation = this.#mutationQueue.then(async () => {
+      if (this.#project !== project) {
+        throw new StudioProjectError("The project changed before the edit could be applied");
+      }
       await action();
+      if (this.#project !== project) {
+        throw new StudioProjectError("The project changed while the edit was being applied");
+      }
       this.#afterMutation(message);
       await this.#requestEvaluation();
     });
@@ -563,7 +618,14 @@ export class StudioController {
     if (this.#prepareClosePromise !== undefined) {
       return Promise.reject(new StudioProjectError("Studio is preparing to close"));
     }
+    const project = this.#project;
+    if (this.#phase !== "ready" || project === undefined) {
+      return Promise.reject(new StudioProjectError("No project is ready for editing"));
+    }
     const operation = this.#mutationQueue.then(async () => {
+      if (this.#project !== project) {
+        throw new StudioProjectError("The project changed before history could be applied");
+      }
       if (!action()) {
         this.#status = { kind: "info", message: `Nothing to ${message.toLowerCase()}` };
         this.#emit();
@@ -578,13 +640,11 @@ export class StudioController {
 
   #afterMutation(message: string): void {
     this.#document = this.#requiredProject().document();
-    if (
-      this.#selectedNodeId !== undefined &&
-      this.#document.data.nodes[this.#selectedNodeId] === undefined
-    ) {
-      this.#selectedNodeId = undefined;
-      this.#stage.select(undefined);
-    }
+    this.#selectedNodeIds = this.#selectedNodeIds.filter(
+      (nodeId) => this.#document!.data.nodes[nodeId] !== undefined
+    );
+    this.#selectedNodeId = this.#selectedNodeIds.at(-1);
+    this.#stage.select(this.#selectedNodeIds);
     this.#durationSeconds = Math.max(0.001, compositionDurationSeconds(this.#document));
     this.#playheadSeconds = Math.min(this.#playheadSeconds, this.#durationSeconds);
     this.#mutationRevision += 1;
@@ -618,7 +678,7 @@ export class StudioController {
         this.#diagnostics = result.diagnostics;
         this.#presentation = result.graph;
         await this.#stage.present(project.session, result.graph);
-        this.#stage.select(this.#selectedNodeId);
+        this.#stage.select(this.#selectedNodeIds);
         if (!this.#playing) this.#emit();
       }
     })()

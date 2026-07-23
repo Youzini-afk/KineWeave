@@ -451,6 +451,17 @@ button:disabled {
   color: var(--text);
 }
 
+.tool-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: #2a303c;
+}
+
+.align-tool {
+  font-size: 10px;
+}
+
 .canvas-summary {
   color: #7a8496;
   font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
@@ -513,6 +524,68 @@ button:disabled {
   stroke: #9eabff;
   stroke-dasharray: 5 3;
   stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.selection-member {
+  fill: rgba(124, 143, 255, 0.035);
+  stroke: rgba(158, 171, 255, 0.62);
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.stage-handle {
+  pointer-events: auto;
+  fill: #11151e;
+  stroke: #c6ceff;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.scale-handle {
+  cursor: nwse-resize;
+}
+
+.scale-handle[data-corner="1"],
+.scale-handle[data-corner="3"] {
+  cursor: nesw-resize;
+}
+
+.rotation-stem,
+.anchor-cross {
+  stroke: #9eabff;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.rotation-handle {
+  cursor: grab;
+  fill: #2b3450;
+}
+
+.anchor-handle {
+  cursor: move;
+  fill: rgba(255, 170, 92, 0.3);
+  stroke: #ffb16b;
+}
+
+.anchor-cross {
+  stroke: #ffb16b;
+}
+
+.snap-guide {
+  stroke: #55d8cf;
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.selection-marquee {
+  fill: rgba(124, 143, 255, 0.1);
+  stroke: #8ea0ff;
+  stroke-dasharray: 4 3;
+  stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 

@@ -20,10 +20,14 @@ import {
   flattenLayerTree,
   inspectorFields,
   keyframeSeconds,
+  nodeAnchorSurfacePoint,
   roundCompositionCoordinate,
   selectionPolygon,
   sortedKeyframes,
-  timelineProperties
+  stageRotationDirection,
+  surfaceDeltaToParentDelta,
+  timelineProperties,
+  updateNodeSelection
 } from "./studio-model.js";
 
 describe("Studio model", () => {
@@ -165,5 +169,105 @@ describe("Studio model", () => {
       "keyframe_end"
     ]);
     expect(keyframeSeconds(position!.track!.keyframes.keyframe_end!)).toBe(5);
+  });
+
+  it("maps Stage deltas through rotated and non-uniform parent transforms", () => {
+    const graph: ResolvedPresentationGraph = {
+      presentationGraphVersion: PRESENTATION_GRAPH_VERSION,
+      documentId: "document_main",
+      time: timeValue(rational(0), STANDARD_TIME_DOMAINS.seconds),
+      viewport: { width: 200, height: 100, pixelRatio: rational(1) },
+      colorSpace: STANDARD_COLOR_SPACES.srgb,
+      background: null,
+      rootNodeIds: ["node_group"],
+      nodes: {
+        node_group: {
+          presentationId: "node_group",
+          primitive: STANDARD_PRESENTATION_PRIMITIVES.group,
+          children: ["node_rectangle"],
+          visible: true,
+          opacity: 1,
+          transform: {
+            translation: [50, 25],
+            scale: [2, 1],
+            rotation: 90,
+            anchor: [0, 0]
+          },
+          data: {}
+        },
+        node_rectangle: {
+          presentationId: "node_rectangle",
+          primitive: STANDARD_PRESENTATION_PRIMITIVES.rectangle,
+          children: [],
+          visible: true,
+          opacity: 1,
+          transform: {
+            translation: [50, 25],
+            scale: [1, 1],
+            rotation: 0,
+            anchor: [0, 0]
+          },
+          data: { width: 40, height: 20, cornerRadius: 0 }
+        }
+      },
+      requiredFeatures: [
+        STANDARD_PRESENTATION_PRIMITIVES.group,
+        STANDARD_PRESENTATION_PRIMITIVES.rectangle,
+        STANDARD_COLOR_SPACES.srgb
+      ],
+      metadata: { compositionCanvas: { width: 200, height: 100 } }
+    };
+
+    const delta = surfaceDeltaToParentDelta(
+      graph,
+      "node_rectangle",
+      { width: 400, height: 200 },
+      [-10, 40]
+    );
+    expect(delta?.[0]).toBeCloseTo(10);
+    expect(delta?.[1]).toBeCloseTo(5);
+    const anchor = nodeAnchorSurfacePoint(graph, "node_rectangle", { width: 400, height: 200 });
+    expect(anchor?.[0]).toBeCloseTo(50);
+    expect(anchor?.[1]).toBeCloseTo(250);
+
+    const withParentScale = (scale: [number, number]): ResolvedPresentationGraph => ({
+      ...graph,
+      nodes: {
+        ...graph.nodes,
+        node_group: {
+          ...graph.nodes.node_group!,
+          transform: { ...graph.nodes.node_group!.transform, scale }
+        }
+      }
+    });
+    expect(stageRotationDirection(graph, "node_rectangle")).toBeUndefined();
+    expect(stageRotationDirection(withParentScale([2, 2]), "node_rectangle")).toBe(1);
+    expect(stageRotationDirection(withParentScale([2, -2]), "node_rectangle")).toBe(-1);
+
+    const hiddenParent: ResolvedPresentationGraph = {
+      ...graph,
+      nodes: {
+        ...graph.nodes,
+        node_group: { ...graph.nodes.node_group!, visible: false }
+      }
+    };
+    expect(
+      selectionPolygon(hiddenParent, "node_rectangle", { width: 400, height: 200 })
+    ).toBeUndefined();
+  });
+
+  it("keeps ancestor and descendant nodes out of the same multi-selection", () => {
+    const document = createStandardComposition();
+
+    expect(updateNodeSelection(document, ["node_scene"], "node_headline", "add")).toEqual([
+      "node_headline"
+    ]);
+    expect(updateNodeSelection(document, ["node_headline"], "node_scene", "add")).toEqual([
+      "node_scene"
+    ]);
+    expect(updateNodeSelection(document, ["node_panel"], "node_headline", "toggle")).toEqual([
+      "node_panel",
+      "node_headline"
+    ]);
   });
 });
