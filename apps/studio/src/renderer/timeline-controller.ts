@@ -1,3 +1,4 @@
+import { canonicalStringify } from "@kineweave/project-format";
 import type { JsonObject } from "@kineweave/protocol";
 import {
   cubicBezierEasing,
@@ -53,10 +54,10 @@ function sameTime(left: number, right: number): boolean {
   return Math.abs(left - right) < 0.000_000_5;
 }
 
-function easingPreset(easing: JsonObject | undefined): string {
+export function easingPreset(easing: JsonObject | undefined): string {
   if (easing === undefined) return "auto";
   for (const [name, preset] of Object.entries(EASING_PRESETS)) {
-    if (preset !== null && JSON.stringify(preset) === JSON.stringify(easing)) return name;
+    if (preset !== null && canonicalStringify(preset) === canonicalStringify(easing)) return name;
   }
   return "custom";
 }
