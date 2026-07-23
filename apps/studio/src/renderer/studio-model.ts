@@ -6,8 +6,11 @@ import {
   STANDARD_PRESENTATION_PRIMITIVES
 } from "@kineweave/protocol";
 import {
+  expectedStandardPropertyValueType,
+  type Keyframe,
   type MotionNode,
   type PropertyBinding,
+  type PropertyTrack,
   STANDARD_NODE_TYPES,
   type StandardCompositionDocument
 } from "@kineweave/standard-motion-document";
@@ -25,6 +28,14 @@ export interface InspectorField {
   readonly kind: "text" | "multiline" | "number" | "boolean" | "color" | "vector2";
   readonly value: JsonValue | undefined;
   readonly bindingKind: string | undefined;
+}
+
+export interface TimelineProperty {
+  readonly property: string;
+  readonly label: string;
+  readonly valueType: string;
+  readonly bindingKind: string | undefined;
+  readonly track: PropertyTrack | undefined;
 }
 
 type Matrix = readonly [number, number, number, number, number, number];
@@ -75,6 +86,17 @@ export function findLayerParent(
 
 export function constantBindingValue(binding: PropertyBinding | undefined): JsonValue | undefined {
   return binding?.kind === "constant" && "value" in binding ? binding.value : undefined;
+}
+
+export function defaultPropertyValue(property: string): JsonValue {
+  if (property === "position" || property === "anchor") return [0, 0];
+  if (property === "scale") return [1, 1];
+  if (property === "opacity") return 1;
+  if (property === "visible") return true;
+  if (property === "rotation" || property === "strokeWidth" || property === "cornerRadius") {
+    return 0;
+  }
+  return "";
 }
 
 function field(
@@ -132,6 +154,73 @@ export function inspectorFields(node: MotionNode): readonly InspectorField[] {
     );
   }
   return result;
+}
+
+export function timelineProperties(
+  document: StandardCompositionDocument,
+  nodeId: string
+): readonly TimelineProperty[] {
+  const node = document.data.nodes[nodeId];
+  if (node === undefined) return [];
+  return inspectorFields(node).flatMap((item) => {
+    const valueType = expectedStandardPropertyValueType(node.nodeType, item.property);
+    if (valueType === undefined) return [];
+    const binding = node.properties[item.property];
+    const track =
+      binding?.kind === "track" && typeof binding.trackId === "string"
+        ? document.data.tracks[binding.trackId]
+        : undefined;
+    return [
+      {
+        property: item.property,
+        label: item.label,
+        valueType,
+        bindingKind: binding?.kind,
+        track
+      }
+    ];
+  });
+}
+
+export function keyframeSeconds(keyframe: Keyframe): number {
+  return rationalToNumberLossy(keyframe.time.value);
+}
+
+export function sortedKeyframes(track: PropertyTrack): readonly Keyframe[] {
+  return Object.values(track.keyframes).sort((left, right) => {
+    const timeDifference = keyframeSeconds(left) - keyframeSeconds(right);
+    return timeDifference === 0 ? left.keyframeId.localeCompare(right.keyframeId) : timeDifference;
+  });
+}
+
+export function resolvedPropertyValue(
+  graph: ResolvedPresentationGraph | undefined,
+  node: MotionNode,
+  property: string
+): JsonValue | undefined {
+  const presentation = graph?.nodes[node.nodeId];
+  if (presentation === undefined) return constantBindingValue(node.properties[property]);
+  if (property === "position") return [...presentation.transform.translation];
+  if (property === "scale") return [...presentation.transform.scale];
+  if (property === "anchor") return [...presentation.transform.anchor];
+  if (property === "rotation") return presentation.transform.rotation;
+  if (property === "opacity") return presentation.opacity;
+  if (property === "visible") return presentation.visible;
+  if (property === "content") return presentation.data.text;
+  if (property === "path") return presentation.data.path;
+  if (property === "size") {
+    if (node.nodeType === STANDARD_NODE_TYPES.ellipse) {
+      const radiusX = presentation.data.radiusX;
+      const radiusY = presentation.data.radiusY;
+      return typeof radiusX === "number" && typeof radiusY === "number"
+        ? [radiusX * 2, radiusY * 2]
+        : undefined;
+    }
+    const width = presentation.data.width;
+    const height = presentation.data.height;
+    return typeof width === "number" && typeof height === "number" ? [width, height] : undefined;
+  }
+  return presentation.data[property];
 }
 
 export function shortNodeType(nodeType: string): string {

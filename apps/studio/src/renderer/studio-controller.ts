@@ -1,4 +1,9 @@
-import type { Diagnostic, JsonValue } from "@kineweave/protocol";
+import type {
+  Diagnostic,
+  JsonObject,
+  JsonValue,
+  ResolvedPresentationGraph
+} from "@kineweave/protocol";
 import {
   constant,
   createEllipseNode,
@@ -14,10 +19,17 @@ import { StageController } from "./stage-controller.js";
 import {
   compositionDurationSeconds,
   constantBindingValue,
+  defaultPropertyValue,
   findLayerParent,
-  flattenLayerTree
+  flattenLayerTree,
+  resolvedPropertyValue
 } from "./studio-model.js";
-import { type StudioHistoryEntry, StudioProject, StudioProjectError } from "./studio-project.js";
+import {
+  type StudioHistoryEntry,
+  StudioProject,
+  StudioProjectError,
+  type StudioPropertyEdit
+} from "./studio-project.js";
 
 export type StudioPhase = "welcome" | "opening" | "ready" | "error";
 export type StudioStatusKind = "info" | "success" | "warning" | "error";
@@ -32,6 +44,7 @@ export interface StudioSnapshot {
   readonly projectName?: string;
   readonly rootPath?: string;
   readonly document?: StandardCompositionDocument;
+  readonly presentation?: ResolvedPresentationGraph;
   readonly selectedNodeId?: string;
   readonly playheadSeconds: number;
   readonly durationSeconds: number;
@@ -73,6 +86,7 @@ export class StudioController {
   readonly #listeners = new Set<Listener>();
   #project: StudioProject | undefined;
   #document: StandardCompositionDocument | undefined;
+  #presentation: ResolvedPresentationGraph | undefined;
   #phase: StudioPhase = "welcome";
   #selectedNodeId: string | undefined;
   #playheadSeconds = 0;
@@ -123,6 +137,7 @@ export class StudioController {
             rootPath: this.#project.rootPath
           }),
       ...(this.#document === undefined ? {} : { document: this.#document }),
+      ...(this.#presentation === undefined ? {} : { presentation: this.#presentation }),
       ...(this.#selectedNodeId === undefined ? {} : { selectedNodeId: this.#selectedNodeId }),
       playheadSeconds: this.#playheadSeconds,
       durationSeconds: this.#durationSeconds,
@@ -173,6 +188,7 @@ export class StudioController {
       candidate = undefined;
       this.#project = project;
       this.#document = document;
+      this.#presentation = evaluation.graph;
       this.#durationSeconds = durationSeconds;
       this.#playheadSeconds = 0;
       this.#selectedNodeId = selectedNodeId;
@@ -211,6 +227,7 @@ export class StudioController {
             this.#stage.viewport()
           );
           await this.#stage.present(previousProject.session, restored.graph);
+          this.#presentation = restored.graph;
           this.#stage.select(this.#selectedNodeId);
         } catch (restoreError) {
           openError = new AggregateError(
@@ -288,9 +305,67 @@ export class StudioController {
 
   setProperty(nodeId: string, property: string, value: JsonValue): Promise<void> {
     return this.#mutate(
-      () => this.#requiredProject().setProperty(nodeId, property, value),
+      () =>
+        this.#requiredProject().setPropertiesAtTime(
+          [{ nodeId, property, value }],
+          this.#playheadSeconds
+        ),
       `Updated ${property}`
     );
+  }
+
+  setProperties(
+    edits: readonly StudioPropertyEdit[],
+    message = "Transformed selection"
+  ): Promise<void> {
+    return this.#mutate(
+      () => this.#requiredProject().setPropertiesAtTime(edits, this.#playheadSeconds),
+      message
+    );
+  }
+
+  toggleKeyframe(nodeId: string, property: string): Promise<void> {
+    return this.#mutate(async () => {
+      await this.#requestEvaluation();
+      const node = this.#requiredDocument().data.nodes[nodeId];
+      if (node === undefined) throw new StudioProjectError(`Node ${nodeId} is missing`);
+      const value =
+        resolvedPropertyValue(this.#presentation, node, property) ?? defaultPropertyValue(property);
+      await this.#requiredProject().toggleKeyframe(nodeId, property, value, this.#playheadSeconds);
+    }, `Toggled ${property} keyframe`);
+  }
+
+  moveKeyframe(trackId: string, keyframeId: string, seconds: number): Promise<void> {
+    return this.#mutate(
+      () => this.#requiredProject().moveKeyframe(trackId, keyframeId, seconds),
+      "Moved keyframe"
+    );
+  }
+
+  deleteKeyframe(trackId: string, keyframeId: string): Promise<void> {
+    return this.#mutate(async () => {
+      await this.#requestEvaluation();
+      const track = this.#requiredDocument().data.tracks[trackId];
+      if (track === undefined) throw new StudioProjectError(`Track ${trackId} is missing`);
+      const node = this.#requiredDocument().data.nodes[track.target.nodeId];
+      if (node === undefined)
+        throw new StudioProjectError(`Node ${track.target.nodeId} is missing`);
+      const replacement =
+        resolvedPropertyValue(this.#presentation, node, track.target.property) ??
+        defaultPropertyValue(track.target.property);
+      await this.#requiredProject().deleteKeyframe(trackId, keyframeId, replacement);
+    }, "Deleted keyframe");
+  }
+
+  setKeyframeEasing(trackId: string, keyframeId: string, easing: JsonObject | null): Promise<void> {
+    return this.#mutate(
+      () => this.#requiredProject().setKeyframeEasing(trackId, keyframeId, easing),
+      "Changed keyframe easing"
+    );
+  }
+
+  setDuration(seconds: number): Promise<void> {
+    return this.#mutate(() => this.#requiredProject().setDuration(seconds), "Changed duration");
   }
 
   renameNode(nodeId: string, name: string): Promise<void> {
@@ -511,6 +586,7 @@ export class StudioController {
       this.#stage.select(undefined);
     }
     this.#durationSeconds = Math.max(0.001, compositionDurationSeconds(this.#document));
+    this.#playheadSeconds = Math.min(this.#playheadSeconds, this.#durationSeconds);
     this.#mutationRevision += 1;
     this.#panelRevision += 1;
     this.#dirty = true;
@@ -540,8 +616,10 @@ export class StudioController {
         const result = await project.evaluate(this.#playheadSeconds, this.#stage.viewport());
         if (project !== this.#project) return;
         this.#diagnostics = result.diagnostics;
+        this.#presentation = result.graph;
         await this.#stage.present(project.session, result.graph);
         this.#stage.select(this.#selectedNodeId);
+        if (!this.#playing) this.#emit();
       }
     })()
       .catch((error) => {

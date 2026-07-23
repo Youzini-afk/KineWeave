@@ -6,11 +6,13 @@ import {
 import type { LoadedProjectBundle } from "@kineweave/project-format";
 import { ProjectSession } from "@kineweave/project-session";
 import {
+  compareRational,
   createProjectResourceUri,
   type Diagnostic,
   type JsonObject,
   type JsonValue,
   type Operation,
+  parseRational,
   rational,
   STANDARD_COLOR_SPACES,
   STANDARD_TIME_DOMAINS,
@@ -19,9 +21,13 @@ import {
 } from "@kineweave/protocol";
 import {
   constant,
+  expectedStandardPropertyValueType,
+  type Keyframe,
   type MotionNode,
+  type PropertyTrack,
   STANDARD_MOTION_OPERATIONS,
-  type StandardCompositionDocument
+  type StandardCompositionDocument,
+  serializedTime
 } from "@kineweave/standard-motion-document";
 import type { StudioHostApi } from "../bridge.js";
 
@@ -48,6 +54,12 @@ export interface StudioHistoryEntry {
   readonly operationTypes: readonly string[];
   readonly timestamp: string;
   readonly current: boolean;
+}
+
+export interface StudioPropertyEdit {
+  readonly nodeId: string;
+  readonly property: string;
+  readonly value: JsonValue;
 }
 
 export class StudioProject {
@@ -160,11 +172,174 @@ export class StudioProject {
   }
 
   setProperty(nodeId: string, property: string, value: JsonValue): Promise<void> {
-    return this.#execute(STANDARD_MOTION_OPERATIONS.setProperty, {
+    return this.setProperties([{ nodeId, property, value }]);
+  }
+
+  setProperties(edits: readonly StudioPropertyEdit[]): Promise<void> {
+    return this.#executeOperations(
+      this.#normalizedEdits(edits).map((edit) => ({
+        operationType: STANDARD_MOTION_OPERATIONS.setProperty,
+        payload: {
+          documentId: this.documentId,
+          nodeId: edit.nodeId,
+          property: edit.property,
+          binding: constant(edit.value)
+        }
+      })),
+      "Set properties"
+    );
+  }
+
+  setPropertiesAtTime(edits: readonly StudioPropertyEdit[], seconds: number): Promise<void> {
+    const document = this.document();
+    const time = this.#compositionTime(seconds, document);
+    const operations = this.#normalizedEdits(edits).map((edit) => {
+      const node = document.data.nodes[edit.nodeId];
+      if (node === undefined) throw new StudioProjectError(`Node ${edit.nodeId} is missing`);
+      const binding = node.properties[edit.property];
+      if (binding?.kind === "signal") {
+        throw new StudioProjectError(
+          `Property ${edit.nodeId}.${edit.property} is signal-driven and cannot be authored directly`
+        );
+      }
+      if (binding?.kind !== "track") {
+        return {
+          operationType: STANDARD_MOTION_OPERATIONS.setProperty,
+          payload: {
+            documentId: this.documentId,
+            nodeId: edit.nodeId,
+            property: edit.property,
+            binding: constant(edit.value)
+          }
+        };
+      }
+      const track = document.data.tracks[String(binding.trackId)];
+      if (track === undefined) {
+        throw new StudioProjectError(`Track ${String(binding.trackId)} is missing`);
+      }
+      const existing = this.#keyframeAtTime(track, time);
+      const keyframe: Keyframe = {
+        ...(existing ?? { keyframeId: stableUuid("keyframe") }),
+        time,
+        value: edit.value
+      };
+      return {
+        operationType: STANDARD_MOTION_OPERATIONS.upsertKeyframe,
+        payload: {
+          documentId: this.documentId,
+          trackId: track.trackId,
+          keyframe
+        }
+      };
+    });
+    return this.#executeOperations(operations, "Author properties at playhead");
+  }
+
+  toggleKeyframe(
+    nodeId: string,
+    property: string,
+    value: JsonValue,
+    seconds: number
+  ): Promise<void> {
+    const document = this.document();
+    const node = document.data.nodes[nodeId];
+    if (node === undefined) throw new StudioProjectError(`Node ${nodeId} is missing`);
+    const binding = node.properties[property];
+    if (binding?.kind === "signal") {
+      throw new StudioProjectError(
+        `Property ${nodeId}.${property} is signal-driven and cannot be keyed directly`
+      );
+    }
+    const time = this.#compositionTime(seconds, document);
+    if (binding?.kind === "track") {
+      const track = document.data.tracks[String(binding.trackId)];
+      if (track === undefined) {
+        throw new StudioProjectError(`Track ${String(binding.trackId)} is missing`);
+      }
+      const existing = this.#keyframeAtTime(track, time);
+      if (existing === undefined) {
+        return this.#execute(STANDARD_MOTION_OPERATIONS.upsertKeyframe, {
+          documentId: this.documentId,
+          trackId: track.trackId,
+          keyframe: {
+            keyframeId: stableUuid("keyframe"),
+            time,
+            value
+          }
+        });
+      }
+      if (Object.keys(track.keyframes).length === 1) {
+        return this.#execute(STANDARD_MOTION_OPERATIONS.removeTrack, {
+          documentId: this.documentId,
+          trackId: track.trackId,
+          replacementValue: value
+        });
+      }
+      return this.#execute(STANDARD_MOTION_OPERATIONS.deleteKeyframe, {
+        documentId: this.documentId,
+        trackId: track.trackId,
+        keyframeId: existing.keyframeId
+      });
+    }
+    const valueType = expectedStandardPropertyValueType(node.nodeType, property);
+    if (valueType === undefined) {
+      throw new StudioProjectError(
+        `Property ${nodeId}.${property} has no declared animation value type`
+      );
+    }
+    const trackId = stableUuid("track");
+    const keyframeId = stableUuid("keyframe");
+    return this.#execute(STANDARD_MOTION_OPERATIONS.createTrack, {
       documentId: this.documentId,
-      nodeId,
-      property,
-      binding: constant(value)
+      track: {
+        trackId,
+        valueType,
+        target: { nodeId, property },
+        keyframes: {
+          [keyframeId]: { keyframeId, time, value }
+        }
+      }
+    });
+  }
+
+  moveKeyframe(trackId: string, keyframeId: string, seconds: number): Promise<void> {
+    return this.#execute(STANDARD_MOTION_OPERATIONS.moveKeyframe, {
+      documentId: this.documentId,
+      trackId,
+      keyframeId,
+      time: this.#compositionTime(seconds, this.document())
+    });
+  }
+
+  deleteKeyframe(trackId: string, keyframeId: string, replacementValue: JsonValue): Promise<void> {
+    const track = this.document().data.tracks[trackId];
+    if (track === undefined) throw new StudioProjectError(`Track ${trackId} is missing`);
+    return Object.keys(track.keyframes).length === 1
+      ? this.#execute(STANDARD_MOTION_OPERATIONS.removeTrack, {
+          documentId: this.documentId,
+          trackId,
+          replacementValue
+        })
+      : this.#execute(STANDARD_MOTION_OPERATIONS.deleteKeyframe, {
+          documentId: this.documentId,
+          trackId,
+          keyframeId
+        });
+  }
+
+  setKeyframeEasing(trackId: string, keyframeId: string, easing: JsonObject | null): Promise<void> {
+    return this.#execute(STANDARD_MOTION_OPERATIONS.setKeyframeEasing, {
+      documentId: this.documentId,
+      trackId,
+      keyframeId,
+      easing
+    });
+  }
+
+  setDuration(seconds: number): Promise<void> {
+    return this.#execute(STANDARD_MOTION_OPERATIONS.setDuration, {
+      documentId: this.documentId,
+      duration: this.#compositionTime(seconds, this.document(), false)
     });
   }
 
@@ -276,21 +451,66 @@ export class StudioProject {
   }
 
   async #execute(operationType: string, payload: JsonObject): Promise<void> {
+    return this.#executeOperations([{ operationType, payload }]);
+  }
+
+  async #executeOperations(
+    inputs: readonly { readonly operationType: string; readonly payload: JsonObject }[],
+    intent?: string
+  ): Promise<void> {
     this.#assertOpen();
-    const operation: Operation = {
+    if (inputs.length === 0) return;
+    const operations: Operation[] = inputs.map((input) => ({
       operationId: stableUuid("operation"),
-      operationType,
+      operationType: input.operationType,
       schemaVersion: 1,
       targets: [createProjectResourceUri("document", this.documentId)],
-      payload
-    };
+      payload: input.payload
+    }));
     const proposal: TransactionProposal = {
       transactionId: stableUuid("transaction"),
       branchName: this.session.history.mainBranchName,
       origin: { kind: "user", actorId: "studio" },
-      operations: [operation]
+      ...(intent === undefined ? {} : { intent }),
+      operations
     };
     await this.session.execute(proposal);
+  }
+
+  #normalizedEdits(edits: readonly StudioPropertyEdit[]): readonly StudioPropertyEdit[] {
+    const byProperty = new Map<string, StudioPropertyEdit>();
+    for (const edit of edits) {
+      byProperty.set(`${edit.nodeId}\u0000${edit.property}`, edit);
+    }
+    return [...byProperty.values()];
+  }
+
+  #compositionTime(seconds: number, document: StandardCompositionDocument, clampToDuration = true) {
+    if (document.data.duration.domain !== STANDARD_TIME_DOMAINS.seconds) {
+      throw new StudioProjectError(
+        `Studio requires a time-domain mapper for ${document.data.duration.domain}`
+      );
+    }
+    if (!Number.isFinite(seconds)) throw new StudioProjectError("Time must be finite");
+    const duration =
+      Number(document.data.duration.value.numerator) /
+      Number(document.data.duration.value.denominator);
+    const value = clampToDuration ? Math.min(Math.max(0, seconds), duration) : seconds;
+    return serializedTime({
+      value: timeRational(value),
+      domain: document.data.duration.domain
+    });
+  }
+
+  #keyframeAtTime(
+    track: PropertyTrack,
+    time: ReturnType<typeof serializedTime>
+  ): Keyframe | undefined {
+    return Object.values(track.keyframes).find(
+      (keyframe) =>
+        keyframe.time.domain === time.domain &&
+        compareRational(parseRational(keyframe.time.value), parseRational(time.value)) === 0
+    );
   }
 
   #assertOpen(): void {

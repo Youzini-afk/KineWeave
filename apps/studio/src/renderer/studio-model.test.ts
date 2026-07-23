@@ -9,7 +9,9 @@ import {
 } from "@kineweave/protocol";
 import {
   createStandardComposition,
-  type StandardCompositionDocument
+  STANDARD_VALUE_TYPES,
+  type StandardCompositionDocument,
+  serializedTime
 } from "@kineweave/standard-motion-document";
 import { describe, expect, it } from "vitest";
 import {
@@ -17,8 +19,11 @@ import {
   findLayerParent,
   flattenLayerTree,
   inspectorFields,
+  keyframeSeconds,
   roundCompositionCoordinate,
-  selectionPolygon
+  selectionPolygon,
+  sortedKeyframes,
+  timelineProperties
 } from "./studio-model.js";
 
 describe("Studio model", () => {
@@ -125,5 +130,40 @@ describe("Studio model", () => {
     expect(roundCompositionCoordinate(1072.941176470588)).toBe(1072.941);
     expect(roundCompositionCoordinate(-0.0004)).toBe(0);
     expect(roundCompositionCoordinate(-17.4567)).toBe(-17.457);
+  });
+
+  it("builds deterministic timeline rows and exact keyframe ordering", () => {
+    const document = createStandardComposition();
+    document.data.nodes.node_headline!.properties.position = {
+      kind: "track",
+      trackId: "track_position"
+    };
+    document.data.tracks.track_position = {
+      trackId: "track_position",
+      valueType: STANDARD_VALUE_TYPES.vector2,
+      target: { nodeId: "node_headline", property: "position" },
+      keyframes: {
+        keyframe_end: {
+          keyframeId: "keyframe_end",
+          time: serializedTime({ value: rational(5), domain: STANDARD_TIME_DOMAINS.seconds }),
+          value: [1200, 620]
+        },
+        keyframe_start: {
+          keyframeId: "keyframe_start",
+          time: serializedTime({ value: rational(0), domain: STANDARD_TIME_DOMAINS.seconds }),
+          value: [960, 620]
+        }
+      }
+    };
+
+    const position = timelineProperties(document, "node_headline").find(
+      (item) => item.property === "position"
+    );
+    expect(position?.track?.trackId).toBe("track_position");
+    expect(sortedKeyframes(position!.track!).map((keyframe) => keyframe.keyframeId)).toEqual([
+      "keyframe_start",
+      "keyframe_end"
+    ]);
+    expect(keyframeSeconds(position!.track!.keyframes.keyframe_end!)).toBe(5);
   });
 });

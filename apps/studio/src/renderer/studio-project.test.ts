@@ -94,4 +94,58 @@ describe("StudioProject", () => {
     await project.dispose();
     expect(harness.closedSessions).toEqual(["host_session"]);
   });
+
+  it("authors tracks at the playhead and commits multi-property gestures atomically", async () => {
+    const fixture = createOfficialProjectTemplate({
+      name: "Studio motion authoring",
+      projectId: "project_studio_motion_authoring"
+    });
+    const harness = createHost(fixture);
+    const project = await StudioProject.open("C:/projects/motion", harness.host);
+
+    await project.toggleKeyframe("node_headline", "position", [960, 620], 0);
+    const positionBinding = project.document().data.nodes.node_headline!.properties.position!;
+    expect(positionBinding.kind).toBe("track");
+    const trackId = String(positionBinding.trackId);
+
+    await project.setPropertiesAtTime(
+      [
+        { nodeId: "node_headline", property: "position", value: [1240, 620] },
+        { nodeId: "node_headline", property: "rotation", value: 15 }
+      ],
+      2
+    );
+
+    const document = project.document();
+    expect(Object.values(document.data.tracks[trackId]!.keyframes)).toHaveLength(2);
+    expect(document.data.nodes.node_headline!.properties.rotation).toEqual({
+      kind: "constant",
+      value: 15
+    });
+    const head = project.session.history.getBranchHead("main");
+    expect(project.session.history.getCommit(head)?.transaction.operations).toHaveLength(2);
+
+    const endKeyframe = Object.values(document.data.tracks[trackId]!.keyframes).find(
+      (keyframe) => keyframe.time.value.numerator === "2"
+    );
+    expect(endKeyframe).toBeDefined();
+    await project.moveKeyframe(trackId, endKeyframe!.keyframeId, 3);
+    expect(
+      project.document().data.tracks[trackId]!.keyframes[endKeyframe!.keyframeId]!.time.value
+    ).toEqual({ numerator: "3", denominator: "1" });
+
+    await project.deleteKeyframe(trackId, endKeyframe!.keyframeId, [960, 620]);
+    await project.deleteKeyframe(
+      trackId,
+      Object.keys(project.document().data.tracks[trackId]!.keyframes)[0]!,
+      [1040, 620]
+    );
+    expect(project.document().data.tracks[trackId]).toBeUndefined();
+    expect(project.document().data.nodes.node_headline!.properties.position).toEqual({
+      kind: "constant",
+      value: [1040, 620]
+    });
+
+    await project.dispose();
+  });
 });

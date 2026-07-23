@@ -4,11 +4,14 @@ import type { MotionNode } from "@kineweave/standard-motion-document";
 import type { StudioCommand } from "../bridge.js";
 import { StudioController, type StudioSnapshot } from "./studio-controller.js";
 import {
+  defaultPropertyValue,
   flattenLayerTree,
   type InspectorField,
   inspectorFields,
+  resolvedPropertyValue,
   shortNodeType
 } from "./studio-model.js";
+import { TimelineController } from "./timeline-controller.js";
 
 const root = document.querySelector<HTMLDivElement>("#app");
 if (root === null) throw new Error("Studio root element is missing");
@@ -82,16 +85,34 @@ root.innerHTML = `
       </section>
       <section class="timeline-panel panel">
         <div class="transport">
-          <button id="jump-start" class="icon-button" type="button" title="Go to start">|◀</button>
-          <button id="play" class="play-button" type="button" title="Play / Pause">▶</button>
+          <div class="transport-controls">
+            <button id="jump-start" class="icon-button" type="button" title="Go to start">|◀</button>
+            <button id="play" class="play-button" type="button" title="Play / Pause">▶</button>
+            <button id="previous-keyframe" class="icon-button" type="button" title="Previous keyframe">◆◀</button>
+            <button id="next-keyframe" class="icon-button" type="button" title="Next keyframe">▶◆</button>
+          </div>
           <span id="timecode" class="timecode">00:00.000</span>
+          <label class="duration-control"><span>Duration</span><input id="composition-duration" type="number" min="0.001" step="0.1" value="1"/><small>s</small></label>
         </div>
-        <div class="timeline-track">
+        <div class="timeline-workspace">
+          <div class="timeline-toolbar">
+            <span id="keyframe-selection">No keyframe selected</span>
+            <label><span>Outgoing easing</span><select id="keyframe-easing" disabled>
+              <option value="auto">Auto / linear</option>
+              <option value="linear">Linear</option>
+              <option value="hold">Hold</option>
+              <option value="ease">Ease</option>
+              <option value="ease-in">Ease in</option>
+              <option value="ease-out">Ease out</option>
+              <option value="ease-in-out">Ease in-out</option>
+            </select></label>
+            <button id="delete-keyframe" class="button subtle compact" type="button" disabled>Delete key</button>
+          </div>
           <div class="timeline-ruler"><span>0s</span><span id="duration-label">1s</span></div>
           <div class="scrubber-wrap">
             <input id="playhead" type="range" min="0" max="1" step="0.001" value="0" />
-            <div id="keyframes" class="keyframes"></div>
           </div>
+          <div id="timeline-rows" class="timeline-rows"></div>
           <div id="track-summary" class="track-summary">Select a layer to inspect its animation tracks.</div>
         </div>
       </section>
@@ -143,8 +164,10 @@ function required<T extends Element>(selector: string): T {
 const canvas = required<HTMLCanvasElement>("#stage-canvas");
 const selection = required<SVGPolygonElement>("#selection-polygon");
 const controller = new StudioController(window.kineweaveHost, canvas, selection);
+const timeline = new TimelineController(controller);
 let latest = controller.snapshot();
 let renderedPanelRevision = -1;
+let renderedPresentation = latest.presentation;
 let scrubbing = false;
 
 const elements = {
@@ -163,8 +186,6 @@ const elements = {
   playhead: required<HTMLInputElement>("#playhead"),
   timecode: required<HTMLElement>("#timecode"),
   durationLabel: required<HTMLElement>("#duration-label"),
-  keyframes: required<HTMLElement>("#keyframes"),
-  trackSummary: required<HTMLElement>("#track-summary"),
   save: required<HTMLButtonElement>("#save"),
   undo: required<HTMLButtonElement>("#undo"),
   redo: required<HTMLButtonElement>("#redo"),
@@ -190,16 +211,6 @@ function run(action: Promise<unknown>): void {
   void action.catch((error) => controller.reportError(error));
 }
 
-function defaultPropertyValue(property: string): JsonValue {
-  if (property === "position" || property === "anchor") return [0, 0];
-  if (property === "scale") return [1, 1];
-  if (property === "opacity") return 1;
-  if (property === "visible") return true;
-  if (property === "rotation" || property === "strokeWidth" || property === "cornerRadius")
-    return 0;
-  return "";
-}
-
 function inputLabel(text: string): HTMLLabelElement {
   const label = document.createElement("label");
   label.className = "field-label";
@@ -209,12 +220,19 @@ function inputLabel(text: string): HTMLLabelElement {
   return label;
 }
 
-function renderInspectorField(node: MotionNode, field: InspectorField): HTMLElement {
+function renderInspectorField(
+  snapshot: StudioSnapshot,
+  node: MotionNode,
+  field: InspectorField
+): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "inspector-field";
   const label = inputLabel(field.label);
-  const editable = field.bindingKind === undefined || field.bindingKind === "constant";
-  const value = field.value ?? defaultPropertyValue(field.property);
+  const editable = field.bindingKind !== "signal";
+  const value =
+    resolvedPropertyValue(snapshot.presentation, node, field.property) ??
+    field.value ??
+    defaultPropertyValue(field.property);
   if (!editable) {
     const badge = document.createElement("span");
     badge.className = "binding-badge";
@@ -410,7 +428,7 @@ function renderInspector(snapshot: StudioSnapshot): void {
   const fields = document.createElement("section");
   fields.className = "property-section";
   for (const item of inspectorFields(node)) {
-    fields.append(renderInspectorField(node, item));
+    fields.append(renderInspectorField(snapshot, node, item));
   }
   elements.inspector.append(fields);
 }
@@ -440,39 +458,6 @@ function renderHistory(snapshot: StudioSnapshot): void {
     row.append(marker, copy);
     elements.history.append(row);
   });
-}
-
-function renderTimelineDetails(snapshot: StudioSnapshot): void {
-  elements.keyframes.replaceChildren();
-  const composition = snapshot.document;
-  const nodeId = snapshot.selectedNodeId;
-  if (composition === undefined || nodeId === undefined) {
-    elements.trackSummary.textContent = "Select a layer to inspect its animation tracks.";
-    return;
-  }
-  const tracks = Object.values(composition.data.tracks).filter(
-    (track) => track.target.nodeId === nodeId
-  );
-  if (tracks.length === 0) {
-    elements.trackSummary.textContent = "This layer currently uses constant properties.";
-    return;
-  }
-  let keyframeCount = 0;
-  for (const track of tracks) {
-    for (const keyframe of Object.values(track.keyframes)) {
-      const seconds =
-        Number(keyframe.time.value.numerator) / Number(keyframe.time.value.denominator);
-      const marker = window.document.createElement("button");
-      marker.className = "keyframe-marker";
-      marker.type = "button";
-      marker.style.left = `${(seconds / snapshot.durationSeconds) * 100}%`;
-      marker.title = `${track.target.property} · ${formatTime(seconds)}`;
-      marker.addEventListener("click", () => controller.setPlayhead(seconds));
-      elements.keyframes.append(marker);
-      keyframeCount += 1;
-    }
-  }
-  elements.trackSummary.textContent = `${tracks.length} animated ${tracks.length === 1 ? "property" : "properties"} · ${keyframeCount} keyframes`;
 }
 
 function renderDiagnostics(snapshot: StudioSnapshot): void {
@@ -554,11 +539,15 @@ function render(snapshot: StudioSnapshot): void {
 
   if (renderedPanelRevision !== snapshot.panelRevision) {
     renderedPanelRevision = snapshot.panelRevision;
+    renderedPresentation = snapshot.presentation;
     renderLayers(snapshot);
     renderInspector(snapshot);
     renderHistory(snapshot);
-    renderTimelineDetails(snapshot);
+  } else if (!snapshot.playing && renderedPresentation !== snapshot.presentation) {
+    renderedPresentation = snapshot.presentation;
+    renderInspector(snapshot);
   }
+  timeline.render(snapshot);
   renderDiagnostics(snapshot);
 }
 
