@@ -4,7 +4,8 @@
     "project": "examples/golden/animated-signals",
     "warmupIterations": 8,
     "evaluationIterations": 120,
-    "svgRenderIterations": 120
+    "svgRenderIterations": 120,
+    "authoringTransactionIterations": 80
   },
   "reference": {
     "source": "GitHub Actions run 29972341519",
@@ -42,6 +43,9 @@
     "evaluationMaxMs": 150,
     "svgRenderTotalMs": 1000,
     "svgRenderP95Ms": 10,
-    "svgRenderMaxMs": 100
+    "svgRenderMaxMs": 100,
+    "authoringTransactionTotalMs": 3000,
+    "authoringTransactionP95Ms": 40,
+    "authoringTransactionMaxMs": 250
   }
 }

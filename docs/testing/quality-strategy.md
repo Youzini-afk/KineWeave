@@ -12,10 +12,10 @@
 | 格式与静态质量 | `pnpm quality` | Biome 格式、导入、可疑代码和基础规则 | 源码或配置未达到仓库统一规范 |
 | Schema 代码生成 | `pnpm check:schema-validators` | CSP-safe AJV Standalone 产物与 Schema 同步 | 运行时 Validator 已过期 |
 | 单元与契约 | `vitest run` | Protocol、Repository、History、Extension、Transaction、Evaluation、Renderer、Studio Model | 一个局部契约或失败路径回归 |
-| Golden Project | `pnpm check:goldens` | 完整工程、History、五个采样 Graph 与 SVG | 工程语义、确定性求值或输出发生未确认变化 |
+| Golden Project | `pnpm check:goldens` | 完整工程、History、九个采样 Graph 与 SVG | 工程语义、确定性求值或输出发生未确认变化 |
 | Renderer Conformance | Vitest 中的 `renderer-conformance.test.ts` | 同一 Graph 的 SVG 字节和 Canvas2D 绘制/命中语义 | Renderer 对 Presentation Graph 的解释分叉 |
-| Studio E2E | `pnpm test:e2e` | 真实 Electron 打开、编辑、历史、播放、保存和关闭握手 | 宿主边界或用户关键工作流断裂 |
-| 性能预算 | `pnpm perf` | Repository、Session、120 帧求值、120 次 SVG 输出 | 当前工作负载出现数量级回归 |
+| Studio E2E | `pnpm test:e2e` | 真实 Electron 打开、运动编辑、多选对齐、历史、保存关闭与重开 | 宿主边界或用户关键工作流断裂 |
+| 性能预算 | `pnpm perf` | Repository、Session、120 帧求值、120 次 SVG 输出、80 次创作事务 | 当前工作负载出现数量级回归 |
 
 `pnpm test` 会先构建，再校验 Golden，最后执行单元和 Conformance。`pnpm check` 是本地完整入口；GitHub CI 将质量、Node 22/24 单元、性能与桌面 E2E 分成独立 Job，使失败归因和反馈更清楚。
 
@@ -26,6 +26,7 @@ Golden 位于 `examples/golden/`，都是完整工程：
 - `core-static-scene`：全部标准 Primitive、层级、通用变换、透明度、Stroke 和 XML 特殊字符；
 - `animated-signals`：vector2 cubic-bezier、number hold/linear、color linear、boolean hold、External Signal 默认值与覆盖值，采样 0、2.5、5 秒；
 - `transforms-visibility`：嵌套 Group、Anchor、非均匀 Scale、Rotation、父级 Opacity、`visible=false` 与 `opacity=0`。
+- `motion-authoring`：Position/Rotation/Scale 多 Track、多个 outgoing cubic-bezier/linear 区间，以及 0、2、3.5、5 秒端点和区间采样。
 
 `scripts/generate-golden-projects.mjs` 是唯一生成入口。它以官方 Template 构造当前模型，重建 History 根状态，用 desktop ProjectSession 激活官方 Distribution，执行确定性求值，再通过正式 Output Capability 生成 SVG。检查模式还会由 NodeProjectRepository 重读磁盘工程，并对 Bundle、Graph 和 SVG 做完整比较。
 
@@ -50,11 +51,11 @@ SVG 是纯文本确定性 Renderer，因此期望产物按字节比较。Canvas2
 
 E2E 使用系统临时目录和官方 Template 创建工程，启动已构建的 Studio 并通过 `--project` 打开。测试只依赖产品语义 Hook，例如 `data-phase`、`data-dirty`、`data-node-id`、ARIA 状态和保存状态；不增加测试专用领域分支。
 
-关闭路径必须通过原生 BrowserWindow close 触发 Main/Renderer 握手。测试等待 Electron 退出后，用独立 NodeProjectRepository 重开临时工程，确认未显式保存的最后一次重命名也已持久化。无论成功失败都清理临时目录；`examples/` 不可作为可写测试目录。
+关闭路径必须通过原生 BrowserWindow close 触发 Main/Renderer 握手。测试等待 Electron 退出后，先用独立 NodeProjectRepository 核验 Track、Easing、对齐结果和未显式保存的最后一次重命名，再重新启动 Studio 验证工程可见状态与时间线。无论成功失败都清理临时目录；`examples/` 不可作为可写测试目录。
 
 ## 5. 性能预算
 
-版本化工作负载位于 `benchmarks/foundation-baseline.json`，执行器是 `scripts/benchmark-foundation.mjs`。Baseline 保留首个全绿 GitHub Actions 运行的环境、实测值与来源 Run ID；每次新报告同时包含该参考、当前 Node/平台/架构、各阶段 total/p50/p95/max 和 SVG 字节数。
+版本化工作负载位于 `benchmarks/foundation-baseline.json`，执行器是 `scripts/benchmark-foundation.mjs`。除 Repository、Session、求值和 SVG 外，工作负载还以固定 ID/时间执行 80 次包含 Upsert 与 Move Keyframe 的原子创作事务。Baseline 保留相应工作负载首个全绿 GitHub Actions 运行的环境、实测值与来源 Run ID；每次新报告同时包含该参考、当前 Node/平台/架构、各阶段 total/p50/p95/max 和 SVG 字节数。
 
 当前预算刻意高于正常 CI 耗时，用来发现死循环、意外 I/O、重复装配和数量级退化，而不是拒绝几个毫秒的噪声。调整预算必须同时说明工作负载是否改变，并查看多次 `foundation-performance` Artifact；不能因为单次失败直接放宽阈值。
 

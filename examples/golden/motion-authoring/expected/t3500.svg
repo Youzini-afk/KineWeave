@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1920 1080" data-kineweave-document="document_main">
+  <rect width="1920" height="1080" fill="#111318" />
+  <g id="node_scene" transform="translate(0 0) rotate(0) scale(1 1) translate(0 0)" data-kineweave-source="kw://project/document/document_main/node/node_scene">
+    <rect id="node_panel" transform="translate(960 540) rotate(0) scale(1.0312770642792914 0.9175124912058267) translate(0 0)" data-kineweave-source="kw://project/document/document_main/node/node_panel" x="-640" y="-240" width="1280" height="480" rx="48" fill="#20283c" stroke="#405175" stroke-width="4" />
+    <ellipse id="node_orbit" transform="translate(960 540) rotate(0) scale(1 1) translate(0 0)" opacity="0.7" data-kineweave-source="kw://project/document/document_main/node/node_orbit" cx="0" cy="0" rx="280" ry="280" fill="#00000000" stroke="#5b7cff" stroke-width="10" />
+    <path id="node_mark" transform="translate(960 430) rotate(0) scale(1 1) translate(0 0)" data-kineweave-source="kw://project/document/document_main/node/node_mark" d="M 0 -72 L 62 0 L 0 72 L -62 0 Z" fill="#8ea3ff" stroke="#00000000" stroke-width="0" />
+    <text id="node_headline" transform="translate(1151.7000924375125 550.6215012009026) rotate(8.215718247321961) scale(1 1) translate(0 0)" data-kineweave-source="kw://project/document/document_main/node/node_headline" x="0" y="0" fill="#ffffff" font-family="sans-serif" font-size="88" text-anchor="middle" dominant-baseline="middle">Motion authoring</text>
+  </g>
+</svg>

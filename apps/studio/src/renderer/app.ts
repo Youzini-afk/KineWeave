@@ -235,6 +235,7 @@ function renderInspectorField(
 ): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = "inspector-field";
+  wrapper.dataset.property = field.property;
   const label = inputLabel(field.label);
   const editable = field.bindingKind !== "signal";
   const value =

@@ -10,10 +10,10 @@ KineWeave 已经由同一 ProjectSession 驱动 CLI、SVG 输出、Canvas2D Stag
 ## 决策
 
 1. Golden Fixture 是可被 Repository、CLI 和 Studio 直接打开的完整工程目录，不是只存在于测试代码中的对象。确定性生成器同时负责工程内容、History 根状态、采样 Graph 和 SVG 期望产物；生成内容不得手工局部修改。
-2. 当前 Golden 语义矩阵覆盖全部标准 Primitive、特殊字符、嵌套变换、透明度、可见性、number/vector2/color/boolean Track、linear/hold/cubic-bezier 以及 External Signal 默认值和覆盖值。语义改变时显式运行生成器，并把工程与期望结果作为同一个评审单元。
+2. 当前 Golden 语义矩阵覆盖全部标准 Primitive、特殊字符、嵌套变换、透明度、可见性、number/vector2/color/boolean Track、linear/hold/cubic-bezier、External Signal 默认值和覆盖值，以及多属性运动创作后的端点与区间采样。语义改变时显式运行生成器，并把工程与期望结果作为同一个评审单元。
 3. SVG 作为确定性文本输出，按完整字节做回归。Canvas2D 通过公开的无 DOM Surface Adapter 记录结构化绘制调用、Path、变换与命中结果；不把跨平台截图或字体像素作为当前语义 Oracle。
-4. Studio E2E 每次创建独立的系统临时工程，通过真实 Electron Main/Preload/Renderer、ProjectSession 和 Repository 执行打开、插入、选择、重命名、Undo/Redo、播放、显式保存与关闭保存握手，退出后再由 Repository 重开核验。仓库示例绝不作为可写 E2E Fixture。
-5. 性能门禁使用版本化 Golden 工作负载，分别测量 Repository Read、ProjectSession Open、确定性求值和 SVG 输出。预算是用于发现数量级回归的宽松上限，CI 同时保存原始报告；微小波动不作为失败依据。
+4. Studio E2E 每次创建独立的系统临时工程，通过真实 Electron Main/Preload/Renderer、ProjectSession 和 Repository 执行打开、插入、关键帧/Easing/时间移动、多选对齐、Undo/Redo、播放、显式保存与关闭保存握手；退出后同时由 Repository 和再次启动的 Studio 重开核验。仓库示例绝不作为可写 E2E Fixture。
+5. 性能门禁使用版本化 Golden 工作负载，分别测量 Repository Read、ProjectSession Open、确定性求值、SVG 输出和重复 Authoring Transaction。预算是用于发现数量级回归的宽松上限，CI 同时保存原始报告；微小波动不作为失败依据。
 6. Biome 是当前 TypeScript、JavaScript、JSON 和 CSS 的唯一格式与静态质量工具。Schema Validator、Golden 和性能工作负载都提供“生成”与“过期检查”两条明确路径。
 7. GitHub CI 是完整门禁的权威环境：Node 22/24 执行构建、Golden、单元和 Conformance；Node 22 执行性能预算；Linux Xvfb 执行 Electron E2E。工作站可运行针对性校验，不要求为得到可信结果重复承担全部重负载。
 

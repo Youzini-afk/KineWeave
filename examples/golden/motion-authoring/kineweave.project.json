@@ -1,0 +1,79 @@
+{
+  "capabilityRequirements": {
+    "org.kineweave.renderer/interactive": {
+      "contractVersion": "^1.0.0",
+      "preferredProvider": "org.kineweave.renderer/canvas2d",
+      "requiredFeatures": [
+        "org.kineweave.surface/canvas2d",
+        "org.kineweave.presentation/group",
+        "org.kineweave.presentation/text",
+        "org.kineweave.presentation/rectangle",
+        "org.kineweave.presentation/ellipse",
+        "org.kineweave.presentation/path",
+        "org.kineweave.color/srgb"
+      ]
+    },
+    "org.kineweave.renderer/output": {
+      "contractVersion": "^1.0.0",
+      "preferredProvider": "org.kineweave.renderer/svg",
+      "requiredFeatures": [
+        "org.kineweave.output/svg",
+        "org.kineweave.presentation/group",
+        "org.kineweave.presentation/text",
+        "org.kineweave.presentation/rectangle",
+        "org.kineweave.presentation/ellipse",
+        "org.kineweave.presentation/path",
+        "org.kineweave.color/srgb"
+      ]
+    }
+  },
+  "documents": {
+    "document_main": {
+      "documentType": "org.kineweave.standard-motion/composition",
+      "path": "documents/main.composition.json",
+      "schemaVersion": 2
+    }
+  },
+  "entryDocumentId": "document_main",
+  "extensionRequirements": {
+    "org.kineweave.canvas2d-renderer": {
+      "source": {
+        "kind": "package",
+        "packageName": "@kineweave/canvas2d-renderer"
+      },
+      "versionRange": "^0.1.0"
+    },
+    "org.kineweave.standard-motion": {
+      "source": {
+        "kind": "package",
+        "packageName": "@kineweave/standard-motion-document"
+      },
+      "versionRange": "^0.1.0"
+    },
+    "org.kineweave.svg-renderer": {
+      "source": {
+        "kind": "package",
+        "packageName": "@kineweave/svg-renderer"
+      },
+      "versionRange": "^0.1.0"
+    }
+  },
+  "name": "Golden · Motion Authoring",
+  "outputProfiles": {
+    "svg": {
+      "requiredFeatures": [
+        "org.kineweave.output/svg",
+        "org.kineweave.presentation/group",
+        "org.kineweave.presentation/text",
+        "org.kineweave.presentation/rectangle",
+        "org.kineweave.presentation/ellipse",
+        "org.kineweave.presentation/path",
+        "org.kineweave.color/srgb"
+      ],
+      "settings": {},
+      "target": "org.kineweave.output/svg"
+    }
+  },
+  "projectFormatVersion": 1,
+  "projectId": "project_golden_motion_authoring"
+}

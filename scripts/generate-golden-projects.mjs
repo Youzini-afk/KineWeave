@@ -175,6 +175,74 @@ function transformsVisibilityScene() {
   return finalize(bundle, document);
 }
 
+function motionAuthoringScene() {
+  const bundle = createOfficialProjectTemplate({
+    name: "Golden · Motion Authoring",
+    projectId: "project_golden_motion_authoring"
+  });
+  const document = composition(bundle);
+  const panel = document.data.nodes.node_panel;
+  const headline = document.data.nodes.node_headline;
+
+  headline.properties.content = constant("Motion authoring");
+  headline.properties.position = { kind: "track", trackId: "track_headline_position" };
+  headline.properties.rotation = { kind: "track", trackId: "track_headline_rotation" };
+  panel.properties.scale = { kind: "track", trackId: "track_panel_scale" };
+
+  document.data.tracks.track_headline_position = {
+    trackId: "track_headline_position",
+    valueType: STANDARD_VALUE_TYPES.vector2,
+    target: { nodeId: headline.nodeId, property: "position" },
+    keyframes: {
+      keyframe_position_start: keyframe(
+        "keyframe_position_start",
+        0,
+        [720, 620],
+        cubicBezierEasing(0.42, 0, 0.58, 1)
+      ),
+      keyframe_position_middle: keyframe(
+        "keyframe_position_middle",
+        2,
+        [960, 400],
+        cubicBezierEasing(0, 0, 0.58, 1)
+      ),
+      keyframe_position_end: keyframe("keyframe_position_end", 5, [1240, 620])
+    }
+  };
+  document.data.tracks.track_headline_rotation = {
+    trackId: "track_headline_rotation",
+    valueType: STANDARD_VALUE_TYPES.number,
+    target: { nodeId: headline.nodeId, property: "rotation" },
+    keyframes: {
+      keyframe_rotation_start: keyframe("keyframe_rotation_start", 0, -8, {
+        kind: STANDARD_KEYFRAME_EASINGS.linear
+      }),
+      keyframe_rotation_middle: keyframe(
+        "keyframe_rotation_middle",
+        2,
+        12,
+        cubicBezierEasing(0.42, 0, 1, 1)
+      ),
+      keyframe_rotation_end: keyframe("keyframe_rotation_end", 5, 0)
+    }
+  };
+  document.data.tracks.track_panel_scale = {
+    trackId: "track_panel_scale",
+    valueType: STANDARD_VALUE_TYPES.vector2,
+    target: { nodeId: panel.nodeId, property: "scale" },
+    keyframes: {
+      keyframe_scale_start: keyframe(
+        "keyframe_scale_start",
+        0,
+        [0.82, 0.82],
+        cubicBezierEasing(0.42, 0, 0.58, 1)
+      ),
+      keyframe_scale_end: keyframe("keyframe_scale_end", 5, [1.08, 0.94])
+    }
+  };
+  return finalize(bundle, document);
+}
+
 const fixtures = [
   {
     directory: "core-static-scene",
@@ -198,6 +266,16 @@ const fixtures = [
     directory: "transforms-visibility",
     bundle: transformsVisibilityScene(),
     samples: [{ name: "t0000", seconds: 0, externalSignals: {} }]
+  },
+  {
+    directory: "motion-authoring",
+    bundle: motionAuthoringScene(),
+    samples: [
+      { name: "t0000", seconds: 0, externalSignals: {} },
+      { name: "t2000", seconds: 2, externalSignals: {} },
+      { name: "t3500", seconds: 3.5, externalSignals: {} },
+      { name: "t5000", seconds: 5, externalSignals: {} }
+    ]
   }
 ];
 

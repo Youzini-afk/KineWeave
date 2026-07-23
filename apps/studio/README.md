@@ -19,7 +19,8 @@ pnpm studio --project ./examples/hello-kineweave
 - `src/preload.cts` / `src/bridge.ts`：context-isolated 类型桥；
 - `src/renderer/studio-project.ts`：唯一 ProjectSession 与编辑/求值入口；
 - `src/renderer/studio-controller.ts`：工作区状态、事务/求值/保存协调；
-- `src/renderer/stage-controller.ts`：Canvas2D Surface、Interactive Render Session、选择与拖动；
+- `src/renderer/stage-controller.ts`：Canvas2D Surface、Interactive Render Session、多选、吸附与临时变换预览；
+- `src/renderer/timeline-controller.ts`：Track/Keyframe/Easing、时长和时间线手势；
 - `src/renderer/app.ts`：可访问的 DOM 工作台和命令绑定。
 
 窗口关闭不是直接销毁：Main 先要求 Renderer 等待进行中的编辑、求值和保存，持久化成功后再关闭。Schema Validator 在仓库构建阶段生成，Renderer 的 CSP 不允许 `unsafe-eval`。

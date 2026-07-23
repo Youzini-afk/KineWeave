@@ -15,6 +15,11 @@ import {
   STANDARD_TIME_DOMAINS,
   timeValue
 } from "@kineweave/protocol";
+import {
+  STANDARD_KEYFRAME_EASINGS,
+  STANDARD_MOTION_OPERATIONS,
+  serializedTime
+} from "@kineweave/standard-motion-document";
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const baselinePath = path.join(repositoryRoot, "benchmarks", "foundation-baseline.json");
@@ -85,12 +90,55 @@ function evaluationRequest(index, iterations) {
   };
 }
 
+function authoringProposal(index) {
+  const keyframeId = "keyframe_benchmark_authoring";
+  const target = ["kw://project/document/document_main"];
+  const seconds = (numerator, denominator = 1) =>
+    serializedTime(timeValue(rational(numerator, denominator), STANDARD_TIME_DOMAINS.seconds));
+  return {
+    transactionId: `transaction_benchmark_authoring_${index}`,
+    branchName: "main",
+    origin: { kind: "user" },
+    operations: [
+      {
+        operationId: `operation_benchmark_upsert_${index}`,
+        operationType: STANDARD_MOTION_OPERATIONS.upsertKeyframe,
+        schemaVersion: 1,
+        targets: target,
+        payload: {
+          documentId: "document_main",
+          trackId: "track_orbit_opacity",
+          keyframe: {
+            keyframeId,
+            time: seconds(1),
+            value: ((index % 20) + 1) / 25,
+            easing: { kind: STANDARD_KEYFRAME_EASINGS.linear }
+          }
+        }
+      },
+      {
+        operationId: `operation_benchmark_move_${index}`,
+        operationType: STANDARD_MOTION_OPERATIONS.moveKeyframe,
+        schemaVersion: 1,
+        targets: target,
+        payload: {
+          documentId: "document_main",
+          trackId: "track_orbit_opacity",
+          keyframeId,
+          time: seconds(2)
+        }
+      }
+    ]
+  };
+}
+
 function assertWorkload() {
   const expected = {
     project: "examples/golden/animated-signals",
     warmupIterations: 8,
     evaluationIterations: 120,
-    svgRenderIterations: 120
+    svgRenderIterations: 120,
+    authoringTransactionIterations: 80
   };
   if (canonicalStringify(baseline.workload) !== canonicalStringify(expected)) {
     throw new Error("Foundation benchmark workload and baseline metadata disagree");
@@ -160,11 +208,18 @@ try {
       svgBytes = Buffer.byteLength(rendered.artifact.text, "utf8");
     }
   );
+  const authoringTransactionMetrics = await measureIterations(
+    baseline.workload.authoringTransactionIterations,
+    async (index) => {
+      await session.execute(authoringProposal(index));
+    }
+  );
   metrics = {
     repositoryReadMs,
     sessionOpenMs,
     evaluation: evaluationMetrics,
     svgRender: svgRenderMetrics,
+    authoringTransaction: authoringTransactionMetrics,
     svgBytes
   };
 } finally {
@@ -205,6 +260,21 @@ if (check) {
   compare("SVG render total", metrics.svgRender.totalMs, baseline.budgets.svgRenderTotalMs);
   compare("SVG render p95", metrics.svgRender.p95Ms, baseline.budgets.svgRenderP95Ms);
   compare("SVG render max", metrics.svgRender.maxMs, baseline.budgets.svgRenderMaxMs);
+  compare(
+    "authoring transaction total",
+    metrics.authoringTransaction.totalMs,
+    baseline.budgets.authoringTransactionTotalMs
+  );
+  compare(
+    "authoring transaction p95",
+    metrics.authoringTransaction.p95Ms,
+    baseline.budgets.authoringTransactionP95Ms
+  );
+  compare(
+    "authoring transaction max",
+    metrics.authoringTransaction.maxMs,
+    baseline.budgets.authoringTransactionMaxMs
+  );
   if (failures.length > 0) {
     throw new Error(`Foundation performance budgets exceeded:\n${failures.join("\n")}`);
   }

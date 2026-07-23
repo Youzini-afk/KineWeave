@@ -212,7 +212,11 @@ const samples = [
   ["animated-signals", "t0000-default"],
   ["animated-signals", "t2500-external"],
   ["animated-signals", "t5000-default"],
-  ["transforms-visibility", "t0000"]
+  ["transforms-visibility", "t0000"],
+  ["motion-authoring", "t0000"],
+  ["motion-authoring", "t2000"],
+  ["motion-authoring", "t3500"],
+  ["motion-authoring", "t5000"]
 ] as const;
 
 describe("official renderer conformance", () => {
