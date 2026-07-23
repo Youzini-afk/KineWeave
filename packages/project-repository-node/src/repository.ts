@@ -1,18 +1,10 @@
-import {
-  mkdir,
-  readFile,
-  readdir,
-  stat
-} from "node:fs/promises";
+import { mkdir, readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { HistoryGraph } from "@kineweave/history-engine";
+import { canonicalStringify, validateProjectBundle } from "@kineweave/project-format";
 import {
-  canonicalStringify,
-  validateProjectBundle
-} from "@kineweave/project-format";
-import {
-  hasErrorDiagnostics,
   type Diagnostic,
+  hasErrorDiagnostics,
   type JsonObject,
   type KineWeaveHistory,
   type KineWeaveLockfile,
@@ -21,11 +13,7 @@ import {
 } from "@kineweave/protocol";
 import { ProjectRepositoryError } from "./errors.js";
 import { sha256 } from "./hash.js";
-import {
-  applyFileTransaction,
-  recoverFileTransactions,
-  type WriteIntent
-} from "./journal.js";
+import { applyFileTransaction, recoverFileTransactions, type WriteIntent } from "./journal.js";
 import { resolveSafeProjectPath } from "./safe-path.js";
 import type {
   LoadedProjectBundle,
@@ -48,11 +36,7 @@ function isMissing(error: unknown): boolean {
   );
 }
 
-function diagnostic(
-  code: string,
-  message: string,
-  resourceUri?: string
-): Diagnostic {
+function diagnostic(code: string, message: string, resourceUri?: string): Diagnostic {
   return {
     severity: "error",
     code,
@@ -103,14 +87,10 @@ function bundleFiles(bundle: LoadedProjectBundle): Readonly<Record<string, strin
     [LOCKFILE_PATH]: canonicalStringify(bundle.lockfile as unknown as JsonObject),
     [HISTORY_PATH]: canonicalStringify(bundle.history as unknown as JsonObject)
   };
-  for (const [documentId, descriptor] of Object.entries(
-    bundle.manifest.documents
-  )) {
+  for (const [documentId, descriptor] of Object.entries(bundle.manifest.documents)) {
     const document = bundle.documents[documentId];
     if (document !== undefined) {
-      files[descriptor.path] = canonicalStringify(
-        document as unknown as JsonObject
-      );
+      files[descriptor.path] = canonicalStringify(document as unknown as JsonObject);
     }
   }
   return files;
@@ -132,9 +112,7 @@ function validateHistoryState(bundle: LoadedProjectBundle): readonly Diagnostic[
   const materialized = canonicalStringify(
     history.stateOfBranch(history.mainBranchName) as unknown as JsonObject
   );
-  const documents = canonicalStringify(
-    bundle.documents as unknown as JsonObject
-  );
+  const documents = canonicalStringify(bundle.documents as unknown as JsonObject);
   return materialized === documents
     ? []
     : [
@@ -167,13 +145,10 @@ export class NodeProjectRepository {
 
     try {
       await stat(root);
-    } catch (error) {
+    } catch (_error) {
       return {
         diagnostics: [
-          diagnostic(
-            "repository.root.missing",
-            `Project directory does not exist: ${root}`
-          )
+          diagnostic("repository.root.missing", `Project directory does not exist: ${root}`)
         ]
       };
     }
@@ -206,17 +181,8 @@ export class NodeProjectRepository {
       );
       return { diagnostics };
     }
-    const historyRaw = await readJson(
-      historyPath,
-      HISTORY_PATH,
-      fileHashes,
-      diagnostics
-    );
-    if (
-      manifestRaw === undefined ||
-      lockfileRaw === undefined ||
-      historyRaw === undefined
-    ) {
+    const historyRaw = await readJson(historyPath, HISTORY_PATH, fileHashes, diagnostics);
+    if (manifestRaw === undefined || lockfileRaw === undefined || historyRaw === undefined) {
       return { diagnostics };
     }
 
@@ -230,14 +196,9 @@ export class NodeProjectRepository {
     if (hasErrorDiagnostics(shallowDiagnostics)) return { diagnostics };
 
     const manifest = manifestRaw as KineWeaveProjectManifest;
-    const documents: Record<
-      string,
-      ProjectDocumentEnvelope<JsonObject>
-    > = {};
+    const documents: Record<string, ProjectDocumentEnvelope<JsonObject>> = {};
 
-    for (const [documentId, descriptor] of Object.entries(
-      manifest.documents
-    )) {
+    for (const [documentId, descriptor] of Object.entries(manifest.documents)) {
       let filePath: string;
       try {
         filePath = await resolveSafeProjectPath(root, descriptor.path);
@@ -250,12 +211,7 @@ export class NodeProjectRepository {
         );
         continue;
       }
-      const raw = await readJson(
-        filePath,
-        descriptor.path,
-        fileHashes,
-        diagnostics
-      );
+      const raw = await readJson(filePath, descriptor.path, fileHashes, diagnostics);
       if (raw !== undefined) {
         documents[documentId] = raw as ProjectDocumentEnvelope<JsonObject>;
       }
@@ -280,41 +236,27 @@ export class NodeProjectRepository {
     };
   }
 
-  async initialize(
-    rootPath: string,
-    bundle: LoadedProjectBundle
-  ): Promise<ProjectSnapshot> {
+  async initialize(rootPath: string, bundle: LoadedProjectBundle): Promise<ProjectSnapshot> {
     const root = path.resolve(rootPath);
     await mkdir(root, { recursive: true });
     const entries = await readdir(root);
     if (entries.length > 0) {
-      throw new ProjectRepositoryError(
-        `Cannot initialize non-empty directory ${root}`,
-        [
-          diagnostic(
-            "repository.initialize.not-empty",
-            `Directory is not empty: ${root}`
-          )
-        ]
-      );
+      throw new ProjectRepositoryError(`Cannot initialize non-empty directory ${root}`, [
+        diagnostic("repository.initialize.not-empty", `Directory is not empty: ${root}`)
+      ]);
     }
 
     const validation = validateLoadedBundle(bundle);
     if (hasErrorDiagnostics(validation)) {
-      throw new ProjectRepositoryError(
-        "Cannot initialize an invalid project",
-        validation
-      );
+      throw new ProjectRepositoryError("Cannot initialize an invalid project", validation);
     }
 
     const files = bundleFiles(bundle);
-    const intents: WriteIntent[] = Object.entries(files).map(
-      ([relativePath, content]) => ({
-        relativePath,
-        content,
-        expectedHash: null
-      })
-    );
+    const intents: WriteIntent[] = Object.entries(files).map(([relativePath, content]) => ({
+      relativePath,
+      content,
+      expectedHash: null
+    }));
     await applyFileTransaction(root, intents, this.options);
     const result = await this.read(root);
     if (result.snapshot === undefined) {
@@ -326,10 +268,7 @@ export class NodeProjectRepository {
     return result.snapshot;
   }
 
-  async save(
-    previous: ProjectSnapshot,
-    nextBundle: LoadedProjectBundle
-  ): Promise<ProjectSnapshot> {
+  async save(previous: ProjectSnapshot, nextBundle: LoadedProjectBundle): Promise<ProjectSnapshot> {
     const validation = validateLoadedBundle(nextBundle);
     if (hasErrorDiagnostics(validation)) {
       throw new ProjectRepositoryError("Cannot save an invalid project", validation);
@@ -337,10 +276,7 @@ export class NodeProjectRepository {
 
     const previousFiles = bundleFiles(previous.bundle);
     const nextFiles = bundleFiles(nextBundle);
-    const allPaths = new Set([
-      ...Object.keys(previousFiles),
-      ...Object.keys(nextFiles)
-    ]);
+    const allPaths = new Set([...Object.keys(previousFiles), ...Object.keys(nextFiles)]);
     const intents: WriteIntent[] = [];
 
     for (const relativePath of [...allPaths].sort()) {
@@ -372,10 +308,7 @@ export class NodeProjectRepository {
 
     const result = await this.read(previous.rootPath);
     if (result.snapshot === undefined) {
-      throw new ProjectRepositoryError(
-        "Saved project could not be read back",
-        result.diagnostics
-      );
+      throw new ProjectRepositoryError("Saved project could not be read back", result.diagnostics);
     }
     return result.snapshot;
   }

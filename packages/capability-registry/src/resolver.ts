@@ -42,11 +42,7 @@ type ResolutionResult =
       readonly depth: number;
     };
 
-function diagnostic(
-  severity: Diagnostic["severity"],
-  code: string,
-  message: string
-): Diagnostic {
+function diagnostic(severity: Diagnostic["severity"], code: string, message: string): Diagnostic {
   return {
     severity,
     code,
@@ -65,10 +61,7 @@ function supportsEnvironment(
 ): boolean {
   const constraint = descriptor.environment;
   if (constraint === undefined) return true;
-  if (
-    constraint.hostKinds !== undefined &&
-    !constraint.hostKinds.includes(environment.hostKind)
-  ) {
+  if (constraint.hostKinds !== undefined && !constraint.hostKinds.includes(environment.hostKind)) {
     return false;
   }
   if (
@@ -106,16 +99,12 @@ function satisfiesRequirement(
     satisfies(descriptor.contractVersion, requirement.contractVersion, {
       includePrerelease: true
     }) &&
-    (requirement.requiredFeatures ?? []).every((feature) =>
-      features.has(feature)
-    ) &&
+    (requirement.requiredFeatures ?? []).every((feature) => features.has(feature)) &&
     supportsEnvironment(descriptor, environment)
   );
 }
 
-function validateProviderCatalog(
-  providers: readonly CapabilityProviderDescriptor[]
-): void {
+function validateProviderCatalog(providers: readonly CapabilityProviderDescriptor[]): void {
   const keys = new Set<string>();
   for (const provider of providers) {
     assertNamespacedId(provider.capabilityId, "capability id");
@@ -149,8 +138,7 @@ function preference(
   if (projectPreference !== undefined) {
     ordered.push({ providerId: projectPreference, reason: "project-preference" });
   }
-  const distributionDefault =
-    input.distributionDefaults?.[requirement.capabilityId];
+  const distributionDefault = input.distributionDefaults?.[requirement.capabilityId];
   if (distributionDefault !== undefined) {
     ordered.push({
       providerId: distributionDefault,
@@ -159,8 +147,7 @@ function preference(
   }
   return ordered.filter(
     (item, index, all) =>
-      all.findIndex((candidate) => candidate.providerId === item.providerId) ===
-      index
+      all.findIndex((candidate) => candidate.providerId === item.providerId) === index
   );
 }
 
@@ -177,9 +164,7 @@ function orderedCandidates(
 ): readonly CapabilityBinding[] {
   const preferred = preference(requirement, input);
   return input.providers
-    .filter((provider) =>
-      satisfiesRequirement(provider, requirement, input.environment)
-    )
+    .filter((provider) => satisfiesRequirement(provider, requirement, input.environment))
     .map((descriptor) => ({
       descriptor,
       reason: candidateReason(descriptor.providerId, preferred)
@@ -200,8 +185,7 @@ function orderedCandidates(
       if (leftSupersedes !== rightSupersedes) {
         return rightSupersedes - leftSupersedes;
       }
-      const priority =
-        (right.descriptor.priority ?? 0) - (left.descriptor.priority ?? 0);
+      const priority = (right.descriptor.priority ?? 0) - (left.descriptor.priority ?? 0);
       if (priority !== 0) return priority;
       const version = compare(
         right.descriptor.implementationVersion,
@@ -233,10 +217,7 @@ function lockedCandidate(
     : { descriptor, reason: "lockfile" };
 }
 
-function failed(
-  depth: number,
-  item: Diagnostic
-): ResolutionResult {
+function failed(depth: number, item: Diagnostic): ResolutionResult {
   return { ok: false, diagnostics: [item], depth };
 }
 
@@ -281,10 +262,7 @@ function solveRequirements(
       diagnostic(
         "error",
         "capability.dependency.cycle",
-        `Capability dependency cycle: ${[
-          ...current.stack,
-          requirement.capabilityId
-        ].join(" -> ")}`
+        `Capability dependency cycle: ${[...current.stack, requirement.capabilityId].join(" -> ")}`
       )
     );
   }
@@ -320,21 +298,19 @@ function solveRequirements(
     );
   }
 
-  const candidates = locked === undefined
-    ? orderedCandidates(requirement, input)
-    : [locked];
+  const candidates = locked === undefined ? orderedCandidates(requirement, input) : [locked];
 
   let bestFailure: ResolutionResult | undefined;
   for (const candidate of candidates) {
     const nextBindings = new Map(bindings);
     nextBindings.set(requirement.capabilityId, candidate);
     const dependencyStack = [...current.stack, requirement.capabilityId];
-    const dependencies: PendingRequirement[] = (
-      candidate.descriptor.requires ?? []
-    ).map((dependency) => ({
-      requirement: dependency,
-      stack: dependencyStack
-    }));
+    const dependencies: PendingRequirement[] = (candidate.descriptor.requires ?? []).map(
+      (dependency) => ({
+        requirement: dependency,
+        stack: dependencyStack
+      })
+    );
     const attempt = solveRequirements(
       [...dependencies, ...remaining],
       input,
@@ -391,9 +367,7 @@ function activationOrder(
   return ordered;
 }
 
-export function resolveCapabilityPlan(
-  input: CapabilityResolutionInput
-): CapabilityResolutionPlan {
+export function resolveCapabilityPlan(input: CapabilityResolutionInput): CapabilityResolutionPlan {
   validateProviderCatalog(input.providers);
   const result = solveRequirements(
     input.requirements.map((requirement) => ({ requirement, stack: [] })),
@@ -402,9 +376,7 @@ export function resolveCapabilityPlan(
   );
   const resolvedBindings = result.ok ? result.bindings : new Map<string, CapabilityBinding>();
   const bindings = Object.fromEntries(
-    [...resolvedBindings.entries()].sort(([left], [right]) =>
-      left.localeCompare(right)
-    )
+    [...resolvedBindings.entries()].sort(([left], [right]) => left.localeCompare(right))
   );
   return {
     bindings,

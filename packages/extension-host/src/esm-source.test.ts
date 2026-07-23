@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
 import type { ExtensionManifest } from "@kineweave/protocol";
+import { describe, expect, it, vi } from "vitest";
 import { createEsmExtensionSource } from "./esm-source.js";
 
 const manifest: ExtensionManifest = {

@@ -15,7 +15,9 @@
       "import": "./dist/manifest.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@kineweave/evaluation-engine": "workspace:*",
     "@kineweave/extension-api": "workspace:*",

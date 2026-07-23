@@ -1,13 +1,13 @@
-import { describe, expect, it } from "vitest";
 import {
   PRESENTATION_GRAPH_VERSION,
+  type ResolvedPresentationGraph,
+  rational,
   STANDARD_COLOR_SPACES,
   STANDARD_PRESENTATION_PRIMITIVES,
   STANDARD_TIME_DOMAINS,
-  rational,
-  timeValue,
-  type ResolvedPresentationGraph
+  timeValue
 } from "@kineweave/protocol";
+import { describe, expect, it } from "vitest";
 import { svgRendererProvider } from "./renderer.js";
 
 function graph(): ResolvedPresentationGraph {
@@ -40,10 +40,7 @@ function graph(): ResolvedPresentationGraph {
         }
       }
     },
-    requiredFeatures: [
-      STANDARD_PRESENTATION_PRIMITIVES.text,
-      STANDARD_COLOR_SPACES.srgb
-    ],
+    requiredFeatures: [STANDARD_PRESENTATION_PRIMITIVES.text, STANDARD_COLOR_SPACES.srgb],
     metadata: {
       compositionCanvas: { width: 800, height: 450 }
     }

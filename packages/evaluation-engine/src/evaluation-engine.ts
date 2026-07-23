@@ -1,21 +1,21 @@
+import { validateDocumentEnvelopeSchema } from "@kineweave/project-format";
 import {
   assertJsonValue,
   assertQualifiedName,
   assertStableId,
   cloneJson,
   compareRational,
-  hasErrorDiagnostics,
-  parseRational,
-  rational,
-  timeValue,
   type Diagnostic,
   type EvaluationRequest,
+  hasErrorDiagnostics,
   type JsonObject,
   type JsonValue,
   type ProjectDocumentEnvelope,
-  type ResolvedPresentationGraph
+  parseRational,
+  type ResolvedPresentationGraph,
+  rational,
+  timeValue
 } from "@kineweave/protocol";
-import { validateDocumentEnvelopeSchema } from "@kineweave/project-format";
 import { validatePresentationGraph } from "./presentation-validation.js";
 import type {
   DocumentEvaluator,
@@ -42,10 +42,7 @@ function error(code: string, message: string, jsonPointer?: string): Diagnostic 
 
 function cloneState(state: EvaluationDocumentState): Record<string, JsonValue> {
   return Object.fromEntries(
-    Object.entries(state).map(([documentId, document]) => [
-      documentId,
-      cloneJson(document)
-    ])
+    Object.entries(state).map(([documentId, document]) => [documentId, cloneJson(document)])
   );
 }
 
@@ -59,22 +56,13 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function isDiagnostic(value: unknown): value is Diagnostic {
   if (!isPlainObject(value)) return false;
-  if (
-    value.severity !== "info" &&
-    value.severity !== "warning" &&
-    value.severity !== "error"
-  ) {
+  if (value.severity !== "info" && value.severity !== "warning" && value.severity !== "error") {
     return false;
   }
   if (typeof value.code !== "string" || typeof value.message !== "string") {
     return false;
   }
-  for (const key of [
-    "resourceUri",
-    "jsonPointer",
-    "documentId",
-    "source"
-  ] as const) {
+  for (const key of ["resourceUri", "jsonPointer", "documentId", "source"] as const) {
     if (value[key] !== undefined && typeof value[key] !== "string") return false;
   }
   if (value.details !== undefined) {
@@ -215,15 +203,13 @@ export class EvaluationEngine implements EvaluationContributionRegistry {
     const rawDocument = documents[normalized.documentId];
     if (rawDocument === undefined) {
       throw new EvaluationRejectedError("Evaluation document is missing", [
-        error(
-          "evaluation.document.missing",
-          `Document ${normalized.documentId} does not exist`
-        )
+        error("evaluation.document.missing", `Document ${normalized.documentId} does not exist`)
       ]);
     }
-    const envelopeDiagnostics = validateDocumentEnvelopeSchema(rawDocument).map(
-      (item) => ({ ...item, documentId: normalized.documentId })
-    );
+    const envelopeDiagnostics = validateDocumentEnvelopeSchema(rawDocument).map((item) => ({
+      ...item,
+      documentId: normalized.documentId
+    }));
     if (hasErrorDiagnostics(envelopeDiagnostics)) {
       throw new EvaluationRejectedError(
         "Evaluation document envelope is invalid",
@@ -268,27 +254,18 @@ export class EvaluationEngine implements EvaluationContributionRegistry {
     }
     let evaluatorDiagnostics: readonly Diagnostic[] = [];
     if (output.diagnostics !== undefined) {
-      if (
-        !Array.isArray(output.diagnostics) ||
-        !output.diagnostics.every(isDiagnostic)
-      ) {
-        throw new EvaluationRejectedError(
-          "Document evaluator returned invalid diagnostics",
-          [
-            error(
-              "evaluation.evaluator.diagnostics-invalid",
-              "Evaluator diagnostics must contain valid Diagnostic objects"
-            )
-          ]
-        );
+      if (!Array.isArray(output.diagnostics) || !output.diagnostics.every(isDiagnostic)) {
+        throw new EvaluationRejectedError("Document evaluator returned invalid diagnostics", [
+          error(
+            "evaluation.evaluator.diagnostics-invalid",
+            "Evaluator diagnostics must contain valid Diagnostic objects"
+          )
+        ]);
       }
       evaluatorDiagnostics = output.diagnostics;
     }
     const graphDiagnostics = validatePresentationGraph(output.graph);
-    const diagnostics: Diagnostic[] = [
-      ...evaluatorDiagnostics,
-      ...graphDiagnostics
-    ];
+    const diagnostics: Diagnostic[] = [...evaluatorDiagnostics, ...graphDiagnostics];
     if (hasErrorDiagnostics(graphDiagnostics)) {
       throw new EvaluationRejectedError("Evaluation output is invalid", diagnostics);
     }
@@ -314,19 +291,13 @@ export class EvaluationEngine implements EvaluationContributionRegistry {
       compareRational(graph.time.value, normalized.time.value) !== 0
     ) {
       diagnostics.push(
-        error(
-          "evaluation.graph.time-mismatch",
-          "Evaluator returned a graph for a different time"
-        )
+        error("evaluation.graph.time-mismatch", "Evaluator returned a graph for a different time")
       );
     }
     if (
       graph.viewport.width !== normalized.viewport.width ||
       graph.viewport.height !== normalized.viewport.height ||
-      compareRational(
-        graph.viewport.pixelRatio,
-        normalized.viewport.pixelRatio
-      ) !== 0
+      compareRational(graph.viewport.pixelRatio, normalized.viewport.pixelRatio) !== 0
     ) {
       diagnostics.push(
         error(

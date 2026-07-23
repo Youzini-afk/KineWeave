@@ -17,10 +17,7 @@ export interface KineWeaveDistributionProfile {
 export interface ProjectSessionHost {
   readonly hostKind: HostKind;
   readonly supportedRuntimes: readonly ExtensionRuntimeKind[];
-  readonly environment?: Omit<
-    CapabilityEnvironment,
-    "hostKind" | "evaluationMode"
-  >;
+  readonly environment?: Omit<CapabilityEnvironment, "hostKind" | "evaluationMode">;
   readonly now: () => Date;
   readonly createCommitId: () => string;
 }

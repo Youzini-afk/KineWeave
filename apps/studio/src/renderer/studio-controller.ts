@@ -1,12 +1,12 @@
 import type { Diagnostic, JsonValue } from "@kineweave/protocol";
 import {
-  STANDARD_NODE_TYPES,
   constant,
   createEllipseNode,
   createPathNode,
   createRectangleNode,
   createTextNode,
   type MotionNode,
+  STANDARD_NODE_TYPES,
   type StandardCompositionDocument
 } from "@kineweave/standard-motion-document";
 import type { StudioHostApi } from "../bridge.js";
@@ -17,11 +17,7 @@ import {
   findLayerParent,
   flattenLayerTree
 } from "./studio-model.js";
-import {
-  StudioProject,
-  StudioProjectError,
-  type StudioHistoryEntry
-} from "./studio-project.js";
+import { type StudioHistoryEntry, StudioProject, StudioProjectError } from "./studio-project.js";
 
 export type StudioPhase = "welcome" | "opening" | "ready" | "error";
 export type StudioStatusKind = "info" | "success" | "warning" | "error";
@@ -101,11 +97,7 @@ export class StudioController {
   #playbackStartedAt = 0;
   #playbackStartedFrom = 0;
 
-  constructor(
-    host: StudioHostApi,
-    canvas: HTMLCanvasElement,
-    selection: SVGPolygonElement
-  ) {
+  constructor(host: StudioHostApi, canvas: HTMLCanvasElement, selection: SVGPolygonElement) {
     this.#host = host;
     this.#stage = new StageController(canvas, selection, {
       onSelect: (nodeId) => this.selectNode(nodeId),
@@ -131,9 +123,7 @@ export class StudioController {
             rootPath: this.#project.rootPath
           }),
       ...(this.#document === undefined ? {} : { document: this.#document }),
-      ...(this.#selectedNodeId === undefined
-        ? {}
-        : { selectedNodeId: this.#selectedNodeId }),
+      ...(this.#selectedNodeId === undefined ? {} : { selectedNodeId: this.#selectedNodeId }),
       playheadSeconds: this.#playheadSeconds,
       durationSeconds: this.#durationSeconds,
       playing: this.#playing,
@@ -204,12 +194,13 @@ export class StudioController {
           this.reportError(error);
         }
       }
-    } catch (error) {
+    } catch (caught) {
+      let openError: unknown = caught;
       try {
         await candidate?.dispose();
       } catch (disposeError) {
-        error = new AggregateError(
-          [error, disposeError],
+        openError = new AggregateError(
+          [openError, disposeError],
           "Opening the project failed and cleanup was incomplete"
         );
       }
@@ -222,15 +213,15 @@ export class StudioController {
           await this.#stage.present(previousProject.session, restored.graph);
           this.#stage.select(this.#selectedNodeId);
         } catch (restoreError) {
-          error = new AggregateError(
-            [error, restoreError],
+          openError = new AggregateError(
+            [openError, restoreError],
             "The new project failed to open and the previous Stage could not be restored"
           );
         }
       }
       this.#phase = previousProject === undefined ? "error" : "ready";
-      this.#diagnostics = diagnosticFromError(error);
-      this.#status = { kind: "error", message: messageFromError(error) };
+      this.#diagnostics = diagnosticFromError(openError);
+      this.#status = { kind: "error", message: messageFromError(openError) };
       this.#emit();
     }
   }
@@ -265,11 +256,7 @@ export class StudioController {
   }
 
   play(): void {
-    if (
-      this.#playing ||
-      this.#project === undefined ||
-      this.#prepareClosePromise !== undefined
-    ) {
+    if (this.#playing || this.#project === undefined || this.#prepareClosePromise !== undefined) {
       return;
     }
     this.#playing = true;
@@ -280,8 +267,7 @@ export class StudioController {
     const tick = (now: number): void => {
       if (!this.#playing) return;
       const elapsed = (now - this.#playbackStartedAt) / 1000;
-      this.#playheadSeconds =
-        (this.#playbackStartedFrom + elapsed) % this.#durationSeconds;
+      this.#playheadSeconds = (this.#playbackStartedFrom + elapsed) % this.#durationSeconds;
       this.#emit();
       void this.#requestEvaluation().catch(() => {});
       this.#playbackFrame = requestAnimationFrame(tick);
@@ -328,26 +314,26 @@ export class StudioController {
     if (kind === "text") node = createTextNode(nodeId, "New text");
     else if (kind === "rectangle") node = createRectangleNode(nodeId, 360, 220);
     else if (kind === "ellipse") node = createEllipseNode(nodeId, 260, 260);
-    else node = createPathNode(nodeId, "M 0 -90 L 24 -28 L 86 -28 L 36 10 L 54 72 L 0 36 L -54 72 L -36 10 L -86 -28 L -24 -28 Z");
+    else
+      node = createPathNode(
+        nodeId,
+        "M 0 -90 L 24 -28 L 86 -28 L 36 10 L 54 72 L 0 36 L -54 72 L -36 10 L -86 -28 L -24 -28 Z"
+      );
     const selected =
-      this.#selectedNodeId === undefined
-        ? undefined
-        : document.data.nodes[this.#selectedNodeId];
+      this.#selectedNodeId === undefined ? undefined : document.data.nodes[this.#selectedNodeId];
     const selectedParent =
-      selected === undefined
-        ? undefined
-        : findLayerParent(document, selected.nodeId)?.parentNodeId;
+      selected === undefined ? undefined : findLayerParent(document, selected.nodeId)?.parentNodeId;
     const defaultRootGroup = document.data.rootNodeIds.find(
       (rootId) => document.data.nodes[rootId]?.nodeType === STANDARD_NODE_TYPES.group
     );
     const parentNodeId =
       selected?.nodeType === STANDARD_NODE_TYPES.group
         ? selected.nodeId
-        : selectedParent ?? defaultRootGroup ?? null;
+        : (selectedParent ?? defaultRootGroup ?? null);
     const siblings =
       parentNodeId === null
         ? document.data.rootNodeIds
-        : document.data.nodes[parentNodeId]?.children ?? document.data.rootNodeIds;
+        : (document.data.nodes[parentNodeId]?.children ?? document.data.rootNodeIds);
     node.properties.position = constant([
       document.data.canvas.width / 2,
       document.data.canvas.height / 2
@@ -364,10 +350,7 @@ export class StudioController {
     if (nodeId === undefined) return;
     const document = this.#requiredDocument();
     const parent = findLayerParent(document, nodeId)?.parentNodeId;
-    await this.#mutate(
-      () => this.#requiredProject().removeNode(nodeId),
-      "Removed layer"
-    );
+    await this.#mutate(() => this.#requiredProject().removeNode(nodeId), "Removed layer");
     this.selectNode(parent ?? undefined);
   }
 
@@ -381,18 +364,10 @@ export class StudioController {
       location.parentNodeId === null
         ? document.data.rootNodeIds
         : document.data.nodes[location.parentNodeId]!.children;
-    const nextIndex = Math.min(
-      Math.max(0, location.index + direction),
-      siblings.length - 1
-    );
+    const nextIndex = Math.min(Math.max(0, location.index + direction), siblings.length - 1);
     if (nextIndex === location.index) return Promise.resolve();
     return this.#mutate(
-      () =>
-        this.#requiredProject().moveNode(
-          nodeId,
-          location.parentNodeId,
-          nextIndex
-        ),
+      () => this.#requiredProject().moveNode(nodeId, location.parentNodeId, nextIndex),
       "Reordered layer"
     );
   }
@@ -535,10 +510,7 @@ export class StudioController {
       this.#selectedNodeId = undefined;
       this.#stage.select(undefined);
     }
-    this.#durationSeconds = Math.max(
-      0.001,
-      compositionDurationSeconds(this.#document)
-    );
+    this.#durationSeconds = Math.max(0.001, compositionDurationSeconds(this.#document));
     this.#mutationRevision += 1;
     this.#panelRevision += 1;
     this.#dirty = true;
@@ -565,10 +537,7 @@ export class StudioController {
         this.#evaluationRequested = false;
         const project = this.#project;
         if (project === undefined) return;
-        const result = await project.evaluate(
-          this.#playheadSeconds,
-          this.#stage.viewport()
-        );
+        const result = await project.evaluate(this.#playheadSeconds, this.#stage.viewport());
         if (project !== this.#project) return;
         this.#diagnostics = result.diagnostics;
         await this.#stage.present(project.session, result.graph);

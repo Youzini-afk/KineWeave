@@ -3,24 +3,24 @@ import { validatePresentationGraph } from "@kineweave/evaluation-engine";
 import {
   assertQualifiedName,
   assertStableId,
-  hasErrorDiagnostics,
   type CapabilityProviderDescriptor,
   type Diagnostic,
-  type EvaluationMode
+  type EvaluationMode,
+  hasErrorDiagnostics
 } from "@kineweave/protocol";
 import {
   INTERACTIVE_RENDERER_CAPABILITY_ID,
   INTERACTIVE_RENDERER_CONTRACT_VERSION,
-  OUTPUT_RENDERER_CAPABILITY_ID,
-  OUTPUT_RENDERER_CONTRACT_VERSION,
   type InteractiveHit,
   type InteractiveHitTestRequest,
-  type InteractiveRenderSession,
-  type InteractiveRenderSessionOpenRequest,
-  type InteractiveRenderSurface,
   type InteractiveRendererFrameRequest,
   type InteractiveRendererInstance,
   type InteractiveRendererProvider,
+  type InteractiveRenderSession,
+  type InteractiveRenderSessionOpenRequest,
+  type InteractiveRenderSurface,
+  OUTPUT_RENDERER_CAPABILITY_ID,
+  OUTPUT_RENDERER_CONTRACT_VERSION,
   type OutputRenderArtifact,
   type OutputRenderExecutionRequest,
   type OutputRenderExecutionResult,
@@ -106,19 +106,9 @@ function validateArtifact(artifact: OutputRenderArtifact): readonly Diagnostic[]
   if (artifact.kind === "binary") {
     return artifact.bytes instanceof Uint8Array
       ? []
-      : [
-          error(
-            "render.output.artifact-invalid",
-            "Binary output requires Uint8Array bytes"
-          )
-        ];
+      : [error("render.output.artifact-invalid", "Binary output requires Uint8Array bytes")];
   }
-  return [
-    error(
-      "render.output.artifact-invalid",
-      "Output artifact kind must be text or binary"
-    )
-  ];
+  return [error("render.output.artifact-invalid", "Output artifact kind must be text or binary")];
 }
 
 function validateHits(hits: readonly InteractiveHit[]): readonly Diagnostic[] {
@@ -194,11 +184,9 @@ class ManagedInteractiveRenderSession implements InteractiveRenderSession {
       throw new RenderRejectedError("Presentation graph is invalid", graphDiagnostics);
     }
     this.#assertFeatures(
-      uniqueFeatures(
-        request.graph.requiredFeatures,
-        this.#fixedRequiredFeatures,
-        [this.#surface.surfaceType]
-      )
+      uniqueFeatures(request.graph.requiredFeatures, this.#fixedRequiredFeatures, [
+        this.#surface.surfaceType
+      ])
     );
     try {
       await this.#instance.renderFrame(request);
@@ -232,16 +220,12 @@ class ManagedInteractiveRenderSession implements InteractiveRenderSession {
     }
   }
 
-  async hitTest(
-    request: InteractiveHitTestRequest
-  ): Promise<readonly InteractiveHit[]> {
+  async hitTest(request: InteractiveHitTestRequest): Promise<readonly InteractiveHit[]> {
     this.#assertOpen();
     if (
       !Number.isFinite(request.x) ||
       !Number.isFinite(request.y) ||
-      (request.mode !== undefined &&
-        request.mode !== "topmost" &&
-        request.mode !== "all")
+      (request.mode !== undefined && request.mode !== "topmost" && request.mode !== "all")
     ) {
       throw new RenderRejectedError("Interactive hit test is invalid", [
         error(
@@ -263,10 +247,7 @@ class ManagedInteractiveRenderSession implements InteractiveRenderSession {
     }
     const diagnostics = validateHits(hits);
     if (hasErrorDiagnostics(diagnostics)) {
-      throw new RenderRejectedError(
-        "Interactive renderer returned invalid hits",
-        diagnostics
-      );
+      throw new RenderRejectedError("Interactive renderer returned invalid hits", diagnostics);
     }
     return structuredClone(hits);
   }
@@ -325,11 +306,7 @@ export class RenderEngine implements RendererContributionRegistry {
 
   registerOutputRenderer(provider: OutputRendererProvider): () => void {
     this.#assertOpen();
-    return this.#registerProvider(
-      provider,
-      OUTPUT_RENDERER_CAPABILITY_ID,
-      this.#outputProviders
-    );
+    return this.#registerProvider(provider, OUTPUT_RENDERER_CAPABILITY_ID, this.#outputProviders);
   }
 
   registerInteractiveRenderer(provider: InteractiveRendererProvider): () => void {
@@ -341,9 +318,7 @@ export class RenderEngine implements RendererContributionRegistry {
     );
   }
 
-  async renderOutput(
-    request: OutputRenderExecutionRequest
-  ): Promise<OutputRenderExecutionResult> {
+  async renderOutput(request: OutputRenderExecutionRequest): Promise<OutputRenderExecutionResult> {
     this.#assertOpen();
     const graphDiagnostics = validatePresentationGraph(request.graph);
     if (hasErrorDiagnostics(graphDiagnostics)) {
@@ -420,11 +395,9 @@ export class RenderEngine implements RendererContributionRegistry {
       INTERACTIVE_RENDERER_CONTRACT_VERSION,
       this.#interactiveProviders,
       request.evaluationMode,
-      uniqueFeatures(
-        request.graph.requiredFeatures,
-        fixedRequiredFeatures,
-        [request.surface.surfaceType]
-      ),
+      uniqueFeatures(request.graph.requiredFeatures, fixedRequiredFeatures, [
+        request.surface.surfaceType
+      ]),
       request.preferredProviderIds
     );
     let instance: InteractiveRendererInstance;

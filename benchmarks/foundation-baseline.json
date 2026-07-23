@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "workload": {
+    "project": "examples/golden/animated-signals",
+    "warmupIterations": 8,
+    "evaluationIterations": 120,
+    "svgRenderIterations": 120
+  },
+  "budgets": {
+    "repositoryReadMs": 1500,
+    "sessionOpenMs": 3000,
+    "evaluationTotalMs": 6000,
+    "evaluationP95Ms": 75,
+    "evaluationMaxMs": 250,
+    "svgRenderTotalMs": 4000,
+    "svgRenderP95Ms": 40,
+    "svgRenderMaxMs": 200
+  }
+}

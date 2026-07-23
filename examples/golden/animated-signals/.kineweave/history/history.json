@@ -1,0 +1,387 @@
+{
+  "branches": {
+    "main": "commit_root"
+  },
+  "commits": {},
+  "historyFormatVersion": 1,
+  "mainBranchName": "main",
+  "rootCommitId": "commit_root",
+  "rootDocuments": {
+    "document_main": {
+      "data": {
+        "canvas": {
+          "background": {
+            "kind": "constant",
+            "value": "#111318"
+          },
+          "colorSpace": "org.kineweave.color/srgb",
+          "height": 1080,
+          "pixelAspectRatio": {
+            "denominator": "1",
+            "numerator": "1"
+          },
+          "width": 1920
+        },
+        "duration": {
+          "domain": "org.kineweave.time/seconds",
+          "value": {
+            "denominator": "1",
+            "numerator": "5"
+          }
+        },
+        "name": "Main Composition",
+        "nodes": {
+          "node_headline": {
+            "children": [],
+            "data": {},
+            "enabled": true,
+            "name": "Text",
+            "nodeId": "node_headline",
+            "nodeType": "org.kineweave.standard-motion/text",
+            "properties": {
+              "content": {
+                "kind": "signal",
+                "signalId": "signal_title"
+              },
+              "fill": {
+                "kind": "constant",
+                "value": "#ffffff"
+              },
+              "fontSize": {
+                "kind": "constant",
+                "value": 88
+              },
+              "position": {
+                "kind": "constant",
+                "value": [
+                  960,
+                  620
+                ]
+              }
+            },
+            "schemaVersion": 2
+          },
+          "node_mark": {
+            "children": [],
+            "data": {},
+            "enabled": true,
+            "name": "Path",
+            "nodeId": "node_mark",
+            "nodeType": "org.kineweave.standard-motion/path",
+            "properties": {
+              "fill": {
+                "kind": "track",
+                "trackId": "track_mark_fill"
+              },
+              "path": {
+                "kind": "constant",
+                "value": "M 0 -72 L 62 0 L 0 72 L -62 0 Z"
+              },
+              "position": {
+                "kind": "constant",
+                "value": [
+                  960,
+                  430
+                ]
+              },
+              "stroke": {
+                "kind": "constant",
+                "value": "#00000000"
+              },
+              "strokeWidth": {
+                "kind": "constant",
+                "value": 0
+              },
+              "visible": {
+                "kind": "track",
+                "trackId": "track_mark_visible"
+              }
+            },
+            "schemaVersion": 2
+          },
+          "node_orbit": {
+            "children": [],
+            "data": {},
+            "enabled": true,
+            "name": "Ellipse",
+            "nodeId": "node_orbit",
+            "nodeType": "org.kineweave.standard-motion/ellipse",
+            "properties": {
+              "fill": {
+                "kind": "constant",
+                "value": "#00000000"
+              },
+              "opacity": {
+                "kind": "track",
+                "trackId": "track_orbit_opacity"
+              },
+              "position": {
+                "kind": "constant",
+                "value": [
+                  960,
+                  540
+                ]
+              },
+              "size": {
+                "kind": "constant",
+                "value": [
+                  560,
+                  560
+                ]
+              },
+              "stroke": {
+                "kind": "constant",
+                "value": "#5b7cff"
+              },
+              "strokeWidth": {
+                "kind": "constant",
+                "value": 10
+              }
+            },
+            "schemaVersion": 2
+          },
+          "node_panel": {
+            "children": [],
+            "data": {},
+            "enabled": true,
+            "name": "Rectangle",
+            "nodeId": "node_panel",
+            "nodeType": "org.kineweave.standard-motion/rectangle",
+            "properties": {
+              "cornerRadius": {
+                "kind": "constant",
+                "value": 48
+              },
+              "fill": {
+                "kind": "constant",
+                "value": "#20283c"
+              },
+              "position": {
+                "kind": "track",
+                "trackId": "track_panel_position"
+              },
+              "size": {
+                "kind": "constant",
+                "value": [
+                  1280,
+                  480
+                ]
+              },
+              "stroke": {
+                "kind": "constant",
+                "value": "#405175"
+              },
+              "strokeWidth": {
+                "kind": "constant",
+                "value": 4
+              }
+            },
+            "schemaVersion": 2
+          },
+          "node_scene": {
+            "children": [
+              "node_panel",
+              "node_orbit",
+              "node_mark",
+              "node_headline"
+            ],
+            "data": {},
+            "enabled": true,
+            "name": "Scene",
+            "nodeId": "node_scene",
+            "nodeType": "org.kineweave.standard-motion/group",
+            "properties": {},
+            "schemaVersion": 2
+          }
+        },
+        "rootNodeIds": [
+          "node_scene"
+        ],
+        "signals": {
+          "signal_title": {
+            "data": {
+              "defaultValue": "Signal default",
+              "key": "title"
+            },
+            "schemaVersion": 1,
+            "signalId": "signal_title",
+            "signalType": "org.kineweave.standard-motion/external-signal",
+            "valueType": "org.kineweave.value/string"
+          }
+        },
+        "tracks": {
+          "track_mark_fill": {
+            "keyframes": {
+              "keyframe_fill_end": {
+                "keyframeId": "keyframe_fill_end",
+                "time": {
+                  "domain": "org.kineweave.time/seconds",
+                  "value": {
+                    "denominator": "1",
+                    "numerator": "5"
+                  }
+                },
+                "value": "#40d9ff"
+              },
+              "keyframe_fill_start": {
+                "easing": {
+                  "kind": "linear"
+                },
+                "keyframeId": "keyframe_fill_start",
+                "time": {
+                  "domain": "org.kineweave.time/seconds",
+                  "value": {
+                    "denominator": "1",
+                    "numerator": "0"
+                  }
+                },
+                "value": "#ff4060"
+              }
+            },
+            "target": {
+              "nodeId": "node_mark",
+              "property": "fill"
+            },
+            "trackId": "track_mark_fill",
+            "valueType": "org.kineweave.value/color"
+          },
+          "track_mark_visible": {
+            "keyframes": {
+              "keyframe_visible_end": {
+                "keyframeId": "keyframe_visible_end",
+                "time": {
+                  "domain": "org.kineweave.time/seconds",
+                  "value": {
+                    "denominator": "1",
+                    "numerator": "4"
+                  }
+                },
+                "value": false
+              },
+              "keyframe_visible_start": {
+                "easing": {
+                  "kind": "hold"
+                },
+                "keyframeId": "keyframe_visible_start",
+                "time": {
+                  "domain": "org.kineweave.time/seconds",
+                  "value": {
+                    "denominator": "1",
+                    "numerator": "0"
+                  }
+                },
+                "value": true
+              }
+            },
+            "target": {
+              "nodeId": "node_mark",
+              "property": "visible"
+            },
+            "trackId": "track_mark_visible",
+            "valueType": "org.kineweave.value/boolean"
+          },
+          "track_orbit_opacity": {
+            "keyframes": {
+              "keyframe_orbit_end": {
+                "keyframeId": "keyframe_orbit_end",
+                "time": {
+                  "domain": "org.kineweave.time/seconds",
+                  "value": {
+                    "denominator": "1",
+                    "numerator": "5"
+                  }
+                },
+                "value": 0.35
+              },
+              "keyframe_orbit_middle": {
+                "easing": {
+                  "kind": "linear"
+                },
+                "keyframeId": "keyframe_orbit_middle",
+                "time": {
+                  "domain": "org.kineweave.time/seconds",
+                  "value": {
+                    "denominator": "2",
+                    "numerator": "5"
+                  }
+                },
+                "value": 0.9
+              },
+              "keyframe_orbit_start": {
+                "easing": {
+                  "kind": "hold"
+                },
+                "keyframeId": "keyframe_orbit_start",
+                "time": {
+                  "domain": "org.kineweave.time/seconds",
+                  "value": {
+                    "denominator": "1",
+                    "numerator": "0"
+                  }
+                },
+                "value": 0.15
+              }
+            },
+            "target": {
+              "nodeId": "node_orbit",
+              "property": "opacity"
+            },
+            "trackId": "track_orbit_opacity",
+            "valueType": "org.kineweave.value/number"
+          },
+          "track_panel_position": {
+            "keyframes": {
+              "keyframe_panel_end": {
+                "easing": {
+                  "kind": "linear"
+                },
+                "keyframeId": "keyframe_panel_end",
+                "time": {
+                  "domain": "org.kineweave.time/seconds",
+                  "value": {
+                    "denominator": "1",
+                    "numerator": "5"
+                  }
+                },
+                "value": [
+                  1280,
+                  540
+                ]
+              },
+              "keyframe_panel_start": {
+                "easing": {
+                  "kind": "cubic-bezier",
+                  "x1": 0.42,
+                  "x2": 0.58,
+                  "y1": 0,
+                  "y2": 1
+                },
+                "keyframeId": "keyframe_panel_start",
+                "time": {
+                  "domain": "org.kineweave.time/seconds",
+                  "value": {
+                    "denominator": "1",
+                    "numerator": "0"
+                  }
+                },
+                "value": [
+                  640,
+                  540
+                ]
+              }
+            },
+            "target": {
+              "nodeId": "node_panel",
+              "property": "position"
+            },
+            "trackId": "track_panel_position",
+            "valueType": "org.kineweave.value/vector2"
+          }
+        }
+      },
+      "documentId": "document_main",
+      "documentType": "org.kineweave.standard-motion/composition",
+      "schemaVersion": 2
+    }
+  }
+}

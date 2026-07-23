@@ -1,7 +1,5 @@
-import type {
-  Diagnostic
-} from "@kineweave/protocol";
 import type { LoadedProjectBundle } from "@kineweave/project-format";
+import type { Diagnostic } from "@kineweave/protocol";
 
 export type { LoadedProjectBundle } from "@kineweave/project-format";
 
@@ -31,9 +29,7 @@ export interface RepositoryTransactionEvent {
 }
 
 export interface NodeProjectRepositoryOptions {
-  readonly onTransactionEvent?: (
-    event: RepositoryTransactionEvent
-  ) => void | Promise<void>;
+  readonly onTransactionEvent?: (event: RepositoryTransactionEvent) => void | Promise<void>;
 }
 
 export interface RecoveryReport {

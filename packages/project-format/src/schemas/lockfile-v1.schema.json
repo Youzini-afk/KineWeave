@@ -55,12 +55,7 @@
             },
             "additionalProperties": {
               "type": "object",
-              "required": [
-                "providerId",
-                "contractVersion",
-                "implementationVersion",
-                "features"
-              ],
+              "required": ["providerId", "contractVersion", "implementationVersion", "features"],
               "properties": {
                 "providerId": {
                   "type": "string",

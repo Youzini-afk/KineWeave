@@ -1,29 +1,29 @@
 import {
   assertStableId,
   compareRational,
-  parseRational,
-  rational,
   type Diagnostic,
   type JsonObject,
   type JsonValue,
-  type ProjectDocumentEnvelope
+  type ProjectDocumentEnvelope,
+  parseRational,
+  rational
 } from "@kineweave/protocol";
 import type { ErrorObject } from "ajv";
 import { compositionValidator } from "./generated/composition-validator.js";
 import {
+  type MotionNode,
+  type PropertyBinding,
   STANDARD_KEYFRAME_EASINGS,
   STANDARD_NODE_SCHEMA_VERSION,
   STANDARD_NODE_TYPES,
   STANDARD_SIGNAL_SCHEMA_VERSION,
   STANDARD_SIGNAL_TYPES,
-  type MotionNode,
-  type PropertyBinding,
   type StandardCompositionDocument
 } from "./model.js";
 import {
-  STANDARD_CANVAS_BACKGROUND_VALUE_TYPE,
   expectedStandardPropertyValueType,
   isStandardInterpolatedValueType,
+  STANDARD_CANVAS_BACKGROUND_VALUE_TYPE,
   standardPropertyValueIssue,
   standardValueIssue
 } from "./value-semantics.js";
@@ -124,8 +124,7 @@ function validateBinding(
       return;
     }
     const trackId = binding.trackId;
-    const track =
-      typeof trackId === "string" ? document.data.tracks[trackId] : undefined;
+    const track = typeof trackId === "string" ? document.data.tracks[trackId] : undefined;
     if (track === undefined) {
       diagnostics.push(
         error(
@@ -151,10 +150,7 @@ function validateBinding(
         )
       );
     }
-    if (
-      expectation.valueType !== undefined &&
-      track.valueType !== expectation.valueType
-    ) {
+    if (expectation.valueType !== undefined && track.valueType !== expectation.valueType) {
       diagnostics.push(
         error(
           "standard-motion.binding.value-type-mismatch",
@@ -168,8 +164,7 @@ function validateBinding(
   }
   if (binding.kind === "signal") {
     const signalId = binding.signalId;
-    const signal =
-      typeof signalId === "string" ? document.data.signals[signalId] : undefined;
+    const signal = typeof signalId === "string" ? document.data.signals[signalId] : undefined;
     if (signal === undefined) {
       diagnostics.push(
         error(
@@ -181,10 +176,7 @@ function validateBinding(
       );
       return;
     }
-    if (
-      expectation.valueType !== undefined &&
-      signal.valueType !== expectation.valueType
-    ) {
+    if (expectation.valueType !== undefined && signal.valueType !== expectation.valueType) {
       diagnostics.push(
         error(
           "standard-motion.binding.value-type-mismatch",
@@ -210,10 +202,7 @@ export function validateStandardComposition(
   rawDocument: ProjectDocumentEnvelope<JsonObject>
 ): readonly Diagnostic[] {
   validateSchema(rawDocument);
-  const diagnostics = schemaDiagnostics(
-    rawDocument.documentId,
-    validateSchema.errors
-  );
+  const diagnostics = schemaDiagnostics(rawDocument.documentId, validateSchema.errors);
   if (diagnostics.length > 0) return diagnostics;
 
   const document = rawDocument as StandardCompositionDocument;
@@ -227,8 +216,7 @@ export function validateStandardComposition(
       "/data/canvas/background",
       {
         valueType: STANDARD_CANVAS_BACKGROUND_VALUE_TYPE,
-        validateValue: (value) =>
-          standardValueIssue(STANDARD_CANVAS_BACKGROUND_VALUE_TYPE, value),
+        validateValue: (value) => standardValueIssue(STANDARD_CANVAS_BACKGROUND_VALUE_TYPE, value),
         allowTrack: false
       },
       result
@@ -342,10 +330,7 @@ export function validateStandardComposition(
       );
     }
     for (const [property, binding] of Object.entries(node.properties)) {
-      const expectedValueType = expectedStandardPropertyValueType(
-        node.nodeType,
-        property
-      );
+      const expectedValueType = expectedStandardPropertyValueType(node.nodeType, property);
       validateBinding(
         binding,
         document,
@@ -353,8 +338,7 @@ export function validateStandardComposition(
         `/data/nodes/${nodeId}/properties/${property}`,
         {
           ...(expectedValueType === undefined ? {} : { valueType: expectedValueType }),
-          validateValue: (value) =>
-            standardPropertyValueIssue(node.nodeType, property, value),
+          validateValue: (value) => standardPropertyValueIssue(node.nodeType, property, value),
           trackTarget: { nodeId, property }
         },
         result
@@ -381,10 +365,7 @@ export function validateStandardComposition(
           : node.nodeType === STANDARD_NODE_TYPES.path
             ? "path"
             : undefined;
-    if (
-      requiredProperty !== undefined &&
-      node.properties[requiredProperty] === undefined
-    ) {
+    if (requiredProperty !== undefined && node.properties[requiredProperty] === undefined) {
       result.push(
         error(
           "standard-motion.node.property-required",
@@ -433,10 +414,7 @@ export function validateStandardComposition(
       );
     } else {
       const targetBinding = targetNode.properties[track.target.property];
-      if (
-        targetBinding?.kind !== "track" ||
-        targetBinding.trackId !== trackId
-      ) {
+      if (targetBinding?.kind !== "track" || targetBinding.trackId !== trackId) {
         result.push(
           error(
             "standard-motion.track.target-unbound",
@@ -450,10 +428,7 @@ export function validateStandardComposition(
         targetNode.nodeType,
         track.target.property
       );
-      if (
-        expectedValueType !== undefined &&
-        track.valueType !== expectedValueType
-      ) {
+      if (expectedValueType !== undefined && track.valueType !== expectedValueType) {
         result.push(
           error(
             "standard-motion.track.value-type-mismatch",
@@ -538,11 +513,7 @@ export function validateStandardComposition(
       const targetValueIssue =
         targetNode === undefined
           ? undefined
-          : standardPropertyValueIssue(
-              targetNode.nodeType,
-              track.target.property,
-              keyframe.value
-            );
+          : standardPropertyValueIssue(targetNode.nodeType, track.target.property, keyframe.value);
       const valueIssue = genericValueIssue ?? targetValueIssue;
       if (valueIssue !== undefined) {
         result.push(
@@ -623,10 +594,7 @@ export function validateStandardComposition(
         );
       }
       if (signal.data.defaultValue !== undefined) {
-        const valueIssue = standardValueIssue(
-          signal.valueType,
-          signal.data.defaultValue
-        );
+        const valueIssue = standardValueIssue(signal.valueType, signal.data.defaultValue);
         if (valueIssue !== undefined) {
           result.push(
             error(
@@ -664,9 +632,7 @@ export function nodeIsDescendant(
     visited.add(currentId);
     const current = nodes[currentId];
     if (current === undefined) return false;
-    return current.children.some(
-      (childId) => childId === candidateId || visit(childId)
-    );
+    return current.children.some((childId) => childId === candidateId || visit(childId));
   };
   return visit(ancestorId);
 }

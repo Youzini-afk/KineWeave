@@ -1,43 +1,31 @@
-import {
-  EvaluationEngine,
-  type EvaluationExecutionResult
-} from "@kineweave/evaluation-engine";
+import { EvaluationEngine, type EvaluationExecutionResult } from "@kineweave/evaluation-engine";
 import {
   createKineWeaveExtensionContributionAudit,
-  type KineWeaveExtensionContributionAudit,
-  type KineWeaveExtensionContext
+  type KineWeaveExtensionContext,
+  type KineWeaveExtensionContributionAudit
 } from "@kineweave/extension-api";
 import { ExtensionHost } from "@kineweave/extension-host";
-import {
-  HistoryGraph,
-  type BranchRef,
-  type DocumentState
-} from "@kineweave/history-engine";
+import { type BranchRef, type DocumentState, HistoryGraph } from "@kineweave/history-engine";
 import type { LoadedProjectBundle } from "@kineweave/project-format";
 import {
-  hasErrorDiagnostics,
   type Diagnostic,
   type EvaluationRequest,
+  hasErrorDiagnostics,
   type JsonObject,
   type ProjectDocumentEnvelope,
   type TransactionProposal
 } from "@kineweave/protocol";
 import {
-  RenderEngine,
   type InteractiveRenderSession,
   type InteractiveRenderSessionOpenRequest,
   type OutputRenderExecutionRequest,
-  type OutputRenderExecutionResult
+  type OutputRenderExecutionResult,
+  RenderEngine
 } from "@kineweave/render-engine";
-import {
-  TransactionEngine,
-  type TransactionExecutionResult
-} from "@kineweave/transaction-engine";
+import { TransactionEngine, type TransactionExecutionResult } from "@kineweave/transaction-engine";
 import type { ProjectSessionOpenResult, ProjectSessionOptions } from "./types.js";
 
-function lockedExtensionVersions(
-  bundle: LoadedProjectBundle
-): Readonly<Record<string, string>> {
+function lockedExtensionVersions(bundle: LoadedProjectBundle): Readonly<Record<string, string>> {
   return Object.fromEntries(
     Object.entries(bundle.lockfile.extensions).map(([extensionId, extension]) => [
       extensionId,
@@ -57,17 +45,13 @@ function initialDocumentState(bundle: LoadedProjectBundle): DocumentState {
 
 function extensionRequirements(bundle: LoadedProjectBundle) {
   return Object.fromEntries(
-    Object.entries(bundle.manifest.extensionRequirements).map(
-      ([extensionId, requirement]) => [
-        extensionId,
-        {
-          versionRange: requirement.versionRange,
-          ...(requirement.optional === undefined
-            ? {}
-            : { optional: requirement.optional })
-        }
-      ]
-    )
+    Object.entries(bundle.manifest.extensionRequirements).map(([extensionId, requirement]) => [
+      extensionId,
+      {
+        versionRange: requirement.versionRange,
+        ...(requirement.optional === undefined ? {} : { optional: requirement.optional })
+      }
+    ])
   );
 }
 
@@ -179,9 +163,7 @@ export class ProjectSession {
       } catch (error) {
         const activationDiagnostics = extensions
           .statuses()
-          .flatMap((status) =>
-            status.diagnostic === undefined ? [] : [status.diagnostic]
-          );
+          .flatMap((status) => (status.diagnostic === undefined ? [] : [status.diagnostic]));
         diagnostics.push(
           ...(activationDiagnostics.length > 0
             ? activationDiagnostics
@@ -240,9 +222,7 @@ export class ProjectSession {
     return this.evaluation.evaluate(request);
   }
 
-  renderOutput(
-    request: OutputRenderExecutionRequest
-  ): Promise<OutputRenderExecutionResult> {
+  renderOutput(request: OutputRenderExecutionRequest): Promise<OutputRenderExecutionResult> {
     this.#assertOpen();
     return this.rendering.renderOutput(request);
   }

@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
 import type { ExtensionManifest } from "@kineweave/protocol";
 import {
   OUTPUT_RENDERER_CAPABILITY_ID,
   OUTPUT_RENDERER_CONTRACT_VERSION
 } from "@kineweave/render-engine";
+import { describe, expect, it } from "vitest";
 import {
   createKineWeaveExtensionContributionAudit,
   type KineWeaveExtensionContext
@@ -100,15 +100,11 @@ describe("KineWeave extension contribution audit", () => {
   it("reports declared-but-missing and active-but-undeclared registrations", () => {
     const missing = createKineWeaveExtensionContributionAudit(context());
     expect(missing.diagnostics()).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: "extension.contribution.missing" })
-      ])
+      expect.arrayContaining([expect.objectContaining({ code: "extension.contribution.missing" })])
     );
 
     const emptyManifest: ExtensionManifest = { ...manifest, contributes: {} };
-    const undeclared = createKineWeaveExtensionContributionAudit(
-      context(emptyManifest)
-    );
+    const undeclared = createKineWeaveExtensionContributionAudit(context(emptyManifest));
     undeclared.context.transactions.registerOperationHandler({
       operationType,
       schemaVersion: 1,

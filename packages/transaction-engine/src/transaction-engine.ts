@@ -1,25 +1,19 @@
 import { hashJson } from "@kineweave/content-hash";
-import {
-  HistoryGraph,
-  type DocumentState
-} from "@kineweave/history-engine";
+import type { DocumentState, HistoryGraph } from "@kineweave/history-engine";
 import { createDocumentPatch } from "@kineweave/patch";
+import { validateDocumentEnvelopeSchema } from "@kineweave/project-format";
 import {
   cloneJson,
-  hasErrorDiagnostics,
-  parseResourceUri,
   type Diagnostic,
   type HistoryCommit,
+  hasErrorDiagnostics,
   type JsonObject,
   type JsonValue,
   type Operation,
-  type OperationPrecondition,
   type ProjectDocumentEnvelope,
+  parseResourceUri,
   type TransactionProposal
 } from "@kineweave/protocol";
-import {
-  validateDocumentEnvelopeSchema
-} from "@kineweave/project-format";
 import type {
   CrossDocumentValidator,
   DocumentMutation,
@@ -28,8 +22,8 @@ import type {
   OperationHandler,
   OperationReadContext,
   PreconditionEvaluator,
-  TransactionEngineOptions,
   TransactionContributionRegistry,
+  TransactionEngineOptions,
   TransactionExecutionResult
 } from "./types.js";
 
@@ -68,9 +62,7 @@ function handlerKey(type: string, schemaVersion: number): string {
   return `${type}@${schemaVersion}`;
 }
 
-function asDocument(
-  value: JsonValue | undefined
-): ProjectDocumentEnvelope<JsonObject> | undefined {
+function asDocument(value: JsonValue | undefined): ProjectDocumentEnvelope<JsonObject> | undefined {
   return value === undefined
     ? undefined
     : (cloneJson(value) as unknown as ProjectDocumentEnvelope<JsonObject>);
@@ -212,29 +204,26 @@ export class TransactionEngine implements TransactionContributionRegistry {
       }
     );
 
-    this.registerPrecondition(
-      BUILTIN_PRECONDITIONS.documentHash,
-      async (precondition, context) => {
-        const parsed = parseObjectPayload(precondition.payload, precondition.type);
-        if (!parsed.ok) return parsed.diagnostic;
-        const { documentId, expectedHash } = parsed.value;
-        if (typeof documentId !== "string" || typeof expectedHash !== "string") {
-          return diagnostic(
-            "transaction.precondition.payload-invalid",
-            "document-hash requires string documentId and expectedHash"
-          );
-        }
-        const actualHash = context.documentHash(documentId);
-        return actualHash === expectedHash
-          ? undefined
-          : diagnostic(
-              "transaction.precondition.document-hash-failed",
-              `Document ${documentId} hash is ${actualHash ?? "missing"}, expected ${expectedHash}`,
-              undefined,
-              documentId
-            );
+    this.registerPrecondition(BUILTIN_PRECONDITIONS.documentHash, async (precondition, context) => {
+      const parsed = parseObjectPayload(precondition.payload, precondition.type);
+      if (!parsed.ok) return parsed.diagnostic;
+      const { documentId, expectedHash } = parsed.value;
+      if (typeof documentId !== "string" || typeof expectedHash !== "string") {
+        return diagnostic(
+          "transaction.precondition.payload-invalid",
+          "document-hash requires string documentId and expectedHash"
+        );
       }
-    );
+      const actualHash = context.documentHash(documentId);
+      return actualHash === expectedHash
+        ? undefined
+        : diagnostic(
+            "transaction.precondition.document-hash-failed",
+            `Document ${documentId} hash is ${actualHash ?? "missing"}, expected ${expectedHash}`,
+            undefined,
+            documentId
+          );
+    });
   }
 
   registerOperationHandler(handler: OperationHandler): () => void {
@@ -255,9 +244,7 @@ export class TransactionEngine implements TransactionContributionRegistry {
     return () => this.#documentValidators.delete(key);
   }
 
-  registerCrossDocumentValidator(
-    validator: CrossDocumentValidator
-  ): () => void {
+  registerCrossDocumentValidator(validator: CrossDocumentValidator): () => void {
     this.#crossDocumentValidators.push(validator);
     return () => {
       const index = this.#crossDocumentValidators.indexOf(validator);
@@ -265,10 +252,7 @@ export class TransactionEngine implements TransactionContributionRegistry {
     };
   }
 
-  registerPrecondition(
-    type: string,
-    evaluator: PreconditionEvaluator
-  ): () => void {
+  registerPrecondition(type: string, evaluator: PreconditionEvaluator): () => void {
     if (this.#preconditionEvaluators.has(type)) {
       throw new Error(`Precondition evaluator ${type} is already registered`);
     }
@@ -278,16 +262,10 @@ export class TransactionEngine implements TransactionContributionRegistry {
 
   async validateState(state: DocumentState): Promise<readonly Diagnostic[]> {
     const documents = structuredClone(state) as Record<string, JsonValue>;
-    return this.#validateDocuments(
-      documents,
-      new Set(Object.keys(documents)),
-      new Set<string>()
-    );
+    return this.#validateDocuments(documents, new Set(Object.keys(documents)), new Set<string>());
   }
 
-  async execute(
-    proposal: TransactionProposal
-  ): Promise<TransactionExecutionResult> {
+  async execute(proposal: TransactionProposal): Promise<TransactionExecutionResult> {
     const proposalDiagnostics = validateProposal(proposal);
     if (hasErrorDiagnostics(proposalDiagnostics)) {
       throw new TransactionRejectedError(
@@ -316,10 +294,7 @@ export class TransactionEngine implements TransactionContributionRegistry {
 
     for (const [operationIndex, operation] of proposal.operations.entries()) {
       const context = new DraftReadContext(draft, readSet);
-      const preconditionDiagnostics = await this.#evaluatePreconditions(
-        operation,
-        context
-      );
+      const preconditionDiagnostics = await this.#evaluatePreconditions(operation, context);
       if (hasErrorDiagnostics(preconditionDiagnostics)) {
         throw new TransactionRejectedError(
           `Preconditions failed for ${operation.operationId}`,
@@ -349,16 +324,9 @@ export class TransactionEngine implements TransactionContributionRegistry {
         effect = await handler.prepare(operation, context);
       } catch (error) {
         const cause = error instanceof Error ? error.message : String(error);
-        throw new TransactionRejectedError(
-          `Operation ${operation.operationId} failed: ${cause}`,
-          [
-            diagnostic(
-              "transaction.operation.prepare-failed",
-              cause,
-              `/operations/${operationIndex}`
-            )
-          ]
-        );
+        throw new TransactionRejectedError(`Operation ${operation.operationId} failed: ${cause}`, [
+          diagnostic("transaction.operation.prepare-failed", cause, `/operations/${operationIndex}`)
+        ]);
       }
 
       const effectDiagnostics = effect.diagnostics ?? [];
@@ -369,29 +337,19 @@ export class TransactionEngine implements TransactionContributionRegistry {
         );
       }
       diagnostics.push(...effectDiagnostics);
-      this.#applyMutations(
-        effect.mutations ?? [],
-        draft,
-        changedDocumentIds,
-        operationIndex
-      );
+      this.#applyMutations(effect.mutations ?? [], draft, changedDocumentIds, operationIndex);
     }
 
     if (changedDocumentIds.size === 0) {
-      throw new TransactionRejectedError(
-        `Transaction ${proposal.transactionId} made no changes`,
-        [
-          diagnostic(
-            "transaction.no-changes",
-            "A committed transaction must change at least one document"
-          )
-        ]
-      );
+      throw new TransactionRejectedError(`Transaction ${proposal.transactionId} made no changes`, [
+        diagnostic(
+          "transaction.no-changes",
+          "A committed transaction must change at least one document"
+        )
+      ]);
     }
 
-    diagnostics.push(
-      ...(await this.#validateDocuments(draft, changedDocumentIds, readSet))
-    );
+    diagnostics.push(...(await this.#validateDocuments(draft, changedDocumentIds, readSet)));
     if (hasErrorDiagnostics(diagnostics)) {
       throw new TransactionRejectedError(
         `Transaction ${proposal.transactionId} failed validation`,
@@ -402,11 +360,7 @@ export class TransactionEngine implements TransactionContributionRegistry {
     const patches = [...changedDocumentIds]
       .sort()
       .map((documentId) =>
-        createDocumentPatch(
-          documentId,
-          beforeState[documentId] ?? null,
-          draft[documentId] ?? null
-        )
+        createDocumentPatch(documentId, beforeState[documentId] ?? null, draft[documentId] ?? null)
       )
       .filter(
         (patch) =>
@@ -454,9 +408,10 @@ export class TransactionEngine implements TransactionContributionRegistry {
     for (const documentId of [...documentIds].sort()) {
       const document = asDocument(documents[documentId]);
       if (document === undefined) continue;
-      const schemaDiagnostics = validateDocumentEnvelopeSchema(document).map(
-        (item) => ({ ...item, documentId })
-      );
+      const schemaDiagnostics = validateDocumentEnvelopeSchema(document).map((item) => ({
+        ...item,
+        documentId
+      }));
       diagnostics.push(...schemaDiagnostics);
       if (hasErrorDiagnostics(schemaDiagnostics)) continue;
 
@@ -514,17 +469,14 @@ export class TransactionEngine implements TransactionContributionRegistry {
     const seen = new Set<string>();
     for (const [mutationIndex, mutation] of mutations.entries()) {
       if (seen.has(mutation.documentId)) {
-        throw new TransactionRejectedError(
-          "Operation returned duplicate document mutations",
-          [
-            diagnostic(
-              "transaction.mutation.document-duplicate",
-              `Duplicate mutation for ${mutation.documentId}`,
-              `/operations/${operationIndex}/mutations/${mutationIndex}`,
-              mutation.documentId
-            )
-          ]
-        );
+        throw new TransactionRejectedError("Operation returned duplicate document mutations", [
+          diagnostic(
+            "transaction.mutation.document-duplicate",
+            `Duplicate mutation for ${mutation.documentId}`,
+            `/operations/${operationIndex}/mutations/${mutationIndex}`,
+            mutation.documentId
+          )
+        ]);
       }
       seen.add(mutation.documentId);
       const exists = draft[mutation.documentId] !== undefined;
@@ -550,9 +502,7 @@ export class TransactionEngine implements TransactionContributionRegistry {
             )
           ]);
         }
-        draft[mutation.documentId] = cloneJson(
-          mutation.document as unknown as JsonValue
-        );
+        draft[mutation.documentId] = cloneJson(mutation.document as unknown as JsonValue);
       } else if (mutation.kind === "replace") {
         if (!exists) {
           throw new TransactionRejectedError("Replace mutation target missing", [
@@ -574,9 +524,7 @@ export class TransactionEngine implements TransactionContributionRegistry {
             )
           ]);
         }
-        draft[mutation.documentId] = cloneJson(
-          mutation.document as unknown as JsonValue
-        );
+        draft[mutation.documentId] = cloneJson(mutation.document as unknown as JsonValue);
       } else {
         if (!exists) {
           throw new TransactionRejectedError("Delete mutation target missing", [

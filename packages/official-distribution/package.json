@@ -11,7 +11,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@kineweave/canvas2d-renderer": "workspace:*",
     "@kineweave/extension-api": "workspace:*",
@@ -23,5 +25,8 @@
     "@kineweave/render-engine": "workspace:*",
     "@kineweave/standard-motion-document": "workspace:*",
     "@kineweave/svg-renderer": "workspace:*"
+  },
+  "devDependencies": {
+    "@kineweave/evaluation-engine": "workspace:*"
   }
 }

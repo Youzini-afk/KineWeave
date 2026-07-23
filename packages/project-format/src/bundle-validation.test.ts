@@ -1,8 +1,5 @@
+import { type JsonObject, KINEWEAVE_PROTOCOL_VERSION } from "@kineweave/protocol";
 import { describe, expect, it } from "vitest";
-import {
-  KINEWEAVE_PROTOCOL_VERSION,
-  type JsonObject
-} from "@kineweave/protocol";
 import { validateProjectBundle } from "./bundle-validation.js";
 
 function validBundle() {

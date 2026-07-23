@@ -1,21 +1,18 @@
 import {
-  STANDARD_PRESENTATION_PRIMITIVES,
   type JsonObject,
   type PresentationNode,
-  type ResolvedPresentationGraph
+  type ResolvedPresentationGraph,
+  STANDARD_PRESENTATION_PRIMITIVES
 } from "@kineweave/protocol";
 import type {
   InteractiveHit,
   InteractiveHitTestRequest,
-  InteractiveRenderSurface,
   InteractiveRendererFrameRequest,
   InteractiveRendererInstance,
-  InteractiveRendererProvider
+  InteractiveRendererProvider,
+  InteractiveRenderSurface
 } from "@kineweave/render-engine";
-import {
-  CANVAS2D_SURFACE_TYPE,
-  canvas2dRendererDescriptor
-} from "./descriptor.js";
+import { CANVAS2D_SURFACE_TYPE, canvas2dRendererDescriptor } from "./descriptor.js";
 
 export interface Canvas2DPathLike {
   readonly __kineweaveCanvas2dPathBrand?: never;
@@ -57,7 +54,10 @@ export interface Canvas2DContextLike {
     startAngle: number,
     endAngle: number
   ): void;
-  fill(pathOrRule?: Canvas2DPathLike | "nonzero" | "evenodd", fillRule?: "nonzero" | "evenodd"): void;
+  fill(
+    pathOrRule?: Canvas2DPathLike | "nonzero" | "evenodd",
+    fillRule?: "nonzero" | "evenodd"
+  ): void;
   stroke(path?: Canvas2DPathLike): void;
   fillText(text: string, x: number, y: number): void;
   strokeText(text: string, x: number, y: number): void;
@@ -110,11 +110,7 @@ interface PathDrawRecord extends DrawRecordBase {
   readonly path: Canvas2DPathLike;
 }
 
-type DrawRecord =
-  | RectangleDrawRecord
-  | EllipseDrawRecord
-  | TextDrawRecord
-  | PathDrawRecord;
+type DrawRecord = RectangleDrawRecord | EllipseDrawRecord | TextDrawRecord | PathDrawRecord;
 
 const REQUIRED_CONTEXT_METHODS = [
   "save",
@@ -188,10 +184,7 @@ function inverse(matrix: Matrix): Matrix | undefined {
 }
 
 function transformPoint(matrix: Matrix, x: number, y: number): [number, number] {
-  return [
-    matrix[0] * x + matrix[2] * y + matrix[4],
-    matrix[1] * x + matrix[3] * y + matrix[5]
-  ];
+  return [matrix[0] * x + matrix[2] * y + matrix[4], matrix[1] * x + matrix[3] * y + matrix[5]];
 }
 
 function nodeMatrix(node: PresentationNode): Matrix {
@@ -255,10 +248,7 @@ function viewportMatrix(
   surface: InteractiveRenderSurface,
   composition: { readonly width: number; readonly height: number }
 ): Matrix {
-  const scale = Math.min(
-    surface.width / composition.width,
-    surface.height / composition.height
-  );
+  const scale = Math.min(surface.width / composition.width, surface.height / composition.height);
   return [
     scale,
     0,
@@ -271,10 +261,7 @@ function viewportMatrix(
 
 function transparent(color: string): boolean {
   const normalized = color.trim().toLowerCase();
-  return (
-    normalized === "transparent" ||
-    /^#[0-9a-f]{6}00$/.test(normalized)
-  );
+  return normalized === "transparent" || /^#[0-9a-f]{6}00$/.test(normalized);
 }
 
 function shapeStyle(
@@ -311,12 +298,7 @@ function roundedRectanglePath(
   context.lineTo(x + width - radius, y);
   context.quadraticCurveTo(x + width, y, x + width, y + radius);
   context.lineTo(x + width, y + height - radius);
-  context.quadraticCurveTo(
-    x + width,
-    y + height,
-    x + width - radius,
-    y + height
-  );
+  context.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
   context.lineTo(x + radius, y + height);
   context.quadraticCurveTo(x, y + height, x, y + height - radius);
   context.lineTo(x, y + radius);
@@ -346,9 +328,7 @@ function recordBase(
 ): DrawRecordBase {
   return {
     presentationId: node.presentationId,
-    ...(node.sourceResourceUri === undefined
-      ? {}
-      : { sourceResourceUri: node.sourceResourceUri }),
+    ...(node.sourceResourceUri === undefined ? {} : { sourceResourceUri: node.sourceResourceUri }),
     inverseWorld: inverse(world),
     fillEnabled: style.fillEnabled,
     strokeWidth: style.strokeWidth
@@ -468,10 +448,7 @@ function insideRoundedRectangle(
   const halfHeight = height / 2;
   if (Math.abs(x) > halfWidth || Math.abs(y) > halfHeight) return false;
   const clampedRadius = Math.min(radius, halfWidth, halfHeight);
-  if (
-    Math.abs(x) <= halfWidth - clampedRadius ||
-    Math.abs(y) <= halfHeight - clampedRadius
-  ) {
+  if (Math.abs(x) <= halfWidth - clampedRadius || Math.abs(y) <= halfHeight - clampedRadius) {
     return true;
   }
   const cornerX = Math.abs(x) - (halfWidth - clampedRadius);
@@ -489,13 +466,7 @@ function recordHit(
   if (record.kind === "rectangle") {
     if (
       record.fillEnabled &&
-      insideRoundedRectangle(
-        localX,
-        localY,
-        record.width,
-        record.height,
-        record.cornerRadius
-      )
+      insideRoundedRectangle(localX, localY, record.width, record.height, record.cornerRadius)
     ) {
       return true;
     }
@@ -525,8 +496,7 @@ function recordHit(
     const outerX = record.radiusX + halfStroke;
     const outerY = record.radiusY + halfStroke;
     const normalizedOuter =
-      (localX * localX) / (outerX * outerX) +
-      (localY * localY) / (outerY * outerY);
+      (localX * localX) / (outerX * outerX) + (localY * localY) / (outerY * outerY);
     if (record.fillEnabled) {
       const normalizedFill =
         (localX * localX) / (record.radiusX * record.radiusX) +
@@ -538,8 +508,7 @@ function recordHit(
     const innerY = record.radiusY - halfStroke;
     if (innerX <= 0 || innerY <= 0) return true;
     const normalizedInner =
-      (localX * localX) / (innerX * innerX) +
-      (localY * localY) / (innerY * innerY);
+      (localX * localX) / (innerX * innerX) + (localY * localY) / (innerY * innerY);
     return normalizedInner >= 1;
   }
   if (record.kind === "text") {
@@ -555,8 +524,7 @@ function recordHit(
     context.lineWidth = record.strokeWidth;
     return (
       (record.fillEnabled && context.isPointInPath(record.path, localX, localY)) ||
-      (record.strokeWidth > 0 &&
-        context.isPointInStroke(record.path, localX, localY))
+      (record.strokeWidth > 0 && context.isPointInStroke(record.path, localX, localY))
     );
   } finally {
     context.restore();
@@ -570,10 +538,7 @@ class Canvas2DRendererSession implements InteractiveRendererInstance {
   #records: DrawRecord[] = [];
   #disposed = false;
 
-  constructor(
-    surface: InteractiveRenderSurface,
-    graph: ResolvedPresentationGraph
-  ) {
+  constructor(surface: InteractiveRenderSurface, graph: ResolvedPresentationGraph) {
     this.#surface = surface;
     this.#resource = surfaceResource(surface);
     this.#graph = graph;
@@ -599,11 +564,7 @@ class Canvas2DRendererSession implements InteractiveRendererInstance {
     for (let index = this.#records.length - 1; index >= 0; index -= 1) {
       const record = this.#records[index]!;
       if (record.inverseWorld === undefined) continue;
-      const localPoint = transformPoint(
-        record.inverseWorld,
-        request.x,
-        request.y
-      );
+      const localPoint = transformPoint(record.inverseWorld, request.x, request.y);
       if (!recordHit(record, localPoint[0], localPoint[1], this.#resource)) {
         continue;
       }

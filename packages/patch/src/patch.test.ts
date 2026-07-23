@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  applyDocumentPatch,
-  createDocumentPatch,
-  diffJson
-} from "./patch.js";
+import { applyDocumentPatch, createDocumentPatch, diffJson } from "./patch.js";
 
 describe("document patches", () => {
   it("round-trips changes including unknown extension data", () => {
@@ -31,14 +27,8 @@ describe("document patches", () => {
   });
 
   it("rejects applying a patch to an unexpected base", () => {
-    const patch = createDocumentPatch(
-      "document_main",
-      { value: 1 },
-      { value: 2 }
-    );
-    expect(() => applyDocumentPatch({ value: 3 }, patch)).toThrow(
-      /base mismatch/i
-    );
+    const patch = createDocumentPatch("document_main", { value: 1 }, { value: 2 });
+    expect(() => applyDocumentPatch({ value: 3 }, patch)).toThrow(/base mismatch/i);
   });
 
   it("supports document creation and deletion", () => {

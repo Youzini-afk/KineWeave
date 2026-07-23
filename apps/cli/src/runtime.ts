@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import {
-  KINEWEAVE_VERSION,
-  createOfficialDistributionProfile
+  createOfficialDistributionProfile,
+  KINEWEAVE_VERSION
 } from "@kineweave/official-distribution";
 import { NodeProjectRepository } from "@kineweave/project-repository-node";
 import type { ProjectSessionHost } from "@kineweave/project-session";
 import {
-  openNodeProjectSession,
-  type OpenNodeProjectSessionResult
+  type OpenNodeProjectSessionResult,
+  openNodeProjectSession
 } from "@kineweave/project-session-node";
 
 export function createCliSessionHost(): ProjectSessionHost {

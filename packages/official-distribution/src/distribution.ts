@@ -1,22 +1,18 @@
+import { CANVAS2D_RENDERER_PROVIDER_ID } from "@kineweave/canvas2d-renderer/descriptor";
+import { canvas2dRendererExtensionManifest } from "@kineweave/canvas2d-renderer/manifest";
 import type { KineWeaveExtensionContext } from "@kineweave/extension-api";
-import {
-  createEsmExtensionSource,
-  type EsmModuleNamespace
-} from "@kineweave/extension-host";
+import { createEsmExtensionSource, type EsmModuleNamespace } from "@kineweave/extension-host";
 import type { KineWeaveDistributionProfile } from "@kineweave/project-session";
 import {
   INTERACTIVE_RENDERER_CAPABILITY_ID,
   OUTPUT_RENDERER_CAPABILITY_ID
 } from "@kineweave/render-engine";
-import { CANVAS2D_RENDERER_PROVIDER_ID } from "@kineweave/canvas2d-renderer/descriptor";
-import { canvas2dRendererExtensionManifest } from "@kineweave/canvas2d-renderer/manifest";
 import { standardMotionExtensionManifest } from "@kineweave/standard-motion-document/manifest";
 import { SVG_RENDERER_PROVIDER_ID } from "@kineweave/svg-renderer/descriptor";
 import { svgRendererExtensionManifest } from "@kineweave/svg-renderer/manifest";
 
 export const KINEWEAVE_VERSION = "0.1.0";
-export const OFFICIAL_DISTRIBUTION_PROFILE_ID =
-  "org.kineweave.distribution/standard";
+export const OFFICIAL_DISTRIBUTION_PROFILE_ID = "org.kineweave.distribution/standard";
 
 function assertEntrypointModule(actual: string, expected: string): void {
   if (actual !== expected) {

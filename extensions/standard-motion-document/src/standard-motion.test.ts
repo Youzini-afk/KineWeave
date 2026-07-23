@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
 import { EvaluationEngine } from "@kineweave/evaluation-engine";
 import { HistoryGraph } from "@kineweave/history-engine";
 import type { JsonObject, TransactionProposal } from "@kineweave/protocol";
 import { TransactionEngine } from "@kineweave/transaction-engine";
+import { describe, expect, it } from "vitest";
 import { activateStandardMotionExtension } from "./activation.js";
 import { standardMotionExtensionManifest } from "./manifest.js";
 import {
@@ -90,9 +90,7 @@ describe("Standard Motion Document", () => {
       kind: "constant"
     } as never;
     expect(validateStandardComposition(incomplete)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: "standard-motion.schema.required" })
-      ])
+      expect.arrayContaining([expect.objectContaining({ code: "standard-motion.schema.required" })])
     );
 
     const invalidValue = createStandardComposition();
@@ -187,10 +185,7 @@ describe("Standard Motion Document", () => {
 
     const document = history.stateOfBranch("main")
       .document_main as unknown as StandardCompositionDocument;
-    expect(document.data.rootNodeIds).toEqual([
-      "node_scene",
-      "node_subtitle"
-    ]);
+    expect(document.data.rootNodeIds).toEqual(["node_scene", "node_subtitle"]);
     expect(document.data.nodes.node_subtitle?.properties.content).toEqual(
       constant("Updated subtitle")
     );
@@ -284,7 +279,7 @@ describe("Standard Motion Document", () => {
           documentId: "document_main",
           parentNodeId: "node_headline",
           index: 0,
-        node: createTextNode("node_child", "Child")
+          node: createTextNode("node_child", "Child")
         })
       )
     ).rejects.toThrow(/validation/i);
@@ -296,11 +291,7 @@ describe("Standard Motion Document", () => {
     const rectangle = createRectangleNode("node_rectangle", 320, 180);
     const ellipse = createEllipseNode("node_ellipse", 160, 100);
     const path = createPathNode("node_path", "M 0 -20 L 20 20 L -20 20 Z");
-    document.data.rootNodeIds.push(
-      rectangle.nodeId,
-      ellipse.nodeId,
-      path.nodeId
-    );
+    document.data.rootNodeIds.push(rectangle.nodeId, ellipse.nodeId, path.nodeId);
     document.data.nodes[rectangle.nodeId] = rectangle;
     document.data.nodes[ellipse.nodeId] = ellipse;
     document.data.nodes[path.nodeId] = path;
@@ -309,7 +300,7 @@ describe("Standard Motion Document", () => {
   });
 
   it("removes a subtree and tracks targeting it", async () => {
-    const { history, transactionEngine } = engine();
+    const { history } = engine();
     const before = history.stateOfBranch("main")
       .document_main as unknown as StandardCompositionDocument;
     const withTrack = structuredClone(before);

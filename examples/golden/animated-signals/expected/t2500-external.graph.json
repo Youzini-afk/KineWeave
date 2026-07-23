@@ -1,0 +1,192 @@
+{
+  "background": "#111318",
+  "colorSpace": "org.kineweave.color/srgb",
+  "documentId": "document_main",
+  "metadata": {
+    "compositionCanvas": {
+      "height": 1080,
+      "pixelAspectRatio": {
+        "denominator": "1",
+        "numerator": "1"
+      },
+      "width": 1920
+    },
+    "compositionName": "Main Composition"
+  },
+  "nodes": {
+    "node_headline": {
+      "children": [],
+      "data": {
+        "fill": "#ffffff",
+        "fontSize": 88,
+        "text": "External <title> at 2.5s"
+      },
+      "opacity": 1,
+      "presentationId": "node_headline",
+      "primitive": "org.kineweave.presentation/text",
+      "sourceResourceUri": "kw://project/document/document_main/node/node_headline",
+      "transform": {
+        "anchor": [
+          0,
+          0
+        ],
+        "rotation": 0,
+        "scale": [
+          1,
+          1
+        ],
+        "translation": [
+          960,
+          620
+        ]
+      },
+      "visible": true
+    },
+    "node_mark": {
+      "children": [],
+      "data": {
+        "fill": "#a08db0",
+        "path": "M 0 -72 L 62 0 L 0 72 L -62 0 Z",
+        "stroke": "#00000000",
+        "strokeWidth": 0
+      },
+      "opacity": 1,
+      "presentationId": "node_mark",
+      "primitive": "org.kineweave.presentation/path",
+      "sourceResourceUri": "kw://project/document/document_main/node/node_mark",
+      "transform": {
+        "anchor": [
+          0,
+          0
+        ],
+        "rotation": 0,
+        "scale": [
+          1,
+          1
+        ],
+        "translation": [
+          960,
+          430
+        ]
+      },
+      "visible": true
+    },
+    "node_orbit": {
+      "children": [],
+      "data": {
+        "fill": "#00000000",
+        "radiusX": 280,
+        "radiusY": 280,
+        "stroke": "#5b7cff",
+        "strokeWidth": 10
+      },
+      "opacity": 0.9,
+      "presentationId": "node_orbit",
+      "primitive": "org.kineweave.presentation/ellipse",
+      "sourceResourceUri": "kw://project/document/document_main/node/node_orbit",
+      "transform": {
+        "anchor": [
+          0,
+          0
+        ],
+        "rotation": 0,
+        "scale": [
+          1,
+          1
+        ],
+        "translation": [
+          960,
+          540
+        ]
+      },
+      "visible": true
+    },
+    "node_panel": {
+      "children": [],
+      "data": {
+        "cornerRadius": 48,
+        "fill": "#20283c",
+        "height": 480,
+        "stroke": "#405175",
+        "strokeWidth": 4,
+        "width": 1280
+      },
+      "opacity": 1,
+      "presentationId": "node_panel",
+      "primitive": "org.kineweave.presentation/rectangle",
+      "sourceResourceUri": "kw://project/document/document_main/node/node_panel",
+      "transform": {
+        "anchor": [
+          0,
+          0
+        ],
+        "rotation": 0,
+        "scale": [
+          1,
+          1
+        ],
+        "translation": [
+          959.9999998882413,
+          540
+        ]
+      },
+      "visible": true
+    },
+    "node_scene": {
+      "children": [
+        "node_panel",
+        "node_orbit",
+        "node_mark",
+        "node_headline"
+      ],
+      "data": {},
+      "opacity": 1,
+      "presentationId": "node_scene",
+      "primitive": "org.kineweave.presentation/group",
+      "sourceResourceUri": "kw://project/document/document_main/node/node_scene",
+      "transform": {
+        "anchor": [
+          0,
+          0
+        ],
+        "rotation": 0,
+        "scale": [
+          1,
+          1
+        ],
+        "translation": [
+          0,
+          0
+        ]
+      },
+      "visible": true
+    }
+  },
+  "presentationGraphVersion": 1,
+  "requiredFeatures": [
+    "org.kineweave.color/srgb",
+    "org.kineweave.presentation/ellipse",
+    "org.kineweave.presentation/group",
+    "org.kineweave.presentation/path",
+    "org.kineweave.presentation/rectangle",
+    "org.kineweave.presentation/text"
+  ],
+  "rootNodeIds": [
+    "node_scene"
+  ],
+  "time": {
+    "domain": "org.kineweave.time/seconds",
+    "value": {
+      "denominator": "2",
+      "numerator": "5"
+    }
+  },
+  "viewport": {
+    "height": 720,
+    "pixelRatio": {
+      "denominator": "1",
+      "numerator": "1"
+    },
+    "width": 1280
+  }
+}

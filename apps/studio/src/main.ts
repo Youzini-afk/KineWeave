@@ -1,25 +1,22 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { LoadedProjectBundle } from "@kineweave/project-format";
+import { NodeProjectRepository, type ProjectSnapshot } from "@kineweave/project-repository-node";
+import type { Diagnostic } from "@kineweave/protocol";
 import {
   app,
   BrowserWindow,
   dialog,
   ipcMain,
   Menu,
-  shell,
-  type MenuItemConstructorOptions
+  type MenuItemConstructorOptions,
+  shell
 } from "electron";
-import type { LoadedProjectBundle } from "@kineweave/project-format";
 import {
-  NodeProjectRepository,
-  type ProjectSnapshot
-} from "@kineweave/project-repository-node";
-import type { Diagnostic } from "@kineweave/protocol";
-import {
-  STUDIO_IPC_CHANNELS,
   type OpenedStudioProject,
   type SavedStudioProject,
+  STUDIO_IPC_CHANNELS,
   type StudioCommand,
   type StudioHostResult
 } from "./bridge.js";
@@ -42,11 +39,7 @@ const windowCloseStates = new Map<number, WindowCloseState>();
 
 app.setName("KineWeave Studio");
 
-function diagnostic(
-  code: string,
-  message: string,
-  source = "@kineweave/studio"
-): Diagnostic {
+function diagnostic(code: string, message: string, source = "@kineweave/studio"): Diagnostic {
   return { severity: "error", code, message, source };
 }
 
@@ -70,20 +63,17 @@ function assertString(value: unknown, label: string): string {
 }
 
 function registerProjectHandlers(): void {
-  ipcMain.on(
-    STUDIO_IPC_CHANNELS.closeResponse,
-    (event, rawShouldClose: unknown) => {
-      if (typeof rawShouldClose !== "boolean") return;
-      const owner = BrowserWindow.fromWebContents(event.sender);
-      if (owner === null) return;
-      const state = windowCloseStates.get(owner.id);
-      if (state === undefined || !state.pending) return;
-      state.pending = false;
-      if (!rawShouldClose) return;
-      state.authorized = true;
-      owner.close();
-    }
-  );
+  ipcMain.on(STUDIO_IPC_CHANNELS.closeResponse, (event, rawShouldClose: unknown) => {
+    if (typeof rawShouldClose !== "boolean") return;
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    if (owner === null) return;
+    const state = windowCloseStates.get(owner.id);
+    if (state === undefined || !state.pending) return;
+    state.pending = false;
+    if (!rawShouldClose) return;
+    state.authorized = true;
+    owner.close();
+  });
 
   ipcMain.handle(STUDIO_IPC_CHANNELS.chooseProject, async (event) => {
     const owner = BrowserWindow.fromWebContents(event.sender);
@@ -142,10 +132,7 @@ function registerProjectHandlers(): void {
       rawBundle: unknown
     ): Promise<StudioHostResult<SavedStudioProject>> => {
       try {
-        const hostSessionId = assertString(
-          rawHostSessionId,
-          "Host project session ID"
-        );
+        const hostSessionId = assertString(rawHostSessionId, "Host project session ID");
         const hosted = hostedProjects.get(hostSessionId);
         if (hosted === undefined) {
           throw new Error(`Unknown Studio project session ${hostSessionId}`);
@@ -168,21 +155,15 @@ function registerProjectHandlers(): void {
     }
   );
 
-  ipcMain.handle(
-    STUDIO_IPC_CHANNELS.closeProject,
-    (_event, rawHostSessionId: unknown): void => {
-      if (typeof rawHostSessionId === "string") {
-        hostedProjects.delete(rawHostSessionId);
-      }
+  ipcMain.handle(STUDIO_IPC_CHANNELS.closeProject, (_event, rawHostSessionId: unknown): void => {
+    if (typeof rawHostSessionId === "string") {
+      hostedProjects.delete(rawHostSessionId);
     }
-  );
+  });
 }
 
 function sendCommand(command: StudioCommand): void {
-  BrowserWindow.getFocusedWindow()?.webContents.send(
-    STUDIO_IPC_CHANNELS.command,
-    command
-  );
+  BrowserWindow.getFocusedWindow()?.webContents.send(STUDIO_IPC_CHANNELS.command, command);
 }
 
 function installMenu(): void {
@@ -307,9 +288,7 @@ async function createWindow(): Promise<BrowserWindow> {
   window.once("ready-to-show", () => window.show());
   const developmentUrl = process.env.KINEWEAVE_STUDIO_DEV_URL;
   if (developmentUrl === undefined) {
-    await window.loadFile(
-      path.join(currentDirectory, "..", "dist-renderer", "index.html")
-    );
+    await window.loadFile(path.join(currentDirectory, "..", "dist-renderer", "index.html"));
   } else {
     await window.loadURL(developmentUrl);
   }
@@ -330,7 +309,7 @@ async function launch(): Promise<void> {
 }
 
 void launch().catch((caught: unknown) => {
-  const message = caught instanceof Error ? caught.stack ?? caught.message : String(caught);
+  const message = caught instanceof Error ? (caught.stack ?? caught.message) : String(caught);
   console.error(message);
   dialog.showErrorBox("KineWeave Studio could not start", message);
   app.exit(1);

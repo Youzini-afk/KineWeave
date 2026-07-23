@@ -1,7 +1,7 @@
 import { applyDocumentPatch } from "@kineweave/patch";
 import {
-  HISTORY_FORMAT_VERSION,
   cloneJson,
+  HISTORY_FORMAT_VERSION,
   type HistoryCommit,
   type JsonValue,
   type KineWeaveHistory
@@ -21,10 +21,7 @@ export interface HistoryGraphOptions {
 
 function cloneState(state: DocumentState): Record<string, JsonValue> {
   return Object.fromEntries(
-    Object.entries(state).map(([documentId, document]) => [
-      documentId,
-      cloneJson(document)
-    ])
+    Object.entries(state).map(([documentId, document]) => [documentId, cloneJson(document)])
   );
 }
 
@@ -40,10 +37,7 @@ export class HistoryGraph {
   readonly #branches = new Map<string, string>();
   readonly #stateCache = new Map<string, Record<string, JsonValue>>();
 
-  constructor(
-    initialDocuments: DocumentState,
-    options: HistoryGraphOptions = {}
-  ) {
+  constructor(initialDocuments: DocumentState, options: HistoryGraphOptions = {}) {
     this.rootCommitId = options.rootCommitId ?? "commit_root";
     this.mainBranchName = options.mainBranchName ?? "main";
     if (!validBranchName(this.mainBranchName)) {
@@ -65,8 +59,8 @@ export class HistoryGraph {
       mainBranchName: snapshot.mainBranchName
     });
 
-    for (const [commitId, commit] of Object.entries(snapshot.commits).sort(
-      ([left], [right]) => left.localeCompare(right)
+    for (const [commitId, commit] of Object.entries(snapshot.commits).sort(([left], [right]) =>
+      left.localeCompare(right)
     )) {
       if (commit.commitId !== commitId) {
         throw new Error(
@@ -116,9 +110,7 @@ export class HistoryGraph {
         throw new TypeError(`Invalid branch name: ${branchName}`);
       }
       if (!history.hasCommit(headCommitId)) {
-        throw new Error(
-          `History branch ${branchName} points to unknown commit ${headCommitId}`
-        );
+        throw new Error(`History branch ${branchName} points to unknown commit ${headCommitId}`);
       }
       history.#branches.set(branchName, headCommitId);
     }
@@ -279,9 +271,7 @@ export class HistoryGraph {
     if (candidates.length === 0) return undefined;
     const selected = commitId ?? (candidates.length === 1 ? candidates[0] : undefined);
     if (selected === undefined) {
-      throw new Error(
-        `Redo is ambiguous on ${branchName}; choose one of ${candidates.join(", ")}`
-      );
+      throw new Error(`Redo is ambiguous on ${branchName}; choose one of ${candidates.join(", ")}`);
     }
     if (!candidates.includes(selected)) {
       throw new Error(`Commit ${selected} is not a redo candidate for ${branchName}`);
@@ -290,10 +280,7 @@ export class HistoryGraph {
     return { name: branchName, headCommitId: selected };
   }
 
-  #applyCommit(
-    previous: DocumentState,
-    commit: HistoryCommit
-  ): Record<string, JsonValue> {
+  #applyCommit(previous: DocumentState, commit: HistoryCommit): Record<string, JsonValue> {
     const next = cloneState(previous);
     for (const patch of commit.patches) {
       const current = next[patch.documentId] ?? null;

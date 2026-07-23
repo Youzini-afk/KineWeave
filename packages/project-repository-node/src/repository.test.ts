@@ -1,12 +1,9 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
 import { HistoryGraph } from "@kineweave/history-engine";
-import {
-  KINEWEAVE_PROTOCOL_VERSION,
-  type JsonObject
-} from "@kineweave/protocol";
+import { type JsonObject, KINEWEAVE_PROTOCOL_VERSION } from "@kineweave/protocol";
+import { afterEach, describe, expect, it } from "vitest";
 import { NodeProjectRepository } from "./repository.js";
 import type { LoadedProjectBundle } from "./types.js";
 
@@ -14,9 +11,9 @@ const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((directory) =>
-      rm(directory, { recursive: true, force: true })
-    )
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true }))
   );
 });
 
@@ -91,14 +88,9 @@ describe("NodeProjectRepository", () => {
     expect(snapshot.bundle.documents.document_main?.data).toMatchObject({
       unknownExtensionData: { viscosity: 0.72 }
     });
-    const manifest = await readFile(
-      path.join(root, "kineweave.project.json"),
-      "utf8"
-    );
+    const manifest = await readFile(path.join(root, "kineweave.project.json"), "utf8");
     expect(manifest.endsWith("\n")).toBe(true);
-    expect(manifest.indexOf('"entryDocumentId"')).toBeLessThan(
-      manifest.indexOf('"projectId"')
-    );
+    expect(manifest.indexOf('"entryDocumentId"')).toBeLessThan(manifest.indexOf('"projectId"'));
   });
 
   it("saves atomically and preserves unknown data", async () => {
@@ -123,13 +115,9 @@ describe("NodeProjectRepository", () => {
 
     const next = bundle("Our update");
     await expect(repository.save(first, next)).rejects.toMatchObject({
-      diagnostics: [
-        expect.objectContaining({ code: "repository.save.failed" })
-      ]
+      diagnostics: [expect.objectContaining({ code: "repository.save.failed" })]
     });
-    expect(await readFile(documentPath, "utf8")).toBe(
-      '{"external":"change"}\n'
-    );
+    expect(await readFile(documentPath, "utf8")).toBe('{"external":"change"}\n');
   });
 
   it("rejects a save when materialized documents diverge from history", async () => {
@@ -160,10 +148,9 @@ describe("NodeProjectRepository", () => {
       }
     });
 
-    await expect(repository.initialize(root, bundle())).rejects.toThrow(
-      /simulated power loss/
+    await expect(repository.initialize(root, bundle())).rejects.toThrow(/simulated power loss/);
+    await expect(readFile(path.join(root, "kineweave.project.json"), "utf8")).rejects.toMatchObject(
+      { code: "ENOENT" }
     );
-    await expect(readFile(path.join(root, "kineweave.project.json"), "utf8"))
-      .rejects.toMatchObject({ code: "ENOENT" });
   });
 });

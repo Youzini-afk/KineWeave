@@ -1,0 +1,244 @@
+{
+  "branches": {
+    "main": "commit_root"
+  },
+  "commits": {},
+  "historyFormatVersion": 1,
+  "mainBranchName": "main",
+  "rootCommitId": "commit_root",
+  "rootDocuments": {
+    "document_main": {
+      "data": {
+        "canvas": {
+          "background": {
+            "kind": "constant",
+            "value": "#111318"
+          },
+          "colorSpace": "org.kineweave.color/srgb",
+          "height": 1080,
+          "pixelAspectRatio": {
+            "denominator": "1",
+            "numerator": "1"
+          },
+          "width": 1920
+        },
+        "duration": {
+          "domain": "org.kineweave.time/seconds",
+          "value": {
+            "denominator": "1",
+            "numerator": "5"
+          }
+        },
+        "name": "Main Composition",
+        "nodes": {
+          "node_headline": {
+            "children": [],
+            "data": {},
+            "enabled": true,
+            "name": "Text",
+            "nodeId": "node_headline",
+            "nodeType": "org.kineweave.standard-motion/text",
+            "properties": {
+              "anchor": {
+                "kind": "constant",
+                "value": [
+                  0,
+                  24
+                ]
+              },
+              "content": {
+                "kind": "constant",
+                "value": "Kine <Weave> & \"deterministic\""
+              },
+              "fill": {
+                "kind": "constant",
+                "value": "#ffffff"
+              },
+              "fontSize": {
+                "kind": "constant",
+                "value": 88
+              },
+              "position": {
+                "kind": "constant",
+                "value": [
+                  960,
+                  620
+                ]
+              }
+            },
+            "schemaVersion": 2
+          },
+          "node_mark": {
+            "children": [],
+            "data": {},
+            "enabled": true,
+            "name": "Path",
+            "nodeId": "node_mark",
+            "nodeType": "org.kineweave.standard-motion/path",
+            "properties": {
+              "fill": {
+                "kind": "constant",
+                "value": "#8ea3ff"
+              },
+              "path": {
+                "kind": "constant",
+                "value": "M 0 -72 L 62 0 L 0 72 L -62 0 Z"
+              },
+              "position": {
+                "kind": "constant",
+                "value": [
+                  960,
+                  430
+                ]
+              },
+              "stroke": {
+                "kind": "constant",
+                "value": "#dfe5ff"
+              },
+              "strokeWidth": {
+                "kind": "constant",
+                "value": 6
+              }
+            },
+            "schemaVersion": 2
+          },
+          "node_orbit": {
+            "children": [],
+            "data": {},
+            "enabled": true,
+            "name": "Ellipse",
+            "nodeId": "node_orbit",
+            "nodeType": "org.kineweave.standard-motion/ellipse",
+            "properties": {
+              "fill": {
+                "kind": "constant",
+                "value": "#00000000"
+              },
+              "opacity": {
+                "kind": "constant",
+                "value": 0.7
+              },
+              "position": {
+                "kind": "constant",
+                "value": [
+                  960,
+                  540
+                ]
+              },
+              "size": {
+                "kind": "constant",
+                "value": [
+                  560,
+                  560
+                ]
+              },
+              "stroke": {
+                "kind": "constant",
+                "value": "#5b7cff"
+              },
+              "strokeWidth": {
+                "kind": "constant",
+                "value": 10
+              }
+            },
+            "schemaVersion": 2
+          },
+          "node_panel": {
+            "children": [],
+            "data": {},
+            "enabled": true,
+            "name": "Rectangle",
+            "nodeId": "node_panel",
+            "nodeType": "org.kineweave.standard-motion/rectangle",
+            "properties": {
+              "cornerRadius": {
+                "kind": "constant",
+                "value": 48
+              },
+              "fill": {
+                "kind": "constant",
+                "value": "#20283c"
+              },
+              "position": {
+                "kind": "constant",
+                "value": [
+                  960,
+                  540
+                ]
+              },
+              "size": {
+                "kind": "constant",
+                "value": [
+                  1280,
+                  480
+                ]
+              },
+              "stroke": {
+                "kind": "constant",
+                "value": "#405175"
+              },
+              "strokeWidth": {
+                "kind": "constant",
+                "value": 4
+              }
+            },
+            "schemaVersion": 2
+          },
+          "node_scene": {
+            "children": [
+              "node_panel",
+              "node_orbit",
+              "node_mark",
+              "node_headline"
+            ],
+            "data": {},
+            "enabled": true,
+            "name": "Scene",
+            "nodeId": "node_scene",
+            "nodeType": "org.kineweave.standard-motion/group",
+            "properties": {
+              "anchor": {
+                "kind": "constant",
+                "value": [
+                  960,
+                  540
+                ]
+              },
+              "opacity": {
+                "kind": "constant",
+                "value": 0.88
+              },
+              "position": {
+                "kind": "constant",
+                "value": [
+                  72,
+                  -36
+                ]
+              },
+              "rotation": {
+                "kind": "constant",
+                "value": 2.5
+              },
+              "scale": {
+                "kind": "constant",
+                "value": [
+                  0.92,
+                  0.92
+                ]
+              }
+            },
+            "schemaVersion": 2
+          }
+        },
+        "rootNodeIds": [
+          "node_scene"
+        ],
+        "signals": {},
+        "tracks": {}
+      },
+      "documentId": "document_main",
+      "documentType": "org.kineweave.standard-motion/composition",
+      "schemaVersion": 2
+    }
+  }
+}

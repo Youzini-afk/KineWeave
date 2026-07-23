@@ -27,10 +27,8 @@ export function diffJson(
     return [{ op: "replace", path, value: cloneJson(after) }];
   }
 
-  const beforeObject =
-    before !== null && typeof before === "object" ? before : undefined;
-  const afterObject =
-    after !== null && typeof after === "object" ? after : undefined;
+  const beforeObject = before !== null && typeof before === "object" ? before : undefined;
+  const afterObject = after !== null && typeof after === "object" ? after : undefined;
 
   if (beforeObject === undefined || afterObject === undefined) {
     return [{ op: "replace", path, value: cloneJson(after) }];
@@ -55,11 +53,7 @@ export function diffJson(
   }
   for (const key of [...beforeKeys].filter((item) => afterKeys.has(item)).sort()) {
     operations.push(
-      ...diffJson(
-        beforeObject[key]!,
-        afterObject[key]!,
-        `${path}/${escapeJsonPointerSegment(key)}`
-      )
+      ...diffJson(beforeObject[key]!, afterObject[key]!, `${path}/${escapeJsonPointerSegment(key)}`)
     );
   }
 

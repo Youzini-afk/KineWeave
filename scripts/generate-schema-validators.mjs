@@ -41,8 +41,7 @@ const targets = [
     }
   },
   {
-    output:
-      "extensions/standard-motion-document/src/generated/composition-validator.ts",
+    output: "extensions/standard-motion-document/src/generated/composition-validator.ts",
     options: { allErrors: true, strict: true },
     schemas: {
       compositionValidator:

@@ -10,7 +10,5 @@ export interface LoadedProjectBundle {
   readonly manifest: KineWeaveProjectManifest;
   readonly lockfile: KineWeaveLockfile;
   readonly history: KineWeaveHistory;
-  readonly documents: Readonly<
-    Record<string, ProjectDocumentEnvelope<JsonObject>>
-  >;
+  readonly documents: Readonly<Record<string, ProjectDocumentEnvelope<JsonObject>>>;
 }

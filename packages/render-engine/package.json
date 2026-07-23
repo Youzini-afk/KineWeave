@@ -11,7 +11,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@kineweave/capability-registry": "workspace:*",
     "@kineweave/evaluation-engine": "workspace:*",

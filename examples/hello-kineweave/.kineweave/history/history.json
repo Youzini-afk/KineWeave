@@ -53,18 +53,13 @@
               },
               "position": {
                 "kind": "constant",
-                "value": [
-                  960,
-                  540
-                ]
+                "value": [960, 540]
               }
             },
             "schemaVersion": 2
           }
         },
-        "rootNodeIds": [
-          "node_headline"
-        ],
+        "rootNodeIds": ["node_headline"],
         "signals": {},
         "tracks": {}
       },

@@ -3,11 +3,9 @@ import type { DiscoveredExtension, ExtensionModule } from "./types.js";
 
 export type EsmModuleNamespace = Readonly<Record<string, unknown>>;
 
-export interface EsmExtensionSourceOptions<TContext> {
+export interface EsmExtensionSourceOptions<_TContext> {
   readonly manifest: ExtensionManifest;
-  readonly importEntrypoint: (
-    entrypoint: ExtensionEntrypoint
-  ) => Promise<EsmModuleNamespace>;
+  readonly importEntrypoint: (entrypoint: ExtensionEntrypoint) => Promise<EsmModuleNamespace>;
 }
 
 function isExtensionModule<TContext>(value: unknown): value is ExtensionModule<TContext> {

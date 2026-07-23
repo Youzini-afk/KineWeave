@@ -7,6 +7,13 @@ export interface ParsedResourceUri {
   readonly canonical: ResourceUri;
 }
 
+function containsControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  });
+}
+
 function assertSegment(segment: string): void {
   if (
     segment.length === 0 ||
@@ -14,7 +21,7 @@ function assertSegment(segment: string): void {
     segment === ".." ||
     segment.includes("/") ||
     segment.includes("\\") ||
-    /[\u0000-\u001f\u007f]/.test(segment)
+    containsControlCharacter(segment)
   ) {
     throw new TypeError(`Invalid resource URI segment: ${segment}`);
   }

@@ -1,18 +1,17 @@
-import { describe, expect, it } from "vitest";
 import { EvaluationEngine } from "@kineweave/evaluation-engine";
 import {
-  STANDARD_PRESENTATION_PRIMITIVES,
-  STANDARD_COLOR_SPACES,
-  STANDARD_TIME_DOMAINS,
-  rational,
-  timeValue,
   type EvaluationRequest,
   type JsonObject,
-  type JsonValue
+  type JsonValue,
+  rational,
+  STANDARD_COLOR_SPACES,
+  STANDARD_PRESENTATION_PRIMITIVES,
+  STANDARD_TIME_DOMAINS,
+  timeValue
 } from "@kineweave/protocol";
+import { describe, expect, it } from "vitest";
 import { standardMotionDocumentEvaluator } from "./evaluator.js";
 import {
-  STANDARD_VALUE_TYPES,
   constant,
   createEllipseNode,
   createExternalSignal,
@@ -20,8 +19,9 @@ import {
   createRectangleNode,
   createStandardComposition,
   cubicBezierEasing,
-  serializedTime,
-  type StandardCompositionDocument
+  STANDARD_VALUE_TYPES,
+  type StandardCompositionDocument,
+  serializedTime
 } from "./model.js";
 
 function request(
@@ -31,10 +31,7 @@ function request(
 ): EvaluationRequest {
   return {
     documentId: "document_main",
-    time: timeValue(
-      rational(numerator, denominator),
-      STANDARD_TIME_DOMAINS.seconds
-    ),
+    time: timeValue(rational(numerator, denominator), STANDARD_TIME_DOMAINS.seconds),
     mode: "deterministic",
     viewport: { width: 1920, height: 1080, pixelRatio: rational(1) },
     colorSpace: STANDARD_COLOR_SPACES.srgb,
@@ -81,16 +78,12 @@ describe("Standard Motion evaluator", () => {
       keyframes: {
         keyframe_start: {
           keyframeId: "keyframe_start",
-          time: serializedTime(
-            timeValue(rational(0), STANDARD_TIME_DOMAINS.seconds)
-          ),
+          time: serializedTime(timeValue(rational(0), STANDARD_TIME_DOMAINS.seconds)),
           value: [0, 0]
         },
         keyframe_end: {
           keyframeId: "keyframe_end",
-          time: serializedTime(
-            timeValue(rational(1), STANDARD_TIME_DOMAINS.seconds)
-          ),
+          time: serializedTime(timeValue(rational(1), STANDARD_TIME_DOMAINS.seconds)),
           value: [100, 50]
         }
       }
@@ -101,9 +94,7 @@ describe("Standard Motion evaluator", () => {
     };
 
     const result = await engine(document).evaluate(request(1, 2));
-    expect(result.graph.nodes.node_headline?.transform.translation).toEqual([
-      50, 25
-    ]);
+    expect(result.graph.nodes.node_headline?.transform.translation).toEqual([50, 25]);
   });
 
   it("samples deterministic cubic-bezier easing by solving its x curve", async () => {
@@ -115,17 +106,13 @@ describe("Standard Motion evaluator", () => {
       keyframes: {
         keyframe_start: {
           keyframeId: "keyframe_start",
-          time: serializedTime(
-            timeValue(rational(0), STANDARD_TIME_DOMAINS.seconds)
-          ),
+          time: serializedTime(timeValue(rational(0), STANDARD_TIME_DOMAINS.seconds)),
           value: [0, 0],
           easing: cubicBezierEasing(0.42, 0, 1, 1)
         },
         keyframe_end: {
           keyframeId: "keyframe_end",
-          time: serializedTime(
-            timeValue(rational(1), STANDARD_TIME_DOMAINS.seconds)
-          ),
+          time: serializedTime(timeValue(rational(1), STANDARD_TIME_DOMAINS.seconds)),
           value: [100, 100]
         }
       }
@@ -184,9 +171,7 @@ describe("Standard Motion evaluator", () => {
     const result = await engine(document).evaluate(
       request(0, 1, { headline_input: "Signal-driven headline" })
     );
-    expect(result.graph.nodes.node_headline?.data.text).toBe(
-      "Signal-driven headline"
-    );
+    expect(result.graph.nodes.node_headline?.data.text).toBe("Signal-driven headline");
   });
 
   it("rejects an external signal value that violates its declared value type", async () => {

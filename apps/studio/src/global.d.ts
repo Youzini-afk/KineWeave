@@ -5,5 +5,3 @@ declare global {
     readonly kineweaveHost: StudioHostApi;
   }
 }
-
-export {};

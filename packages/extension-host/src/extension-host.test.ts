@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { ExtensionManifest } from "@kineweave/protocol";
+import { describe, expect, it } from "vitest";
 import { ExtensionHost } from "./extension-host.js";
 
 function manifest(
@@ -186,10 +186,7 @@ describe("ExtensionHost", () => {
     expect(plan.diagnostics).toEqual([]);
     expect(
       plan.extensions.map((item) => `${item.manifest.extensionId}@${item.manifest.version}`)
-    ).toEqual([
-      "org.example.platform@1.0.0",
-      "org.example.feature@1.0.0"
-    ]);
+    ).toEqual(["org.example.platform@1.0.0", "org.example.feature@1.0.0"]);
   });
 
   it("activates dependencies first and deactivates in reverse order", async () => {
@@ -276,10 +273,7 @@ describe("ExtensionHost", () => {
     });
 
     await expect(host.activate(plan)).rejects.toThrow(/activation failed/i);
-    expect(events).toEqual([
-      "activate:org.example.base",
-      "deactivate:org.example.base"
-    ]);
+    expect(events).toEqual(["activate:org.example.base", "deactivate:org.example.base"]);
     expect(host.statuses()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -369,10 +363,7 @@ describe("ExtensionHost", () => {
     await host.activate(plan);
 
     await expect(host.deactivateAll()).rejects.toBeInstanceOf(AggregateError);
-    expect(events).toEqual([
-      "deactivate:org.example.feature",
-      "deactivate:org.example.base"
-    ]);
+    expect(events).toEqual(["deactivate:org.example.feature", "deactivate:org.example.base"]);
     expect(host.statuses()).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

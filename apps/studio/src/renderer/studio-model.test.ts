@@ -1,17 +1,17 @@
-import { describe, expect, it } from "vitest";
 import {
   PRESENTATION_GRAPH_VERSION,
+  type ResolvedPresentationGraph,
+  rational,
   STANDARD_COLOR_SPACES,
   STANDARD_PRESENTATION_PRIMITIVES,
   STANDARD_TIME_DOMAINS,
-  rational,
-  timeValue,
-  type ResolvedPresentationGraph
+  timeValue
 } from "@kineweave/protocol";
 import {
   createStandardComposition,
   type StandardCompositionDocument
 } from "@kineweave/standard-motion-document";
+import { describe, expect, it } from "vitest";
 import {
   compositionDurationSeconds,
   findLayerParent,

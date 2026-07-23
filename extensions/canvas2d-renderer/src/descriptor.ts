@@ -1,14 +1,10 @@
-import {
-  STANDARD_COLOR_SPACES,
-  STANDARD_PRESENTATION_PRIMITIVES
-} from "@kineweave/protocol";
+import { STANDARD_COLOR_SPACES, STANDARD_PRESENTATION_PRIMITIVES } from "@kineweave/protocol";
 import {
   INTERACTIVE_RENDERER_CAPABILITY_ID,
   INTERACTIVE_RENDERER_CONTRACT_VERSION
 } from "@kineweave/render-engine";
 
-export const CANVAS2D_RENDERER_PROVIDER_ID =
-  "org.kineweave.renderer/canvas2d";
+export const CANVAS2D_RENDERER_PROVIDER_ID = "org.kineweave.renderer/canvas2d";
 export const CANVAS2D_SURFACE_TYPE = "org.kineweave.surface/canvas2d";
 
 export const canvas2dRendererDescriptor = {

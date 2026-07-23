@@ -19,7 +19,9 @@
       "import": "./dist/descriptor.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@kineweave/extension-api": "workspace:*",
     "@kineweave/protocol": "workspace:*",

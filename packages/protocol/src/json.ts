@@ -19,11 +19,7 @@ export function inspectJsonValue(value: unknown): JsonInspection {
   const ancestors = new WeakSet<object>();
 
   function inspect(current: unknown, path: string): JsonInspection {
-    if (
-      current === null ||
-      typeof current === "string" ||
-      typeof current === "boolean"
-    ) {
+    if (current === null || typeof current === "string" || typeof current === "boolean") {
       return { valid: true };
     }
 
@@ -79,10 +75,7 @@ export function inspectJsonValue(value: unknown): JsonInspection {
   return inspect(value, "");
 }
 
-export function assertJsonValue(
-  value: unknown,
-  label = "value"
-): asserts value is JsonValue {
+export function assertJsonValue(value: unknown, label = "value"): asserts value is JsonValue {
   const inspection = inspectJsonValue(value);
   if (!inspection.valid) {
     throw new TypeError(

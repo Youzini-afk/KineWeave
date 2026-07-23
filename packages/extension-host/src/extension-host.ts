@@ -58,11 +58,7 @@ function keyOf(manifest: ExtensionManifest): string {
   return `${manifest.extensionId}@${manifest.version}`;
 }
 
-function diagnostic(
-  severity: Diagnostic["severity"],
-  code: string,
-  message: string
-): Diagnostic {
+function diagnostic(severity: Diagnostic["severity"], code: string, message: string): Diagnostic {
   return {
     severity,
     code,
@@ -71,10 +67,7 @@ function diagnostic(
   };
 }
 
-function extensionFailure(
-  depth: number,
-  item: Diagnostic
-): ExtensionSolveResult {
+function extensionFailure(depth: number, item: Diagnostic): ExtensionSolveResult {
   return { ok: false, diagnostics: [item], depth };
 }
 
@@ -92,9 +85,7 @@ function preferExtensionFailure(
 function validateManifest(manifest: ExtensionManifest): void {
   assertExtensionId(manifest.extensionId);
   if (manifest.manifestVersion !== 1) {
-    throw new TypeError(
-      `Unsupported extension manifest version ${manifest.manifestVersion}`
-    );
+    throw new TypeError(`Unsupported extension manifest version ${manifest.manifestVersion}`);
   }
   if (valid(manifest.version) === null) {
     throw new TypeError(
@@ -106,9 +97,7 @@ function validateManifest(manifest: ExtensionManifest): void {
       `Extension ${manifest.extensionId} has invalid KineWeave range ${manifest.kineweaveVersion}`
     );
   }
-  for (const [dependencyId, dependency] of Object.entries(
-    manifest.dependencies
-  )) {
+  for (const [dependencyId, dependency] of Object.entries(manifest.dependencies)) {
     assertExtensionId(dependencyId, "extension dependency id");
     if (validRange(dependency.versionRange) === null) {
       throw new TypeError(
@@ -144,10 +133,7 @@ function validateManifest(manifest: ExtensionManifest): void {
     }
   }
 
-  const assertVersions = (
-    versions: readonly number[],
-    label: string
-  ): void => {
+  const assertVersions = (versions: readonly number[], label: string): void => {
     if (
       versions.length === 0 ||
       versions.some((version) => !Number.isSafeInteger(version) || version <= 0) ||
@@ -217,9 +203,7 @@ export class ExtensionHost<TContext> {
 
   constructor(options: ExtensionHostOptions<TContext>) {
     if (valid(options.kineweaveVersion) === null) {
-      throw new TypeError(
-        `Invalid KineWeave host version ${options.kineweaveVersion}`
-      );
+      throw new TypeError(`Invalid KineWeave host version ${options.kineweaveVersion}`);
     }
     if (options.supportedRuntimes.length === 0) {
       throw new TypeError("Extension host must declare at least one supported runtime");
@@ -278,9 +262,7 @@ export class ExtensionHost<TContext> {
         extensionId: entry.source.manifest.extensionId,
         version: entry.source.manifest.version,
         state: entry.state,
-        ...(entry.diagnostic === undefined
-          ? {}
-          : { diagnostic: entry.diagnostic })
+        ...(entry.diagnostic === undefined ? {} : { diagnostic: entry.diagnostic })
       }))
       .sort((left, right) =>
         left.extensionId === right.extensionId
@@ -319,10 +301,7 @@ export class ExtensionHost<TContext> {
           diagnostic(
             "error",
             "extension.dependency.cycle",
-            `Extension dependency cycle: ${[
-              ...current.stack,
-              current.extensionId
-            ].join(" -> ")}`
+            `Extension dependency cycle: ${[...current.stack, current.extensionId].join(" -> ")}`
           )
         );
       }
@@ -331,8 +310,7 @@ export class ExtensionHost<TContext> {
       const existing = selected.get(current.extensionId);
       if (existing !== undefined) {
         if (
-          (lockedVersion === undefined ||
-            existing.manifest.version === lockedVersion) &&
+          (lockedVersion === undefined || existing.manifest.version === lockedVersion) &&
           satisfies(existing.manifest.version, current.versionRange)
         ) {
           return solve(remaining, selected, depth + 1);
@@ -357,9 +335,7 @@ export class ExtensionHost<TContext> {
       const discoveredVersions = this.#versionsById.get(current.extensionId) ?? [];
       const candidateVersions =
         lockedVersion === undefined
-          ? discoveredVersions.filter((version) =>
-              satisfies(version, current.versionRange)
-            )
+          ? discoveredVersions.filter((version) => satisfies(version, current.versionRange))
           : discoveredVersions.includes(lockedVersion) &&
               satisfies(lockedVersion, current.versionRange)
             ? [lockedVersion]
@@ -414,15 +390,11 @@ export class ExtensionHost<TContext> {
           continue;
         }
         const resolved: ResolvedExtension =
-          entrypoint === undefined
-            ? { manifest, key }
-            : { manifest, key, entrypoint };
+          entrypoint === undefined ? { manifest, key } : { manifest, key, entrypoint };
         const nextSelected = new Map(selected);
         nextSelected.set(current.extensionId, resolved);
         const dependencyStack = [...current.stack, current.extensionId];
-        const dependencies: PendingExtensionRequirement[] = Object.entries(
-          manifest.dependencies
-        )
+        const dependencies: PendingExtensionRequirement[] = Object.entries(manifest.dependencies)
           .sort(([left], [right]) => left.localeCompare(right))
           .map(([extensionId, dependency]) => ({
             extensionId,
@@ -430,11 +402,7 @@ export class ExtensionHost<TContext> {
             optional: dependency.optional === true,
             stack: dependencyStack
           }));
-        const attempt = solve(
-          [...dependencies, ...remaining],
-          nextSelected,
-          depth + 1
-        );
+        const attempt = solve([...dependencies, ...remaining], nextSelected, depth + 1);
         if (attempt.ok) return attempt;
         bestFailure = preferExtensionFailure(bestFailure, attempt);
       }
@@ -516,11 +484,8 @@ export class ExtensionHost<TContext> {
         try {
           entry.module ??= await entry.source.load(resolved.entrypoint);
           entry.state = "loaded";
-          const context = await this.#options.createActivationContext(
-            entry.source.manifest
-          );
-          entry.activation =
-            (await entry.module.activate(context)) ?? undefined;
+          const context = await this.#options.createActivationContext(entry.source.manifest);
+          entry.activation = (await entry.module.activate(context)) ?? undefined;
           entry.state = "activated";
           entry.diagnostic = undefined;
           this.#activationOrder.push(resolved.key);
@@ -567,10 +532,7 @@ export class ExtensionHost<TContext> {
         }
       }
       if (failures.length > 0) {
-        throw new AggregateError(
-          failures,
-          `Failed to deactivate ${failures.length} extension(s)`
-        );
+        throw new AggregateError(failures, `Failed to deactivate ${failures.length} extension(s)`);
       }
     });
   }
@@ -593,8 +555,7 @@ export class ExtensionHost<TContext> {
     const entry = this.#catalog.get(key);
     if (
       entry === undefined ||
-      (entry.state !== "activated" &&
-        !(entry.state === "failed" && entry.activation !== undefined))
+      (entry.state !== "activated" && !(entry.state === "failed" && entry.activation !== undefined))
     ) {
       return;
     }

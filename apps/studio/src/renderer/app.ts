@@ -1,21 +1,14 @@
 import "./styles.css";
-import {
-  constantBindingValue,
-  flattenLayerTree,
-  inspectorFields,
-  shortNodeType,
-  type InspectorField
-} from "./studio-model.js";
-import {
-  StudioController,
-  type StudioSnapshot
-} from "./studio-controller.js";
 import type { JsonValue } from "@kineweave/protocol";
-import type {
-  MotionNode,
-  StandardCompositionDocument
-} from "@kineweave/standard-motion-document";
+import type { MotionNode } from "@kineweave/standard-motion-document";
 import type { StudioCommand } from "../bridge.js";
+import { StudioController, type StudioSnapshot } from "./studio-controller.js";
+import {
+  flattenLayerTree,
+  type InspectorField,
+  inspectorFields,
+  shortNodeType
+} from "./studio-model.js";
 
 const root = document.querySelector<HTMLDivElement>("#app");
 if (root === null) throw new Error("Studio root element is missing");
@@ -155,6 +148,7 @@ let renderedPanelRevision = -1;
 let scrubbing = false;
 
 const elements = {
+  shell: required<HTMLElement>(".studio-shell"),
   projectName: required<HTMLElement>("#project-name"),
   projectPath: required<HTMLElement>("#project-path"),
   welcome: required<HTMLElement>("#welcome"),
@@ -189,9 +183,7 @@ const elements = {
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds - minutes * 60;
-  return `${String(minutes).padStart(2, "0")}:${remainder
-    .toFixed(3)
-    .padStart(6, "0")}`;
+  return `${String(minutes).padStart(2, "0")}:${remainder.toFixed(3).padStart(6, "0")}`;
 }
 
 function run(action: Promise<unknown>): void {
@@ -203,7 +195,8 @@ function defaultPropertyValue(property: string): JsonValue {
   if (property === "scale") return [1, 1];
   if (property === "opacity") return 1;
   if (property === "visible") return true;
-  if (property === "rotation" || property === "strokeWidth" || property === "cornerRadius") return 0;
+  if (property === "rotation" || property === "strokeWidth" || property === "cornerRadius")
+    return 0;
   return "";
 }
 
@@ -266,6 +259,7 @@ function renderInspectorField(node: MotionNode, field: InspectorField): HTMLElem
     toggle.className = "switch-row";
     const input = document.createElement("input");
     input.type = "checkbox";
+    input.setAttribute("aria-label", field.label);
     input.checked = value !== false;
     input.disabled = !editable;
     input.addEventListener("change", () =>
@@ -288,6 +282,7 @@ function renderInspectorField(node: MotionNode, field: InspectorField): HTMLElem
       ? document.createElement("textarea")
       : document.createElement("input");
   input.className = "property-input";
+  input.setAttribute("aria-label", field.label);
   input.disabled = !editable;
   if (input instanceof HTMLInputElement) {
     input.type = field.kind === "number" ? "number" : "text";
@@ -308,8 +303,7 @@ function renderInspectorField(node: MotionNode, field: InspectorField): HTMLElem
     wrapper.append(input);
   }
   input.addEventListener("change", () => {
-    const next: JsonValue =
-      field.kind === "number" ? Number(input.value) : input.value;
+    const next: JsonValue = field.kind === "number" ? Number(input.value) : input.value;
     if (typeof next === "number" && !Number.isFinite(next)) return;
     run(controller.setProperty(node.nodeId, field.property, next));
   });
@@ -330,19 +324,15 @@ function renderLayers(snapshot: StudioSnapshot): void {
   for (const item of flattenLayerTree(composition)) {
     const row = window.document.createElement("div");
     row.className = `layer-row${item.node.nodeId === snapshot.selectedNodeId ? " selected" : ""}`;
+    row.dataset.nodeId = item.node.nodeId;
+    row.dataset.nodeType = item.node.nodeType;
     row.style.setProperty("--depth", String(item.depth));
     row.setAttribute("role", "treeitem");
-    row.setAttribute(
-      "aria-selected",
-      String(item.node.nodeId === snapshot.selectedNodeId)
-    );
+    row.setAttribute("aria-selected", String(item.node.nodeId === snapshot.selectedNodeId));
     row.tabIndex = 0;
     row.addEventListener("click", () => controller.selectNode(item.node.nodeId));
     row.addEventListener("keydown", (event) => {
-      if (
-        event.target === row &&
-        (event.key === "Enter" || event.key === " ")
-      ) {
+      if (event.target === row && (event.key === "Enter" || event.key === " ")) {
         event.preventDefault();
         controller.selectNode(item.node.nodeId);
       }
@@ -361,16 +351,15 @@ function renderLayers(snapshot: StudioSnapshot): void {
     });
     const icon = window.document.createElement("span");
     icon.className = "layer-icon";
-    icon.textContent =
-      item.node.nodeType.endsWith("/text")
-        ? "T"
-        : item.node.nodeType.endsWith("/rectangle")
-          ? "▭"
-          : item.node.nodeType.endsWith("/ellipse")
-            ? "○"
-            : item.node.nodeType.endsWith("/path")
-              ? "✦"
-              : "◇";
+    icon.textContent = item.node.nodeType.endsWith("/text")
+      ? "T"
+      : item.node.nodeType.endsWith("/rectangle")
+        ? "▭"
+        : item.node.nodeType.endsWith("/ellipse")
+          ? "○"
+          : item.node.nodeType.endsWith("/path")
+            ? "✦"
+            : "◇";
     const copy = window.document.createElement("span");
     copy.className = "layer-copy";
     const name = window.document.createElement("strong");
@@ -401,6 +390,7 @@ function renderInspector(snapshot: StudioSnapshot): void {
   identity.className = "identity-section";
   const nameLabel = inputLabel("Layer name");
   const name = document.createElement("input");
+  name.id = "layer-name";
   name.className = "property-input prominent";
   name.value = node.name;
   name.addEventListener("change", () => {
@@ -444,7 +434,8 @@ function renderHistory(snapshot: StudioSnapshot): void {
     const title = document.createElement("strong");
     title.textContent = operation.replaceAll("-", " ");
     const detail = document.createElement("small");
-    detail.textContent = index === 0 ? "Current state" : new Date(entry.timestamp).toLocaleTimeString();
+    detail.textContent =
+      index === 0 ? "Current state" : new Date(entry.timestamp).toLocaleTimeString();
     copy.append(title, detail);
     row.append(marker, copy);
     elements.history.append(row);
@@ -470,8 +461,7 @@ function renderTimelineDetails(snapshot: StudioSnapshot): void {
   for (const track of tracks) {
     for (const keyframe of Object.values(track.keyframes)) {
       const seconds =
-        Number(keyframe.time.value.numerator) /
-        Number(keyframe.time.value.denominator);
+        Number(keyframe.time.value.numerator) / Number(keyframe.time.value.denominator);
       const marker = window.document.createElement("button");
       marker.className = "keyframe-marker";
       marker.type = "button";
@@ -513,6 +503,10 @@ function renderDiagnostics(snapshot: StudioSnapshot): void {
 function render(snapshot: StudioSnapshot): void {
   latest = snapshot;
   const ready = snapshot.phase === "ready";
+  elements.shell.dataset.phase = snapshot.phase;
+  elements.shell.dataset.dirty = String(snapshot.dirty);
+  elements.shell.dataset.saving = String(snapshot.saving);
+  elements.shell.dataset.playing = String(snapshot.playing);
   elements.projectName.textContent = snapshot.projectName ?? "No project open";
   elements.projectPath.textContent = snapshot.rootPath ?? "";
   elements.welcome.classList.toggle("hidden", ready);
@@ -598,12 +592,7 @@ elements.moveDown.addEventListener("click", () => run(controller.moveSelectedLay
 for (const button of document.querySelectorAll<HTMLButtonElement>("[data-add-node]")) {
   button.addEventListener("click", () => {
     const kind = button.dataset.addNode;
-    if (
-      kind === "text" ||
-      kind === "rectangle" ||
-      kind === "ellipse" ||
-      kind === "path"
-    ) {
+    if (kind === "text" || kind === "rectangle" || kind === "ellipse" || kind === "path") {
       run(controller.addNode(kind));
     }
   });

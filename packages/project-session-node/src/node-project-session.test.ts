@@ -1,22 +1,22 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
 import {
-  KINEWEAVE_VERSION,
   createOfficialDistributionProfile,
-  createOfficialProjectTemplate
+  createOfficialProjectTemplate,
+  KINEWEAVE_VERSION
 } from "@kineweave/official-distribution";
 import { NodeProjectRepository } from "@kineweave/project-repository-node";
+import { afterEach, describe, expect, it } from "vitest";
 import { openNodeProjectSession } from "./node-project-session.js";
 
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((directory) =>
-      rm(directory, { recursive: true, force: true })
-    )
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true }))
   );
 });
 

@@ -1,29 +1,18 @@
-import type { ProjectSession } from "@kineweave/project-session";
-import type {
-  InteractiveRenderSession,
-  InteractiveRenderSurface
-} from "@kineweave/render-engine";
 import {
   CANVAS2D_SURFACE_TYPE,
   type Canvas2DContextLike,
   type Canvas2DPathLike,
   type Canvas2DSurfaceResource
 } from "@kineweave/canvas2d-renderer";
+import type { ProjectSession } from "@kineweave/project-session";
 import type { ResolvedPresentationGraph } from "@kineweave/protocol";
-import {
-  roundCompositionCoordinate,
-  selectionPolygon
-} from "./studio-model.js";
+import type { InteractiveRenderSession, InteractiveRenderSurface } from "@kineweave/render-engine";
+import { roundCompositionCoordinate, selectionPolygon } from "./studio-model.js";
 
 export interface StageControllerCallbacks {
   readonly onSelect: (nodeId: string | undefined) => void;
-  readonly movablePosition: (
-    nodeId: string
-  ) => readonly [number, number] | undefined;
-  readonly onMove: (
-    nodeId: string,
-    position: readonly [number, number]
-  ) => void | Promise<void>;
+  readonly movablePosition: (nodeId: string) => readonly [number, number] | undefined;
+  readonly onMove: (nodeId: string, position: readonly [number, number]) => void | Promise<void>;
   readonly onError: (error: unknown) => void;
 }
 
@@ -80,10 +69,7 @@ export class StageController {
     canvas.addEventListener("pointercancel", this.#handlePointerCancel);
   }
 
-  async present(
-    project: ProjectSession,
-    graph: ResolvedPresentationGraph
-  ): Promise<void> {
+  async present(project: ProjectSession, graph: ResolvedPresentationGraph): Promise<void> {
     await this.#enqueue(async () => {
       if (this.#project !== project || this.#interactive === undefined) {
         await this.#interactive?.dispose();
@@ -189,9 +175,7 @@ export class StageController {
     drag.moved ||= Math.hypot(deltaX, deltaY) >= 2;
     this.#selection.setAttribute(
       "points",
-      drag.startPolygon
-        .map((value) => `${value[0] + deltaX},${value[1] + deltaY}`)
-        .join(" ")
+      drag.startPolygon.map((value) => `${value[0] + deltaX},${value[1] + deltaY}`).join(" ")
     );
   }
 
@@ -210,12 +194,8 @@ export class StageController {
     const scale = this.#viewScale();
     try {
       await this.#callbacks.onMove(drag.nodeId, [
-        roundCompositionCoordinate(
-          drag.startPosition[0] + (current[0] - drag.startX) / scale
-        ),
-        roundCompositionCoordinate(
-          drag.startPosition[1] + (current[1] - drag.startY) / scale
-        )
+        roundCompositionCoordinate(drag.startPosition[0] + (current[0] - drag.startX) / scale),
+        roundCompositionCoordinate(drag.startPosition[1] + (current[1] - drag.startY) / scale)
       ]);
     } catch (error) {
       this.#callbacks.onError(error);
@@ -234,10 +214,7 @@ export class StageController {
     const pixelRatio = Math.max(1, window.devicePixelRatio || 1);
     const backingWidth = Math.max(1, Math.round(size.width * pixelRatio));
     const backingHeight = Math.max(1, Math.round(size.height * pixelRatio));
-    if (
-      this.#canvas.width !== backingWidth ||
-      this.#canvas.height !== backingHeight
-    ) {
+    if (this.#canvas.width !== backingWidth || this.#canvas.height !== backingHeight) {
       this.#canvas.width = backingWidth;
       this.#canvas.height = backingHeight;
     }
@@ -281,15 +258,11 @@ export class StageController {
       canvas !== null && typeof canvas === "object" && !Array.isArray(canvas)
         ? canvas.height
         : undefined;
-    const compositionWidth =
-      typeof width === "number" && width > 0 ? width : graph.viewport.width;
+    const compositionWidth = typeof width === "number" && width > 0 ? width : graph.viewport.width;
     const compositionHeight =
       typeof height === "number" && height > 0 ? height : graph.viewport.height;
     const surface = this.#surfaceSize();
-    return Math.min(
-      surface.width / compositionWidth,
-      surface.height / compositionHeight
-    );
+    return Math.min(surface.width / compositionWidth, surface.height / compositionHeight);
   }
 
   #updateSelection(): void {

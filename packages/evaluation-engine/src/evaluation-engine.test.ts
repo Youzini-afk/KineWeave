@@ -1,19 +1,16 @@
-import { describe, expect, it } from "vitest";
 import {
+  type EvaluationRequest,
+  type JsonObject,
   PRESENTATION_GRAPH_VERSION,
+  type ResolvedPresentationGraph,
+  rational,
   STANDARD_COLOR_SPACES,
   STANDARD_PRESENTATION_PRIMITIVES,
   STANDARD_TIME_DOMAINS,
-  rational,
-  timeValue,
-  type EvaluationRequest,
-  type JsonObject,
-  type ResolvedPresentationGraph
+  timeValue
 } from "@kineweave/protocol";
-import {
-  EvaluationEngine,
-  EvaluationRejectedError
-} from "./evaluation-engine.js";
+import { describe, expect, it } from "vitest";
+import { EvaluationEngine, EvaluationRejectedError } from "./evaluation-engine.js";
 
 const DOCUMENT_TYPE = "org.example.motion/composition";
 
@@ -57,10 +54,7 @@ function graph(value = "hello"): ResolvedPresentationGraph {
         data: { value }
       }
     },
-    requiredFeatures: [
-      STANDARD_PRESENTATION_PRIMITIVES.group,
-      STANDARD_COLOR_SPACES.srgb
-    ]
+    requiredFeatures: [STANDARD_PRESENTATION_PRIMITIVES.group, STANDARD_COLOR_SPACES.srgb]
   };
 }
 
@@ -107,9 +101,7 @@ describe("EvaluationEngine", () => {
     });
 
     await expect(engine.evaluate(request())).rejects.toMatchObject({
-      diagnostics: [
-        expect.objectContaining({ code: "evaluation.evaluator.missing" })
-      ]
+      diagnostics: [expect.objectContaining({ code: "evaluation.evaluator.missing" })]
     });
   });
 
@@ -132,9 +124,7 @@ describe("EvaluationEngine", () => {
       }
     });
 
-    await expect(engine.evaluate(request())).rejects.toBeInstanceOf(
-      EvaluationRejectedError
-    );
+    await expect(engine.evaluate(request())).rejects.toBeInstanceOf(EvaluationRejectedError);
   });
 
   it("wraps malformed evaluator output as a rejected evaluation", async () => {
@@ -151,9 +141,7 @@ describe("EvaluationEngine", () => {
     });
 
     await expect(engine.evaluate(request())).rejects.toMatchObject({
-      diagnostics: [
-        expect.objectContaining({ code: "presentation.graph.invalid" })
-      ]
+      diagnostics: [expect.objectContaining({ code: "presentation.graph.invalid" })]
     });
   });
 });

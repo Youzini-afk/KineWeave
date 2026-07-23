@@ -12,15 +12,7 @@
     "schemaVersion": { "const": 2 },
     "data": {
       "type": "object",
-      "required": [
-        "name",
-        "duration",
-        "canvas",
-        "rootNodeIds",
-        "nodes",
-        "tracks",
-        "signals"
-      ],
+      "required": ["name", "duration", "canvas", "rootNodeIds", "nodes", "tracks", "signals"],
       "properties": {
         "name": { "type": "string", "minLength": 1 },
         "duration": { "$ref": "#/$defs/timeValue" },
@@ -171,12 +163,7 @@
     },
     "track": {
       "type": "object",
-      "required": [
-        "trackId",
-        "valueType",
-        "target",
-        "keyframes"
-      ],
+      "required": ["trackId", "valueType", "target", "keyframes"],
       "properties": {
         "trackId": { "$ref": "#/$defs/stableId" },
         "valueType": { "$ref": "#/$defs/qualifiedName" },
@@ -238,13 +225,7 @@
     },
     "signal": {
       "type": "object",
-      "required": [
-        "signalId",
-        "signalType",
-        "schemaVersion",
-        "valueType",
-        "data"
-      ],
+      "required": ["signalId", "signalType", "schemaVersion", "valueType", "data"],
       "properties": {
         "signalId": { "$ref": "#/$defs/stableId" },
         "signalType": { "$ref": "#/$defs/qualifiedName" },

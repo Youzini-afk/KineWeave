@@ -1,18 +1,18 @@
 import {
-  PRESENTATION_GRAPH_VERSION,
-  STANDARD_PRESENTATION_PRIMITIVES,
   assertJsonValue,
   assertQualifiedName,
   assertStableId,
   compareRational,
+  type Diagnostic,
+  PRESENTATION_GRAPH_VERSION,
+  type PresentationNode,
   parseRational,
   parseResourceUri,
-  rational,
-  timeValue,
-  type Diagnostic,
-  type PresentationNode,
   type Rational,
-  type ResolvedPresentationGraph
+  type ResolvedPresentationGraph,
+  rational,
+  STANDARD_PRESENTATION_PRIMITIVES,
+  timeValue
 } from "@kineweave/protocol";
 
 type UnknownRecord = Record<string, unknown>;
@@ -344,12 +344,7 @@ function validateNode(
           )
         );
       }
-      for (const key of [
-        "fill",
-        "fontFamily",
-        "textAnchor",
-        "dominantBaseline"
-      ] as const) {
+      for (const key of ["fill", "fontFamily", "textAnchor", "dominantBaseline"] as const) {
         if (rawNode.data[key] !== undefined && typeof rawNode.data[key] !== "string") {
           diagnostics.push(
             error(
@@ -489,18 +484,10 @@ function validateNode(
   };
 }
 
-export function validatePresentationGraph(
-  rawGraph: unknown
-): readonly Diagnostic[] {
+export function validatePresentationGraph(rawGraph: unknown): readonly Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   if (!isPlainObject(rawGraph)) {
-    return [
-      error(
-        "presentation.graph.invalid",
-        "Presentation graph must be a JSON object",
-        "/"
-      )
-    ];
+    return [error("presentation.graph.invalid", "Presentation graph must be a JSON object", "/")];
   }
 
   try {
@@ -573,12 +560,7 @@ export function validatePresentationGraph(
     );
   } else {
     try {
-      if (
-        compareRational(
-          parseRational(viewport.pixelRatio as Rational),
-          rational(0)
-        ) <= 0
-      ) {
+      if (compareRational(parseRational(viewport.pixelRatio as Rational), rational(0)) <= 0) {
         throw new RangeError("Pixel ratio must be positive");
       }
     } catch (caught) {
@@ -595,11 +577,7 @@ export function validatePresentationGraph(
   const graphTime = rawGraph.time;
   if (!isPlainObject(graphTime) || typeof graphTime.domain !== "string") {
     diagnostics.push(
-      error(
-        "presentation.time.invalid",
-        "Presentation graph requires a valid time value",
-        "/time"
-      )
+      error("presentation.time.invalid", "Presentation graph requires a valid time value", "/time")
     );
   } else {
     try {
@@ -718,10 +696,7 @@ export function validatePresentationGraph(
     }
     if (visiting.has(nodeId)) {
       diagnostics.push(
-        error(
-          "presentation.hierarchy.cycle",
-          `Presentation hierarchy cycle detected at ${nodeId}`
-        )
+        error("presentation.hierarchy.cycle", `Presentation hierarchy cycle detected at ${nodeId}`)
       );
       return;
     }
@@ -821,10 +796,7 @@ export function validatePresentationGraph(
       }
     }
   }
-  if (
-    typeof rawGraph.colorSpace === "string" &&
-    !features.has(rawGraph.colorSpace)
-  ) {
+  if (typeof rawGraph.colorSpace === "string" && !features.has(rawGraph.colorSpace)) {
     diagnostics.push(
       error(
         "presentation.feature.color-space-missing",
@@ -837,10 +809,6 @@ export function validatePresentationGraph(
   return diagnostics;
 }
 
-export function isResolvedPresentationGraph(
-  value: unknown
-): value is ResolvedPresentationGraph {
-  return !validatePresentationGraph(value).some(
-    (item) => item.severity === "error"
-  );
+export function isResolvedPresentationGraph(value: unknown): value is ResolvedPresentationGraph {
+  return !validatePresentationGraph(value).some((item) => item.severity === "error");
 }

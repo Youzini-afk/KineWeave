@@ -1,16 +1,15 @@
 import {
-  STANDARD_COLOR_SPACES,
-  STANDARD_TIME_DOMAINS,
-  rational,
   type JsonObject,
   type JsonValue,
   type ProjectDocumentEnvelope,
   type Rational,
+  rational,
+  STANDARD_COLOR_SPACES,
+  STANDARD_TIME_DOMAINS,
   type TimeValue
 } from "@kineweave/protocol";
 
-export const STANDARD_COMPOSITION_TYPE =
-  "org.kineweave.standard-motion/composition";
+export const STANDARD_COMPOSITION_TYPE = "org.kineweave.standard-motion/composition";
 export const STANDARD_COMPOSITION_SCHEMA_VERSION = 2;
 export const STANDARD_NODE_SCHEMA_VERSION = 2;
 export const STANDARD_SIGNAL_SCHEMA_VERSION = 1;
@@ -153,10 +152,7 @@ export function createExternalSignal(
   };
 }
 
-export function createTextNode(
-  nodeId: string,
-  text = "Hello KineWeave"
-): MotionNode {
+export function createTextNode(nodeId: string, text = "Hello KineWeave"): MotionNode {
   return {
     nodeId,
     nodeType: STANDARD_NODE_TYPES.text,
@@ -211,32 +207,14 @@ function createShapeNode(
   };
 }
 
-export function createRectangleNode(
-  nodeId: string,
-  width = 320,
-  height = 180
-): MotionNode {
-  const node = createShapeNode(
-    nodeId,
-    STANDARD_NODE_TYPES.rectangle,
-    "Rectangle",
-    [width, height]
-  );
+export function createRectangleNode(nodeId: string, width = 320, height = 180): MotionNode {
+  const node = createShapeNode(nodeId, STANDARD_NODE_TYPES.rectangle, "Rectangle", [width, height]);
   node.properties.cornerRadius = constant(0);
   return node;
 }
 
-export function createEllipseNode(
-  nodeId: string,
-  width = 180,
-  height = 180
-): MotionNode {
-  return createShapeNode(
-    nodeId,
-    STANDARD_NODE_TYPES.ellipse,
-    "Ellipse",
-    [width, height]
-  );
+export function createEllipseNode(nodeId: string, width = 180, height = 180): MotionNode {
+  return createShapeNode(nodeId, STANDARD_NODE_TYPES.ellipse, "Ellipse", [width, height]);
 }
 
 export function createPathNode(nodeId: string, path: string): MotionNode {
@@ -286,10 +264,7 @@ export function createStandardComposition(
   orbit.properties.stroke = constant("#5b7cff");
   orbit.properties.strokeWidth = constant(10);
   orbit.properties.opacity = constant(0.7);
-  const mark = createPathNode(
-    "node_mark",
-    "M 0 -72 L 62 0 L 0 72 L -62 0 Z"
-  );
+  const mark = createPathNode("node_mark", "M 0 -72 L 62 0 L 0 72 L -62 0 Z");
   mark.properties.position = constant([960, 430]);
   mark.properties.fill = constant("#8ea3ff");
   const scene = createGroupNode("node_scene", "Scene");

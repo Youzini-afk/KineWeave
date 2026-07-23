@@ -1,15 +1,15 @@
 import {
+  type Diagnostic,
   HISTORY_FORMAT_VERSION,
-  KINEWEAVE_PROTOCOL_VERSION,
-  LOCKFILE_FORMAT_VERSION,
-  PROJECT_FORMAT_VERSION,
   hasErrorDiagnostics,
   isResourceUri,
-  type Diagnostic,
   type JsonObject,
+  KINEWEAVE_PROTOCOL_VERSION,
   type KineWeaveHistory,
   type KineWeaveLockfile,
   type KineWeaveProjectManifest,
+  LOCKFILE_FORMAT_VERSION,
+  PROJECT_FORMAT_VERSION,
   type ProjectDocumentEnvelope
 } from "@kineweave/protocol";
 import { satisfies, valid, validRange } from "semver";
@@ -44,9 +44,7 @@ function error(
   };
 }
 
-export function validateProjectBundle(
-  bundle: ProjectBundle
-): readonly Diagnostic[] {
+export function validateProjectBundle(bundle: ProjectBundle): readonly Diagnostic[] {
   const diagnostics: Diagnostic[] = [
     ...validateProjectManifestSchema(bundle.manifest),
     ...validateLockfileSchema(bundle.lockfile),
@@ -97,10 +95,7 @@ export function validateProjectBundle(
   }
   if (manifest.projectId !== lockfile.projectId) {
     diagnostics.push(
-      error(
-        "project.lockfile.project-id-mismatch",
-        "Manifest and lockfile projectId must match"
-      )
+      error("project.lockfile.project-id-mismatch", "Manifest and lockfile projectId must match")
     );
   }
   if (!(manifest.entryDocumentId in manifest.documents)) {
@@ -142,10 +137,7 @@ export function validateProjectBundle(
       );
     }
     for (const parentCommitId of commit.parentCommitIds) {
-      if (
-        parentCommitId !== history.rootCommitId &&
-        !(parentCommitId in history.commits)
-      ) {
+      if (parentCommitId !== history.rootCommitId && !(parentCommitId in history.commits)) {
         diagnostics.push(
           error(
             "history.commit.parent-missing",
@@ -166,10 +158,7 @@ export function validateProjectBundle(
         )
       );
     }
-    if (
-      headCommitId !== history.rootCommitId &&
-      !(headCommitId in history.commits)
-    ) {
+    if (headCommitId !== history.rootCommitId && !(headCommitId in history.commits)) {
       diagnostics.push(
         error(
           "history.branch.head-missing",
@@ -223,9 +212,7 @@ export function validateProjectBundle(
     }
 
     const documentDiagnostics = validateDocumentEnvelopeSchema(rawDocument);
-    diagnostics.push(
-      ...documentDiagnostics.map((item) => ({ ...item, documentId }))
-    );
+    diagnostics.push(...documentDiagnostics.map((item) => ({ ...item, documentId })));
     if (hasErrorDiagnostics(documentDiagnostics)) continue;
 
     const document = rawDocument as ProjectDocumentEnvelope<JsonObject>;
@@ -261,9 +248,7 @@ export function validateProjectBundle(
     }
   }
 
-  for (const [extensionId, requirement] of Object.entries(
-    manifest.extensionRequirements
-  )) {
+  for (const [extensionId, requirement] of Object.entries(manifest.extensionRequirements)) {
     if (validRange(requirement.versionRange) === null) {
       diagnostics.push(
         error(
@@ -313,9 +298,7 @@ export function validateProjectBundle(
     }
   }
 
-  for (const [capabilityId, requirement] of Object.entries(
-    manifest.capabilityRequirements
-  )) {
+  for (const [capabilityId, requirement] of Object.entries(manifest.capabilityRequirements)) {
     if (validRange(requirement.contractVersion) === null) {
       diagnostics.push(
         error(
@@ -339,12 +322,9 @@ export function validateProjectBundle(
       }
       continue;
     }
-    const selectedProviderId =
-      requirement.preferredProvider ?? bindingSet.defaultProviderId;
+    const selectedProviderId = requirement.preferredProvider ?? bindingSet.defaultProviderId;
     const binding =
-      selectedProviderId === undefined
-        ? undefined
-        : bindingSet.providers[selectedProviderId];
+      selectedProviderId === undefined ? undefined : bindingSet.providers[selectedProviderId];
     if (binding === undefined) {
       diagnostics.push(
         error(

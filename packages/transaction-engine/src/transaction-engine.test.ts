@@ -1,11 +1,7 @@
-import { describe, expect, it } from "vitest";
 import { hashJson } from "@kineweave/content-hash";
 import { HistoryGraph } from "@kineweave/history-engine";
-import type {
-  JsonObject,
-  ProjectDocumentEnvelope,
-  TransactionProposal
-} from "@kineweave/protocol";
+import type { JsonObject, ProjectDocumentEnvelope, TransactionProposal } from "@kineweave/protocol";
+import { describe, expect, it } from "vitest";
 import {
   BUILTIN_PRECONDITIONS,
   TransactionEngine,
@@ -43,9 +39,7 @@ function proposal(
         schemaVersion: 1,
         targets: ["kw://project/document/document_main"],
         payload: { documentId: "document_main", amount },
-        ...(options.preconditions === undefined
-          ? {}
-          : { preconditions: options.preconditions })
+        ...(options.preconditions === undefined ? {} : { preconditions: options.preconditions })
       }
     ]
   };
@@ -129,9 +123,7 @@ describe("TransactionEngine", () => {
       document_main: counterDocument(-1) as unknown as JsonObject
     });
 
-    expect(diagnostics).toEqual([
-      expect.objectContaining({ code: "counter.count.invalid" })
-    ]);
+    expect(diagnostics).toEqual([expect.objectContaining({ code: "counter.count.invalid" })]);
     expect(history.getBranchHead("main")).toBe("commit_root");
   });
 
@@ -193,9 +185,7 @@ describe("TransactionEngine", () => {
       ]
     };
 
-    await expect(transactionEngine.execute(twoOperations)).rejects.toThrow(
-      /operation_fail/i
-    );
+    await expect(transactionEngine.execute(twoOperations)).rejects.toThrow(/operation_fail/i);
     expect(history.stateOfBranch("main")).toEqual({
       document_main: counterDocument(0)
     });

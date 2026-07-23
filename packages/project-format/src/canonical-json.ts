@@ -1,8 +1,4 @@
-import {
-  assertJsonValue,
-  type JsonObject,
-  type JsonValue
-} from "@kineweave/protocol";
+import { assertJsonValue, type JsonObject, type JsonValue } from "@kineweave/protocol";
 
 function compareKeys(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;

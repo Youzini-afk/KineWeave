@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { KineWeaveExtensionContext } from "@kineweave/extension-api";
+import { describe, expect, it } from "vitest";
 import { activateStandardMotionExtension } from "./activation.js";
 import { standardMotionExtensionManifest } from "./manifest.js";
 

@@ -1,26 +1,26 @@
-import { ProjectSession } from "@kineweave/project-session";
 import type { EvaluationExecutionResult } from "@kineweave/evaluation-engine";
 import {
-  KINEWEAVE_VERSION,
-  createOfficialDistributionProfile
+  createOfficialDistributionProfile,
+  KINEWEAVE_VERSION
 } from "@kineweave/official-distribution";
+import type { LoadedProjectBundle } from "@kineweave/project-format";
+import { ProjectSession } from "@kineweave/project-session";
 import {
-  STANDARD_COLOR_SPACES,
-  STANDARD_TIME_DOMAINS,
   createProjectResourceUri,
-  rational,
-  timeValue,
   type Diagnostic,
   type JsonObject,
   type JsonValue,
   type Operation,
-  type TransactionProposal
+  rational,
+  STANDARD_COLOR_SPACES,
+  STANDARD_TIME_DOMAINS,
+  type TransactionProposal,
+  timeValue
 } from "@kineweave/protocol";
-import type { LoadedProjectBundle } from "@kineweave/project-format";
 import {
-  STANDARD_MOTION_OPERATIONS,
   constant,
   type MotionNode,
+  STANDARD_MOTION_OPERATIONS,
   type StandardCompositionDocument
 } from "@kineweave/standard-motion-document";
 import type { StudioHostApi } from "../bridge.js";
@@ -128,9 +128,9 @@ export class StudioProject {
   }
 
   document(): StandardCompositionDocument {
-    const document = this.session.history.stateOfBranch(
-      this.session.history.mainBranchName
-    )[this.documentId];
+    const document = this.session.history.stateOfBranch(this.session.history.mainBranchName)[
+      this.documentId
+    ];
     if (document === undefined) {
       throw new StudioProjectError(`Entry document ${this.documentId} is missing`);
     }
@@ -179,11 +179,7 @@ export class StudioProject {
     });
   }
 
-  insertNode(
-    node: MotionNode,
-    parentNodeId: string | null,
-    index: number
-  ): Promise<void> {
+  insertNode(node: MotionNode, parentNodeId: string | null, index: number): Promise<void> {
     return this.#execute(STANDARD_MOTION_OPERATIONS.insertNode, {
       documentId: this.documentId,
       parentNodeId,
@@ -199,11 +195,7 @@ export class StudioProject {
     });
   }
 
-  moveNode(
-    nodeId: string,
-    parentNodeId: string | null,
-    index: number
-  ): Promise<void> {
+  moveNode(nodeId: string, parentNodeId: string | null, index: number): Promise<void> {
     return this.#execute(STANDARD_MOTION_OPERATIONS.moveNode, {
       documentId: this.documentId,
       nodeId,
@@ -217,9 +209,7 @@ export class StudioProject {
   }
 
   redo(): boolean {
-    const candidates = this.session.history.redoCandidates(
-      this.session.history.mainBranchName
-    );
+    const candidates = this.session.history.redoCandidates(this.session.history.mainBranchName);
     if (candidates.length === 0) return false;
     this.session.redo(this.session.history.mainBranchName, candidates.at(-1));
     return true;
@@ -233,17 +223,12 @@ export class StudioProject {
   }
 
   canRedo(): boolean {
-    return (
-      this.session.history.redoCandidates(this.session.history.mainBranchName)
-        .length > 0
-    );
+    return this.session.history.redoCandidates(this.session.history.mainBranchName).length > 0;
   }
 
   historyEntries(limit = 12): readonly StudioHistoryEntry[] {
     const snapshot = this.session.history.toSnapshot();
-    const currentHead = this.session.history.getBranchHead(
-      this.session.history.mainBranchName
-    );
+    const currentHead = this.session.history.getBranchHead(this.session.history.mainBranchName);
     const result: StudioHistoryEntry[] = [];
     let cursor = currentHead;
     while (cursor !== snapshot.rootCommitId && result.length < limit) {
@@ -251,9 +236,7 @@ export class StudioProject {
       if (commit === undefined) break;
       result.push({
         commitId: commit.commitId,
-        operationTypes: commit.transaction.operations.map(
-          (operation) => operation.operationType
-        ),
+        operationTypes: commit.transaction.operations.map((operation) => operation.operationType),
         timestamp: commit.committedAt,
         current: commit.commitId === currentHead
       });

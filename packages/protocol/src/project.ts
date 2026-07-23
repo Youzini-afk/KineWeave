@@ -35,12 +35,8 @@ export interface KineWeaveProjectManifest {
   readonly name: string;
   readonly entryDocumentId: string;
   readonly documents: Readonly<Record<string, ProjectDocumentDescriptor>>;
-  readonly extensionRequirements: Readonly<
-    Record<string, ProjectExtensionRequirement>
-  >;
-  readonly capabilityRequirements: Readonly<
-    Record<string, ProjectCapabilityRequirement>
-  >;
+  readonly extensionRequirements: Readonly<Record<string, ProjectExtensionRequirement>>;
+  readonly capabilityRequirements: Readonly<Record<string, ProjectCapabilityRequirement>>;
   readonly outputProfiles: Readonly<Record<string, OutputProfile>>;
   readonly metadata?: JsonObject;
 }
@@ -80,8 +76,6 @@ export interface KineWeaveLockfile {
   readonly projectId: string;
   readonly protocolVersion: string;
   readonly extensions: Readonly<Record<string, LockedExtension>>;
-  readonly capabilityBindings: Readonly<
-    Record<string, LockedCapabilitySet>
-  >;
+  readonly capabilityBindings: Readonly<Record<string, LockedCapabilitySet>>;
   readonly resources: Readonly<Record<string, LockedResource>>;
 }

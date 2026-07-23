@@ -1,19 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
 import {
   PRESENTATION_GRAPH_VERSION,
+  type ResolvedPresentationGraph,
+  rational,
   STANDARD_COLOR_SPACES,
   STANDARD_PRESENTATION_PRIMITIVES,
   STANDARD_TIME_DOMAINS,
-  rational,
-  timeValue,
-  type ResolvedPresentationGraph
+  timeValue
 } from "@kineweave/protocol";
+import { describe, expect, it, vi } from "vitest";
 import { CANVAS2D_SURFACE_TYPE } from "./descriptor.js";
 import {
-  canvas2dRendererProvider,
   type Canvas2DContextLike,
   type Canvas2DPathLike,
-  type Canvas2DTextMetricsLike
+  type Canvas2DTextMetricsLike,
+  canvas2dRendererProvider
 } from "./renderer.js";
 
 interface FakePath extends Canvas2DPathLike {
@@ -30,9 +30,7 @@ class FakeContext implements Canvas2DContextLike {
   textBaseline = "alphabetic";
   readonly calls: string[] = [];
   readonly transforms: number[][] = [];
-  readonly clearRect = vi.fn(
-    (_x: number, _y: number, _width: number, _height: number) => {}
-  );
+  readonly clearRect = vi.fn((_x: number, _y: number, _width: number, _height: number) => {});
 
   save(): void {
     this.calls.push("save");
@@ -40,24 +38,10 @@ class FakeContext implements Canvas2DContextLike {
   restore(): void {
     this.calls.push("restore");
   }
-  setTransform(
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number
-  ): void {
+  setTransform(a: number, b: number, c: number, d: number, e: number, f: number): void {
     this.transforms.push([a, b, c, d, e, f]);
   }
-  transform(
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number
-  ): void {
+  transform(a: number, b: number, c: number, d: number, e: number, f: number): void {
     this.transforms.push([a, b, c, d, e, f]);
   }
   fillRect(_x: number, _y: number, _width: number, _height: number): void {
@@ -68,12 +52,7 @@ class FakeContext implements Canvas2DContextLike {
   }
   moveTo(_x: number, _y: number): void {}
   lineTo(_x: number, _y: number): void {}
-  quadraticCurveTo(
-    _cpx: number,
-    _cpy: number,
-    _x: number,
-    _y: number
-  ): void {}
+  quadraticCurveTo(_cpx: number, _cpy: number, _x: number, _y: number): void {}
   closePath(): void {}
   rect(_x: number, _y: number, _width: number, _height: number): void {}
   ellipse(
@@ -154,8 +133,7 @@ function graph(pathVisible = true): ResolvedPresentationGraph {
           rotation: 0,
           anchor: [0, 0]
         },
-        sourceResourceUri:
-          "kw://project/document/document_main/node/node_rectangle",
+        sourceResourceUri: "kw://project/document/document_main/node/node_rectangle",
         data: {
           width: 100,
           height: 50,
@@ -245,17 +223,14 @@ describe("Canvas2D renderer", () => {
     });
 
     expect(context.transforms).toContainEqual([4, 0, 0, 4, 0, 0]);
-    expect(context.calls).toEqual(
-      expect.arrayContaining(["fillRect", "ellipse", "fill"])
-    );
+    expect(context.calls).toEqual(expect.arrayContaining(["fillRect", "ellipse", "fill"]));
     expect(createdPaths).toEqual(["M 0 -20 L 20 20 L -20 20 Z"]);
     expect(await session.hitTest({ x: 200, y: 100, mode: "all" })).toEqual([
       expect.objectContaining({ presentationId: "node_path", localPoint: [0, 0] }),
       expect.objectContaining({ presentationId: "node_ellipse", localPoint: [0, 0] }),
       expect.objectContaining({
         presentationId: "node_rectangle",
-        sourceResourceUri:
-          "kw://project/document/document_main/node/node_rectangle",
+        sourceResourceUri: "kw://project/document/document_main/node/node_rectangle",
         localPoint: [0, 0]
       })
     ]);

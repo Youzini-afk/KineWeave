@@ -1,5 +1,12 @@
 const WINDOWS_RESERVED_NAME = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i;
-const PORTABILITY_FORBIDDEN = /[<>:"|?*\u0000-\u001f\u007f]/;
+const PORTABILITY_FORBIDDEN = /[<>:"|?*]/;
+
+function containsControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const code = character.charCodeAt(0);
+    return code <= 0x1f || code === 0x7f;
+  });
+}
 
 export function validateProjectPath(value: string): string | undefined {
   if (value.length === 0) return "Project path cannot be empty";
@@ -22,7 +29,7 @@ export function validateProjectPath(value: string): string | undefined {
     if (WINDOWS_RESERVED_NAME.test(segment)) {
       return `Project path uses a reserved filename: ${segment}`;
     }
-    if (PORTABILITY_FORBIDDEN.test(segment)) {
+    if (PORTABILITY_FORBIDDEN.test(segment) || containsControlCharacter(segment)) {
       return `Project path contains a non-portable character: ${segment}`;
     }
   }

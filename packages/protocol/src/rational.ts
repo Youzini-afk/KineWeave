@@ -43,10 +43,7 @@ function gcd(left: bigint, right: bigint): bigint {
   return a;
 }
 
-export function rational(
-  numerator: IntegerInput,
-  denominator: IntegerInput = 1n
-): Rational {
+export function rational(numerator: IntegerInput, denominator: IntegerInput = 1n): Rational {
   let n = integer(numerator, "numerator");
   let d = integer(denominator, "denominator");
   if (d === 0n) throw new RangeError("Rational denominator cannot be zero");
@@ -67,10 +64,7 @@ export function parseRational(value: unknown): Rational {
     throw new TypeError("Rational must be an object");
   }
   const candidate = value as Partial<Rational>;
-  if (
-    typeof candidate.numerator !== "string" ||
-    typeof candidate.denominator !== "string"
-  ) {
+  if (typeof candidate.numerator !== "string" || typeof candidate.denominator !== "string") {
     throw new TypeError("Rational requires string numerator and denominator");
   }
   return rational(candidate.numerator, candidate.denominator);
@@ -83,9 +77,7 @@ export function timeValue(value: Rational, domain: string): TimeValue {
 
 function sameDomain(left: TimeValue, right: TimeValue): void {
   if (left.domain !== right.domain) {
-    throw new TypeError(
-      `Time domain mapping required: ${left.domain} -> ${right.domain}`
-    );
+    throw new TypeError(`Time domain mapping required: ${left.domain} -> ${right.domain}`);
   }
 }
 
@@ -98,10 +90,7 @@ export function addRational(left: Rational, right: Rational): Rational {
 }
 
 export function subtractRational(left: Rational, right: Rational): Rational {
-  return addRational(
-    left,
-    rational(-BigInt(right.numerator), right.denominator)
-  );
+  return addRational(left, rational(-BigInt(right.numerator), right.denominator));
 }
 
 export function multiplyRational(left: Rational, right: Rational): Rational {
@@ -148,10 +137,7 @@ export function frameIndexToSeconds(
     throw new RangeError("Frame rate must be positive");
   }
   return timeValue(
-    rational(
-      integer(frameIndex, "frame index") * BigInt(rate.denominator),
-      BigInt(rate.numerator)
-    ),
+    rational(integer(frameIndex, "frame index") * BigInt(rate.denominator), BigInt(rate.numerator)),
     STANDARD_TIME_DOMAINS.seconds
   );
 }

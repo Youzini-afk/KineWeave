@@ -1,20 +1,20 @@
-import { describe, expect, it, vi } from "vitest";
 import {
   PRESENTATION_GRAPH_VERSION,
+  type ResolvedPresentationGraph,
+  rational,
   STANDARD_COLOR_SPACES,
   STANDARD_PRESENTATION_PRIMITIVES,
   STANDARD_TIME_DOMAINS,
-  rational,
-  timeValue,
-  type ResolvedPresentationGraph
+  timeValue
 } from "@kineweave/protocol";
+import { describe, expect, it, vi } from "vitest";
 import { RenderEngine, RenderRejectedError } from "./render-engine.js";
 import {
   INTERACTIVE_RENDERER_CAPABILITY_ID,
   INTERACTIVE_RENDERER_CONTRACT_VERSION,
+  type InteractiveRendererProvider,
   OUTPUT_RENDERER_CAPABILITY_ID,
   OUTPUT_RENDERER_CONTRACT_VERSION,
-  type InteractiveRendererProvider,
   type OutputRendererProvider
 } from "./types.js";
 
@@ -65,11 +65,7 @@ function outputProvider(): OutputRendererProvider {
       extensionId: "org.example.renderer-output-test",
       contractVersion: OUTPUT_RENDERER_CONTRACT_VERSION,
       implementationVersion: "1.0.0",
-      features: [
-        OUTPUT_TARGET,
-        STANDARD_PRESENTATION_PRIMITIVES.group,
-        STANDARD_COLOR_SPACES.srgb
-      ],
+      features: [OUTPUT_TARGET, STANDARD_PRESENTATION_PRIMITIVES.group, STANDARD_COLOR_SPACES.srgb],
       lifetime: "project",
       environment: { hostKinds: ["cli"] }
     },
@@ -164,9 +160,7 @@ describe("RenderEngine interactive sessions", () => {
   it("owns frame, resize, hit-test and disposal lifecycle", async () => {
     const renderFrame = vi.fn();
     const resize = vi.fn();
-    const hitTest = vi.fn(() => [
-      { presentationId: "node_root", localPoint: [4, 6] as const }
-    ]);
+    const hitTest = vi.fn(() => [{ presentationId: "node_root", localPoint: [4, 6] as const }]);
     const dispose = vi.fn();
     const provider: InteractiveRendererProvider = {
       descriptor: {
@@ -216,9 +210,7 @@ describe("RenderEngine interactive sessions", () => {
     expect(hitTest).toHaveBeenCalledOnce();
     expect(dispose).toHaveBeenCalledOnce();
     await expect(session.updateGraph({ graph: graph() })).rejects.toMatchObject({
-      diagnostics: [
-        expect.objectContaining({ code: "render.interactive.session-disposed" })
-      ]
+      diagnostics: [expect.objectContaining({ code: "render.interactive.session-disposed" })]
     });
   });
 

@@ -1,14 +1,14 @@
-import { HistoryGraph } from "@kineweave/history-engine";
-import type { LoadedProjectBundle } from "@kineweave/project-format";
 import {
   CANVAS2D_RENDERER_PROVIDER_ID,
   canvas2dRendererDescriptor
 } from "@kineweave/canvas2d-renderer";
+import { HistoryGraph } from "@kineweave/history-engine";
+import type { LoadedProjectBundle } from "@kineweave/project-format";
 import {
+  type JsonObject,
   KINEWEAVE_PROTOCOL_VERSION,
   LOCKFILE_FORMAT_VERSION,
-  PROJECT_FORMAT_VERSION,
-  type JsonObject
+  PROJECT_FORMAT_VERSION
 } from "@kineweave/protocol";
 import {
   INTERACTIVE_RENDERER_CAPABILITY_ID,
@@ -20,8 +20,8 @@ import {
   STANDARD_COMPOSITION_TYPE
 } from "@kineweave/standard-motion-document";
 import {
-  SVG_RENDERER_PROVIDER_ID,
   SVG_OUTPUT_TARGET,
+  SVG_RENDERER_PROVIDER_ID,
   svgRendererDescriptor
 } from "@kineweave/svg-renderer";
 
@@ -138,8 +138,7 @@ export function createOfficialProjectTemplate(
             [CANVAS2D_RENDERER_PROVIDER_ID]: {
               providerId: CANVAS2D_RENDERER_PROVIDER_ID,
               contractVersion: canvas2dRendererDescriptor.contractVersion,
-              implementationVersion:
-                canvas2dRendererDescriptor.implementationVersion,
+              implementationVersion: canvas2dRendererDescriptor.implementationVersion,
               features: [...canvas2dRendererDescriptor.features]
             }
           }

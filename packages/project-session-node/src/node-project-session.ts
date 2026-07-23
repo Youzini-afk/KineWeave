@@ -1,13 +1,10 @@
+import { NodeProjectRepository, type ProjectSnapshot } from "@kineweave/project-repository-node";
 import {
-  NodeProjectRepository,
-  type ProjectSnapshot
-} from "@kineweave/project-repository-node";
-import {
+  type KineWeaveDistributionProfile,
   ProjectSession,
-  type ProjectSessionHost,
-  type KineWeaveDistributionProfile
+  type ProjectSessionHost
 } from "@kineweave/project-session";
-import { hasErrorDiagnostics, type Diagnostic } from "@kineweave/protocol";
+import { type Diagnostic, hasErrorDiagnostics } from "@kineweave/protocol";
 
 export interface OpenNodeProjectSessionOptions {
   readonly projectPath: string;
@@ -42,10 +39,7 @@ export class NodeProjectSession {
   }
 
   async save(): Promise<ProjectSnapshot> {
-    this.#snapshot = await this.#repository.save(
-      this.#snapshot,
-      this.session.toBundle()
-    );
+    this.#snapshot = await this.#repository.save(this.#snapshot, this.session.toBundle());
     return this.#snapshot;
   }
 

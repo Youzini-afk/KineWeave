@@ -1,8 +1,4 @@
-export type CapabilityLifetime =
-  | "singleton"
-  | "project"
-  | "job"
-  | "transient";
+export type CapabilityLifetime = "singleton" | "project" | "job" | "transient";
 
 export type HostKind = "desktop" | "web" | "cli" | "render-node";
 export type EvaluationMode = "interactive" | "deterministic" | "live";

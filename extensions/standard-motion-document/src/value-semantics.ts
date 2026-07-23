@@ -1,8 +1,5 @@
 import type { JsonValue } from "@kineweave/protocol";
-import {
-  STANDARD_NODE_TYPES,
-  STANDARD_VALUE_TYPES
-} from "./model.js";
+import { STANDARD_NODE_TYPES, STANDARD_VALUE_TYPES } from "./model.js";
 
 const COMMON_PROPERTY_VALUE_TYPES: Readonly<Record<string, string>> = {
   position: STANDARD_VALUE_TYPES.vector2,
@@ -68,10 +65,7 @@ export function isStandardInterpolatedValueType(valueType: string): boolean {
   );
 }
 
-export function standardValueIssue(
-  valueType: string,
-  value: JsonValue
-): string | undefined {
+export function standardValueIssue(valueType: string, value: JsonValue): string | undefined {
   if (valueType === STANDARD_VALUE_TYPES.string) {
     return typeof value === "string" ? undefined : "must be a string";
   }
@@ -113,10 +107,7 @@ export function standardPropertyValueIssue(
   if (property === "fontSize" && typeof value === "number") {
     return value > 0 ? undefined : "must be positive";
   }
-  if (
-    (property === "strokeWidth" || property === "cornerRadius") &&
-    typeof value === "number"
-  ) {
+  if ((property === "strokeWidth" || property === "cornerRadius") && typeof value === "number") {
     return value >= 0 ? undefined : "must be non-negative";
   }
   if (property === "size" && Array.isArray(value)) {

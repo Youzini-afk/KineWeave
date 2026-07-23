@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { createOfficialProjectTemplate } from "@kineweave/official-distribution";
 import type { LoadedProjectBundle } from "@kineweave/project-format";
+import { describe, expect, it } from "vitest";
 import type {
   OpenedStudioProject,
   SavedStudioProject,
@@ -31,10 +31,7 @@ function createHost(bundle: LoadedProjectBundle): {
         bundle: cloneBundle(persisted),
         diagnostics: []
       }),
-    saveProject: async (
-      hostSessionId,
-      next
-    ): Promise<StudioHostResult<SavedStudioProject>> => {
+    saveProject: async (hostSessionId, next): Promise<StudioHostResult<SavedStudioProject>> => {
       expect(hostSessionId).toBe("host_session");
       persisted = cloneBundle(next);
       saved = cloneBundle(next);

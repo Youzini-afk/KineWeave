@@ -11,16 +11,19 @@ export function parseJsonPointer(pointer: string): readonly string[] {
   if (!pointer.startsWith("/")) {
     throw new TypeError(`JSON Pointer must be empty or start with '/': ${pointer}`);
   }
-  return pointer.slice(1).split("/").map((raw) => {
-    if (/~(?:[^01]|$)/.test(raw)) {
-      throw new TypeError(`Invalid JSON Pointer escape in ${pointer}`);
-    }
-    const decoded = raw.replaceAll("~1", "/").replaceAll("~0", "~");
-    if (FORBIDDEN_SEGMENTS.has(decoded)) {
-      throw new TypeError(`Unsafe JSON Pointer segment: ${decoded}`);
-    }
-    return decoded;
-  });
+  return pointer
+    .slice(1)
+    .split("/")
+    .map((raw) => {
+      if (/~(?:[^01]|$)/.test(raw)) {
+        throw new TypeError(`Invalid JSON Pointer escape in ${pointer}`);
+      }
+      const decoded = raw.replaceAll("~1", "/").replaceAll("~0", "~");
+      if (FORBIDDEN_SEGMENTS.has(decoded)) {
+        throw new TypeError(`Unsafe JSON Pointer segment: ${decoded}`);
+      }
+      return decoded;
+    });
 }
 
 interface ParentLocation {
@@ -64,11 +67,7 @@ function parentLocation(root: JsonValue, pointer: string): ParentLocation {
   throw new TypeError(`Parent is not a container at ${pointer}`);
 }
 
-export function addAtPointer(
-  root: JsonValue,
-  pointer: string,
-  value: JsonValue
-): JsonValue {
+export function addAtPointer(root: JsonValue, pointer: string, value: JsonValue): JsonValue {
   if (pointer === "") return cloneJson(value);
   const result = cloneJson(root);
   const { parent, key } = parentLocation(result, pointer);
@@ -109,11 +108,7 @@ export function removeAtPointer(root: JsonValue, pointer: string): JsonValue {
   return result;
 }
 
-export function replaceAtPointer(
-  root: JsonValue,
-  pointer: string,
-  value: JsonValue
-): JsonValue {
+export function replaceAtPointer(root: JsonValue, pointer: string, value: JsonValue): JsonValue {
   if (pointer === "") return cloneJson(value);
   const result = cloneJson(root);
   const { parent, key } = parentLocation(result, pointer);

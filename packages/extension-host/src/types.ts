@@ -12,9 +12,7 @@ export interface ExtensionActivation {
 }
 
 export interface ExtensionModule<TContext> {
-  activate(
-    context: TContext
-  ): void | ExtensionActivation | Promise<void | ExtensionActivation>;
+  activate(context: TContext): void | ExtensionActivation | Promise<void | ExtensionActivation>;
 }
 
 export interface DiscoveredExtension<TContext> {
@@ -53,7 +51,5 @@ export interface ExtensionHostOptions<TContext> {
   readonly kineweaveVersion: string;
   readonly hostKind: HostKind;
   readonly supportedRuntimes: readonly ExtensionRuntimeKind[];
-  readonly createActivationContext: (
-    manifest: ExtensionManifest
-  ) => TContext | Promise<TContext>;
+  readonly createActivationContext: (manifest: ExtensionManifest) => TContext | Promise<TContext>;
 }

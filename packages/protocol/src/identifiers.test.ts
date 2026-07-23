@@ -4,9 +4,7 @@ import { isNamespacedId, isStableId } from "./identifiers.js";
 describe("identifiers", () => {
   it("accepts capability and node type identifiers", () => {
     expect(isNamespacedId("kineweave.renderer.2d")).toBe(true);
-    expect(
-      isNamespacedId("org.kineweave.standard-motion/set-node-property")
-    ).toBe(true);
+    expect(isNamespacedId("org.kineweave.standard-motion/set-node-property")).toBe(true);
   });
 
   it("rejects unqualified or whitespace-delimited identifiers", () => {

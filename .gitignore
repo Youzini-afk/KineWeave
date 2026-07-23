@@ -13,3 +13,8 @@ Thumbs.db
 
 # Local scratch projects
 playground-projects/
+
+# Local verification artifacts
+coverage/
+test-results/
+benchmark-results/

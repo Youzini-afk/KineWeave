@@ -1,19 +1,14 @@
 import {
-  STANDARD_PRESENTATION_PRIMITIVES,
   type JsonObject,
   type PresentationNode,
-  type ResolvedPresentationGraph
+  type ResolvedPresentationGraph,
+  STANDARD_PRESENTATION_PRIMITIVES
 } from "@kineweave/protocol";
-import {
-  type OutputRendererProvider
-} from "@kineweave/render-engine";
+import type { OutputRendererProvider } from "@kineweave/render-engine";
 import { SVG_RENDERER_PROVIDER_ID, svgRendererDescriptor } from "./descriptor.js";
 
 function escapeText(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
 function escapeAttribute(value: string): string {
@@ -70,18 +65,12 @@ function nodeAttributes(node: PresentationNode): string {
   if (!node.visible) attributes.push('display="none"');
   if (node.opacity !== 1) attributes.push(`opacity="${number(node.opacity)}"`);
   if (node.sourceResourceUri !== undefined) {
-    attributes.push(
-      `data-kineweave-source="${escapeAttribute(node.sourceResourceUri)}"`
-    );
+    attributes.push(`data-kineweave-source="${escapeAttribute(node.sourceResourceUri)}"`);
   }
   return attributes.join(" ");
 }
 
-function renderNode(
-  graph: ResolvedPresentationGraph,
-  nodeId: string,
-  indentation: string
-): string {
+function renderNode(graph: ResolvedPresentationGraph, nodeId: string, indentation: string): string {
   const node = graph.nodes[nodeId];
   if (node === undefined) throw new Error(`Missing presentation node ${nodeId}`);
   const children = node.children
@@ -101,11 +90,7 @@ function renderNode(
     const fontSize = numberData(node.data, "fontSize");
     const fontFamily = stringData(node.data, "fontFamily", "sans-serif");
     const textAnchor = stringData(node.data, "textAnchor", "middle");
-    const dominantBaseline = stringData(
-      node.data,
-      "dominantBaseline",
-      "middle"
-    );
+    const dominantBaseline = stringData(node.data, "dominantBaseline", "middle");
     return `${indentation}<text ${nodeAttributes(node)} x="0" y="0" fill="${escapeAttribute(fill)}" font-family="${escapeAttribute(fontFamily)}" font-size="${number(fontSize)}" text-anchor="${escapeAttribute(textAnchor)}" dominant-baseline="${escapeAttribute(dominantBaseline)}">${escapeText(text)}</text>`;
   }
   if (children.length > 0) {
@@ -151,11 +136,7 @@ function canvasSize(graph: ResolvedPresentationGraph): {
   return { width: graph.viewport.width, height: graph.viewport.height };
 }
 
-function background(
-  value: string | null,
-  width: number,
-  height: number
-): string | undefined {
+function background(value: string | null, width: number, height: number): string | undefined {
   if (value === null) return undefined;
   return `  <rect width="${number(width)}" height="${number(height)}" fill="${escapeAttribute(value)}" />`;
 }

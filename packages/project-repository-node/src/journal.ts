@@ -1,15 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  copyFile,
-  mkdir,
-  open,
-  readFile,
-  rename,
-  rm,
-  stat,
-  unlink,
-  writeFile
-} from "node:fs/promises";
+import { copyFile, mkdir, open, readFile, rename, rm, unlink } from "node:fs/promises";
 import path from "node:path";
 import { canonicalStringify } from "@kineweave/project-format";
 import type { JsonObject } from "@kineweave/protocol";
@@ -100,12 +90,7 @@ export async function applyFileTransaction(
   options: NodeProjectRepositoryOptions
 ): Promise<string> {
   const transactionId = `txn_${randomUUID().replaceAll("-", "")}`;
-  const transactionRoot = path.join(
-    rootPath,
-    ".kineweave",
-    "transactions",
-    transactionId
-  );
+  const transactionRoot = path.join(rootPath, ".kineweave", "transactions", transactionId);
   const stageRoot = path.join(transactionRoot, "stage");
   const backupRoot = path.join(transactionRoot, "backup");
   const journalPath = path.join(transactionRoot, "journal.json");
@@ -128,8 +113,7 @@ export async function applyFileTransaction(
       await durableWrite(stagedPath, intent.content);
     }
 
-    const backupPath =
-      actualHash === null ? null : path.join(backupRoot, `${index}.bak`);
+    const backupPath = actualHash === null ? null : path.join(backupRoot, `${index}.bak`);
     if (backupPath !== null) {
       await copyFile(targetPath, backupPath);
     }
@@ -190,17 +174,12 @@ export async function applyFileTransaction(
     await rollbackEntries(rootPath, [...applied].reverse());
     journal = { ...journal, state: "rolled-back" };
     await durableWrite(journalPath, canonicalStringify(journal)).catch(() => {});
-    await notify(options, { transactionId, phase: "rolled-back" }).catch(
-      () => {}
-    );
+    await notify(options, { transactionId, phase: "rolled-back" }).catch(() => {});
     throw error;
   }
 }
 
-async function rollbackEntries(
-  rootPath: string,
-  entries: readonly JournalEntry[]
-): Promise<void> {
+async function rollbackEntries(rootPath: string, entries: readonly JournalEntry[]): Promise<void> {
   for (const entry of entries) {
     const targetPath = path.join(rootPath, ...entry.relativePath.split("/"));
     if (entry.backupPath === null) {
@@ -216,9 +195,7 @@ async function rollbackEntries(
   }
 }
 
-export async function recoverFileTransactions(
-  rootPath: string
-): Promise<RecoveryReport> {
+export async function recoverFileTransactions(rootPath: string): Promise<RecoveryReport> {
   const transactionsRoot = path.join(rootPath, ".kineweave", "transactions");
   let transactionNames: string[];
   try {

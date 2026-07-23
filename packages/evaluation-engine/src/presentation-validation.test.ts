@@ -1,13 +1,13 @@
-import { describe, expect, it } from "vitest";
 import {
   PRESENTATION_GRAPH_VERSION,
+  type ResolvedPresentationGraph,
+  rational,
   STANDARD_COLOR_SPACES,
   STANDARD_PRESENTATION_PRIMITIVES,
   STANDARD_TIME_DOMAINS,
-  rational,
-  timeValue,
-  type ResolvedPresentationGraph
+  timeValue
 } from "@kineweave/protocol";
+import { describe, expect, it } from "vitest";
 import { validatePresentationGraph } from "./presentation-validation.js";
 
 function graph(): ResolvedPresentationGraph {
@@ -35,10 +35,7 @@ function graph(): ResolvedPresentationGraph {
         data: {}
       }
     },
-    requiredFeatures: [
-      STANDARD_PRESENTATION_PRIMITIVES.group,
-      STANDARD_COLOR_SPACES.srgb
-    ]
+    requiredFeatures: [STANDARD_PRESENTATION_PRIMITIVES.group, STANDARD_COLOR_SPACES.srgb]
   };
 }
 
@@ -90,9 +87,7 @@ describe("validatePresentationGraph", () => {
     invalid.nodes.node_root!.data = null;
 
     expect(validatePresentationGraph(invalid)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: "presentation.node.data-invalid" })
-      ])
+      expect.arrayContaining([expect.objectContaining({ code: "presentation.node.data-invalid" })])
     );
   });
 
@@ -145,10 +140,7 @@ describe("validatePresentationGraph", () => {
           }
         }
       },
-      requiredFeatures: [
-        STANDARD_PRESENTATION_PRIMITIVES.rectangle,
-        STANDARD_COLOR_SPACES.srgb
-      ]
+      requiredFeatures: [STANDARD_PRESENTATION_PRIMITIVES.rectangle, STANDARD_COLOR_SPACES.srgb]
     };
 
     expect(validatePresentationGraph(invalid)).toEqual(
@@ -174,10 +166,7 @@ describe("validatePresentationGraph", () => {
           data: { radiusX: 20, radiusY: Number.NaN }
         }
       },
-      requiredFeatures: [
-        STANDARD_PRESENTATION_PRIMITIVES.ellipse,
-        STANDARD_COLOR_SPACES.srgb
-      ]
+      requiredFeatures: [STANDARD_PRESENTATION_PRIMITIVES.ellipse, STANDARD_COLOR_SPACES.srgb]
     };
     expect(validatePresentationGraph(ellipse)).toEqual(
       expect.arrayContaining([
@@ -194,15 +183,10 @@ describe("validatePresentationGraph", () => {
           data: { path: "   " }
         }
       },
-      requiredFeatures: [
-        STANDARD_PRESENTATION_PRIMITIVES.path,
-        STANDARD_COLOR_SPACES.srgb
-      ]
+      requiredFeatures: [STANDARD_PRESENTATION_PRIMITIVES.path, STANDARD_COLOR_SPACES.srgb]
     };
     expect(validatePresentationGraph(path)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: "presentation.path.data-invalid" })
-      ])
+      expect.arrayContaining([expect.objectContaining({ code: "presentation.path.data-invalid" })])
     );
   });
 
@@ -223,10 +207,7 @@ describe("validatePresentationGraph", () => {
           }
         }
       },
-      requiredFeatures: [
-        STANDARD_PRESENTATION_PRIMITIVES.custom,
-        STANDARD_COLOR_SPACES.srgb
-      ]
+      requiredFeatures: [STANDARD_PRESENTATION_PRIMITIVES.custom, STANDARD_COLOR_SPACES.srgb]
     };
 
     expect(validatePresentationGraph(invalid)).toEqual(

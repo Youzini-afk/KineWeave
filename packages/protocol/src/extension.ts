@@ -1,10 +1,6 @@
 import type { CapabilityProviderDescriptor, HostKind } from "./capability.js";
 
-export type ApiStability =
-  | "experimental"
-  | "provisional"
-  | "stable"
-  | "deprecated";
+export type ApiStability = "experimental" | "provisional" | "stable" | "deprecated";
 
 export type ExtensionRuntimeKind =
   | "in-process"

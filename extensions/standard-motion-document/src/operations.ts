@@ -1,17 +1,9 @@
+import { cloneJson, type JsonObject, type JsonValue, type Operation } from "@kineweave/protocol";
+import type { OperationHandler, OperationReadContext } from "@kineweave/transaction-engine";
 import {
-  cloneJson,
-  type JsonObject,
-  type JsonValue,
-  type Operation
-} from "@kineweave/protocol";
-import type {
-  OperationHandler,
-  OperationReadContext
-} from "@kineweave/transaction-engine";
-import {
-  STANDARD_COMPOSITION_TYPE,
   type MotionNode,
   type PropertyBinding,
+  STANDARD_COMPOSITION_TYPE,
   type StandardCompositionDocument
 } from "./model.js";
 import { nodeIsDescendant } from "./validation.js";
@@ -57,10 +49,7 @@ function insertionList(
   return parent.children;
 }
 
-function removeFromHierarchy(
-  document: StandardCompositionDocument,
-  nodeId: string
-): void {
+function removeFromHierarchy(document: StandardCompositionDocument, nodeId: string): void {
   const rootIndex = document.data.rootNodeIds.indexOf(nodeId);
   if (rootIndex !== -1) {
     document.data.rootNodeIds.splice(rootIndex, 1);
@@ -117,7 +106,9 @@ export const insertNodeHandler: OperationHandler = {
     ) {
       throw new TypeError("insert-node payload is invalid");
     }
-    const next = cloneJson(composition(context, documentId) as unknown as JsonValue) as unknown as StandardCompositionDocument;
+    const next = cloneJson(
+      composition(context, documentId) as unknown as JsonValue
+    ) as unknown as StandardCompositionDocument;
     const motionNode = node as MotionNode;
     if (next.data.nodes[motionNode.nodeId] !== undefined) {
       throw new Error(`Node ${motionNode.nodeId} already exists`);
@@ -212,9 +203,7 @@ export const setPropertyHandler: OperationHandler = {
     ) as unknown as StandardCompositionDocument;
     const node = next.data.nodes[input.nodeId];
     if (node === undefined) throw new Error(`Node ${input.nodeId} is missing`);
-    node.properties[input.property] = cloneJson(
-      input.binding
-    ) as PropertyBinding;
+    node.properties[input.property] = cloneJson(input.binding) as PropertyBinding;
     return { mutations: [replaceMutation(next)] };
   }
 };

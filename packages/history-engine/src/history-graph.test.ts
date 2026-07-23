@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { createDocumentPatch } from "@kineweave/patch";
 import type { HistoryCommit, TransactionProposal } from "@kineweave/protocol";
+import { describe, expect, it } from "vitest";
 import { HistoryGraph } from "./history-graph.js";
 
 function proposal(transactionId: string, branchName: string): TransactionProposal {
@@ -53,13 +53,7 @@ describe("HistoryGraph", () => {
     history.createBranch("proposal/ai", "commit_1");
     history.appendCommit(
       "proposal/ai",
-      commit(
-        "commit_proposal",
-        "commit_1",
-        "proposal/ai",
-        { value: 1 },
-        { value: 99 }
-      )
+      commit("commit_proposal", "commit_1", "proposal/ai", { value: 1 }, { value: 99 })
     );
     history.appendCommit(
       "main",
@@ -112,13 +106,7 @@ describe("HistoryGraph", () => {
     history.createBranch("proposal/ai", "commit_1");
     history.appendCommit(
       "proposal/ai",
-      commit(
-        "commit_proposal",
-        "commit_1",
-        "proposal/ai",
-        { value: 1 },
-        { value: 9 }
-      )
+      commit("commit_proposal", "commit_1", "proposal/ai", { value: 1 }, { value: 9 })
     );
 
     const restored = HistoryGraph.fromSnapshot(history.toSnapshot());

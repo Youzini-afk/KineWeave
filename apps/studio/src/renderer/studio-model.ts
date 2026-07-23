@@ -1,14 +1,14 @@
 import {
-  STANDARD_PRESENTATION_PRIMITIVES,
-  rationalToNumberLossy,
   type JsonValue,
   type PresentationNode,
-  type ResolvedPresentationGraph
+  type ResolvedPresentationGraph,
+  rationalToNumberLossy,
+  STANDARD_PRESENTATION_PRIMITIVES
 } from "@kineweave/protocol";
 import {
-  STANDARD_NODE_TYPES,
   type MotionNode,
   type PropertyBinding,
+  STANDARD_NODE_TYPES,
   type StandardCompositionDocument
 } from "@kineweave/standard-motion-document";
 
@@ -30,9 +30,7 @@ export interface InspectorField {
 type Matrix = readonly [number, number, number, number, number, number];
 type Point = readonly [number, number];
 
-export function compositionDurationSeconds(
-  document: StandardCompositionDocument
-): number {
+export function compositionDurationSeconds(document: StandardCompositionDocument): number {
   return rationalToNumberLossy(document.data.duration.value);
 }
 
@@ -41,9 +39,7 @@ export function roundCompositionCoordinate(value: number): number {
   return Object.is(rounded, -0) ? 0 : rounded;
 }
 
-export function flattenLayerTree(
-  document: StandardCompositionDocument
-): readonly LayerItem[] {
+export function flattenLayerTree(document: StandardCompositionDocument): readonly LayerItem[] {
   const result: LayerItem[] = [];
   const visit = (
     nodeId: string,
@@ -54,13 +50,13 @@ export function flattenLayerTree(
     const node = document.data.nodes[nodeId];
     if (node === undefined) return;
     result.push({ node, depth, parentNodeId, index });
-    node.children.forEach((childId, childIndex) =>
-      visit(childId, depth + 1, nodeId, childIndex)
-    );
+    node.children.forEach((childId, childIndex) => {
+      visit(childId, depth + 1, nodeId, childIndex);
+    });
   };
-  document.data.rootNodeIds.forEach((nodeId, index) =>
-    visit(nodeId, 0, null, index)
-  );
+  document.data.rootNodeIds.forEach((nodeId, index) => {
+    visit(nodeId, 0, null, index);
+  });
   return result;
 }
 
@@ -77,12 +73,8 @@ export function findLayerParent(
   return undefined;
 }
 
-export function constantBindingValue(
-  binding: PropertyBinding | undefined
-): JsonValue | undefined {
-  return binding?.kind === "constant" && "value" in binding
-    ? binding.value
-    : undefined;
+export function constantBindingValue(binding: PropertyBinding | undefined): JsonValue | undefined {
+  return binding?.kind === "constant" && "value" in binding ? binding.value : undefined;
 }
 
 function field(
@@ -172,14 +164,7 @@ function nodeMatrix(node: PresentationNode): Matrix {
   const [anchorX = 0, anchorY = 0] = node.transform.anchor;
   const [translationX = 0, translationY = 0] = node.transform.translation;
   return multiply(
-    [
-      cosine * scaleX,
-      sine * scaleX,
-      -sine * scaleY,
-      cosine * scaleY,
-      translationX,
-      translationY
-    ],
+    [cosine * scaleX, sine * scaleX, -sine * scaleY, cosine * scaleY, translationX, translationY],
     [1, 0, 0, 1, -anchorX, -anchorY]
   );
 }
@@ -192,12 +177,7 @@ function graphCanvasSize(graph: ResolvedPresentationGraph): {
   if (value !== null && typeof value === "object" && !Array.isArray(value)) {
     const width = value.width;
     const height = value.height;
-    if (
-      typeof width === "number" &&
-      width > 0 &&
-      typeof height === "number" &&
-      height > 0
-    ) {
+    if (typeof width === "number" && width > 0 && typeof height === "number" && height > 0) {
       return { width, height };
     }
   }
@@ -209,13 +189,10 @@ function localBounds(node: PresentationNode): readonly Point[] {
   let halfHeight = 32;
   if (node.primitive === STANDARD_PRESENTATION_PRIMITIVES.rectangle) {
     halfWidth = typeof node.data.width === "number" ? node.data.width / 2 : halfWidth;
-    halfHeight =
-      typeof node.data.height === "number" ? node.data.height / 2 : halfHeight;
+    halfHeight = typeof node.data.height === "number" ? node.data.height / 2 : halfHeight;
   } else if (node.primitive === STANDARD_PRESENTATION_PRIMITIVES.ellipse) {
-    halfWidth =
-      typeof node.data.radiusX === "number" ? node.data.radiusX : halfWidth;
-    halfHeight =
-      typeof node.data.radiusY === "number" ? node.data.radiusY : halfHeight;
+    halfWidth = typeof node.data.radiusX === "number" ? node.data.radiusX : halfWidth;
+    halfHeight = typeof node.data.radiusY === "number" ? node.data.radiusY : halfHeight;
   } else if (node.primitive === STANDARD_PRESENTATION_PRIMITIVES.text) {
     const text = typeof node.data.text === "string" ? node.data.text : "";
     const fontSize = typeof node.data.fontSize === "number" ? node.data.fontSize : 16;

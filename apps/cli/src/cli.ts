@@ -3,8 +3,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { hashJson } from "@kineweave/content-hash";
 import {
-  EvaluationRejectedError,
-  type EvaluationExecutionResult
+  type EvaluationExecutionResult,
+  EvaluationRejectedError
 } from "@kineweave/evaluation-engine";
 import { createOfficialProjectTemplate } from "@kineweave/official-distribution";
 import {
@@ -16,16 +16,16 @@ import type { ProjectSession } from "@kineweave/project-session";
 import type { NodeProjectSession } from "@kineweave/project-session-node";
 import {
   createProjectResourceUri,
-  hasErrorDiagnostics,
-  rational,
-  timeValue,
-  STANDARD_TIME_DOMAINS,
   type Diagnostic,
   type EvaluationMode,
+  hasErrorDiagnostics,
   type JsonObject,
   type JsonValue,
   type Rational,
-  type TransactionProposal
+  rational,
+  STANDARD_TIME_DOMAINS,
+  type TransactionProposal,
+  timeValue
 } from "@kineweave/protocol";
 import { RenderRejectedError } from "@kineweave/render-engine";
 import {
@@ -35,10 +35,7 @@ import {
   STANDARD_MOTION_OPERATIONS,
   type StandardCompositionDocument
 } from "@kineweave/standard-motion-document";
-import {
-  BUILTIN_PRECONDITIONS,
-  TransactionRejectedError
-} from "@kineweave/transaction-engine";
+import { BUILTIN_PRECONDITIONS, TransactionRejectedError } from "@kineweave/transaction-engine";
 import { openCliProject } from "./runtime.js";
 
 export interface CliIo {
@@ -142,12 +139,8 @@ function evaluationCliOptions(args: readonly string[]): EvaluationCliOptions {
     ...(domain.value === undefined ? {} : { domain: domain.value }),
     ...(width.value === undefined ? {} : { width: width.value }),
     ...(height.value === undefined ? {} : { height: height.value }),
-    ...(pixelRatio.value === undefined
-      ? {}
-      : { pixelRatio: pixelRatio.value }),
-    ...(colorSpace.value === undefined
-      ? {}
-      : { colorSpace: colorSpace.value }),
+    ...(pixelRatio.value === undefined ? {} : { pixelRatio: pixelRatio.value }),
+    ...(colorSpace.value === undefined ? {} : { colorSpace: colorSpace.value }),
     ...(locale.value === undefined ? {} : { locale: locale.value }),
     ...(seed.value === undefined ? {} : { seed: seed.value }),
     ...(mode.value === undefined ? {} : { mode: mode.value }),
@@ -158,11 +151,7 @@ function evaluationCliOptions(args: readonly string[]): EvaluationCliOptions {
 function diagnosticsText(diagnostics: readonly Diagnostic[]): string {
   return diagnostics
     .map((item) => {
-      const location = [
-        item.documentId,
-        item.jsonPointer,
-        item.resourceUri
-      ]
+      const location = [item.documentId, item.jsonPointer, item.resourceUri]
         .filter((value) => value !== undefined)
         .join(":");
       return `${item.severity.toUpperCase()} ${item.code}${location ? ` (${location})` : ""}: ${item.message}`;
@@ -170,11 +159,7 @@ function diagnosticsText(diagnostics: readonly Diagnostic[]): string {
     .join("\n");
 }
 
-function writeDiagnostics(
-  io: CliIo,
-  diagnostics: readonly Diagnostic[],
-  json: boolean
-): void {
+function writeDiagnostics(io: CliIo, diagnostics: readonly Diagnostic[], json: boolean): void {
   if (json) {
     io.stdout(`${JSON.stringify({ diagnostics }, null, 2)}\n`);
     return;
@@ -305,16 +290,11 @@ async function initCommand(args: readonly string[], io: CliIo): Promise<number> 
       projectId: `project_${randomUUID().replaceAll("-", "")}`
     })
   );
-  io.stdout(
-    `Initialized ${snapshot.bundle.manifest.name} at ${snapshot.rootPath}\n`
-  );
+  io.stdout(`Initialized ${snapshot.bundle.manifest.name} at ${snapshot.rootPath}\n`);
   return 0;
 }
 
-async function validateCommand(
-  args: readonly string[],
-  io: CliIo
-): Promise<number> {
+async function validateCommand(args: readonly string[], io: CliIo): Promise<number> {
   const json = flag(args, "--json");
   const positional = args.filter((item) => item !== "--json");
   if (positional.length !== 1) throw new TypeError(HELP);
@@ -333,41 +313,32 @@ async function validateCommand(
   }
 }
 
-async function inspectCommand(
-  args: readonly string[],
-  io: CliIo
-): Promise<number> {
+async function inspectCommand(args: readonly string[], io: CliIo): Promise<number> {
   const json = flag(args, "--json");
   const positional = args.filter((item) => item !== "--json");
   if (positional.length !== 1) throw new TypeError(HELP);
   const repository = new NodeProjectRepository();
   const project = await openValidProject(repository, positional[0]!);
-  const { snapshot, session: runtime } = project;
+  const { snapshot } = project;
   try {
-    const documents = Object.entries(snapshot.bundle.documents).map(
-      ([documentId, document]) => {
-        const descriptor = snapshot.bundle.manifest.documents[documentId]!;
-        const base = {
-          documentId,
-          documentType: document.documentType,
-          schemaVersion: document.schemaVersion,
-          path: descriptor.path,
-          contentHash: hashJson(document as unknown as JsonObject)
-        };
-        return document.documentType === STANDARD_COMPOSITION_TYPE
-          ? {
-              ...base,
-              name: (document as StandardCompositionDocument).data.name,
-              nodeCount: Object.keys(
-                (document as StandardCompositionDocument).data.nodes
-              ).length,
-              trackCount: Object.keys(
-                (document as StandardCompositionDocument).data.tracks
-              ).length
-            }
-          : base;
-      }
-    );
+    const documents = Object.entries(snapshot.bundle.documents).map(([documentId, document]) => {
+      const descriptor = snapshot.bundle.manifest.documents[documentId]!;
+      const base = {
+        documentId,
+        documentType: document.documentType,
+        schemaVersion: document.schemaVersion,
+        path: descriptor.path,
+        contentHash: hashJson(document as unknown as JsonObject)
+      };
+      return document.documentType === STANDARD_COMPOSITION_TYPE
+        ? {
+            ...base,
+            name: (document as StandardCompositionDocument).data.name,
+            nodeCount: Object.keys((document as StandardCompositionDocument).data.nodes).length,
+            trackCount: Object.keys((document as StandardCompositionDocument).data.tracks).length
+          }
+        : base;
+    });
     const summary = {
       projectId: snapshot.bundle.manifest.projectId,
       name: snapshot.bundle.manifest.name,
@@ -389,10 +360,7 @@ async function inspectCommand(
   }
 }
 
-async function historyCommand(
-  args: readonly string[],
-  io: CliIo
-): Promise<number> {
+async function historyCommand(args: readonly string[], io: CliIo): Promise<number> {
   const json = flag(args, "--json");
   const positional = args.filter((item) => item !== "--json");
   if (positional.length !== 1) throw new TypeError(HELP);
@@ -418,9 +386,7 @@ async function historyCommand(
           branchName: commit.transaction.branchName,
           origin: commit.transaction.origin,
           committedAt: commit.committedAt,
-          operationTypes: commit.transaction.operations.map(
-            (operation) => operation.operationType
-          )
+          operationTypes: commit.transaction.operations.map((operation) => operation.operationType)
         }))
     };
     if (json) io.stdout(`${JSON.stringify(summary, null, 2)}\n`);
@@ -429,9 +395,7 @@ async function historyCommand(
         io.stdout(`* ${branch.name} -> ${branch.headCommitId}\n`);
       }
       for (const commit of summary.commits) {
-        io.stdout(
-          `- ${commit.commitId} ${commit.transactionId} (${commit.origin.kind})\n`
-        );
+        io.stdout(`- ${commit.commitId} ${commit.transactionId} (${commit.origin.kind})\n`);
       }
     }
     return 0;
@@ -440,10 +404,7 @@ async function historyCommand(
   }
 }
 
-async function evaluateCommand(
-  args: readonly string[],
-  io: CliIo
-): Promise<number> {
+async function evaluateCommand(args: readonly string[], io: CliIo): Promise<number> {
   const options = evaluationCliOptions(args);
   const [projectPath, documentId, rawTime, ...extra] = options.remaining;
   if (
@@ -459,13 +420,7 @@ async function evaluateCommand(
   const project = await openValidProject(repository, projectPath);
   const { snapshot, session: runtime } = project;
   try {
-    const { result } = await evaluateRuntime(
-      snapshot,
-      runtime,
-      documentId,
-      rawTime,
-      options
-    );
+    const { result } = await evaluateRuntime(snapshot, runtime, documentId, rawTime, options);
     if (options.json) io.stdout(`${JSON.stringify(result.graph, null, 2)}\n`);
     else {
       io.stdout(
@@ -482,15 +437,11 @@ async function evaluateCommand(
   }
 }
 
-async function renderCommand(
-  args: readonly string[],
-  io: CliIo
-): Promise<number> {
+async function renderCommand(args: readonly string[], io: CliIo): Promise<number> {
   const profileOption = option(args, "--profile");
   const providerOption = option(profileOption.remaining, "--provider");
   const options = evaluationCliOptions(providerOption.remaining);
-  const [projectPath, documentId, rawTime, outputPath, ...extra] =
-    options.remaining;
+  const [projectPath, documentId, rawTime, outputPath, ...extra] = options.remaining;
   if (
     projectPath === undefined ||
     documentId === undefined ||
@@ -518,9 +469,7 @@ async function renderCommand(
         ? Object.keys(snapshot.bundle.manifest.outputProfiles).sort()[0]
         : "svg");
     const profile =
-      profileId === undefined
-        ? undefined
-        : snapshot.bundle.manifest.outputProfiles[profileId];
+      profileId === undefined ? undefined : snapshot.bundle.manifest.outputProfiles[profileId];
     if (profile === undefined) {
       throw new TypeError(
         profileId === undefined
@@ -578,10 +527,7 @@ async function renderCommand(
   }
 }
 
-async function undoCommand(
-  args: readonly string[],
-  io: CliIo
-): Promise<number> {
+async function undoCommand(args: readonly string[], io: CliIo): Promise<number> {
   const branchOption = option(args, "--branch");
   const [projectPath, ...extra] = branchOption.remaining;
   if (projectPath === undefined || extra.length > 0) throw new TypeError(HELP);
@@ -603,10 +549,7 @@ async function undoCommand(
   }
 }
 
-async function redoCommand(
-  args: readonly string[],
-  io: CliIo
-): Promise<number> {
+async function redoCommand(args: readonly string[], io: CliIo): Promise<number> {
   const branchOption = option(args, "--branch");
   const commitOption = option(branchOption.remaining, "--commit");
   const [projectPath, ...extra] = commitOption.remaining;
@@ -629,10 +572,7 @@ async function redoCommand(
   }
 }
 
-async function branchCommand(
-  args: readonly string[],
-  io: CliIo
-): Promise<number> {
+async function branchCommand(args: readonly string[], io: CliIo): Promise<number> {
   const [subcommand, ...rest] = args;
   if (subcommand === "list") {
     const json = flag(rest, "--json");
@@ -658,11 +598,7 @@ async function branchCommand(
   if (subcommand === "create") {
     const fromOption = option(rest, "--from");
     const [projectPath, branchName, ...extra] = fromOption.remaining;
-    if (
-      projectPath === undefined ||
-      branchName === undefined ||
-      extra.length > 0
-    ) {
+    if (projectPath === undefined || branchName === undefined || extra.length > 0) {
       throw new TypeError(HELP);
     }
     const repository = new NodeProjectRepository();
@@ -680,11 +616,7 @@ async function branchCommand(
 
   if (subcommand === "delete") {
     const [projectPath, branchName, ...extra] = rest;
-    if (
-      projectPath === undefined ||
-      branchName === undefined ||
-      extra.length > 0
-    ) {
+    if (projectPath === undefined || branchName === undefined || extra.length > 0) {
       throw new TypeError(HELP);
     }
     const repository = new NodeProjectRepository();
@@ -703,10 +635,7 @@ async function branchCommand(
   throw new TypeError(HELP);
 }
 
-async function setPropertyCommand(
-  args: readonly string[],
-  io: CliIo
-): Promise<number> {
+async function setPropertyCommand(args: readonly string[], io: CliIo): Promise<number> {
   const branchOption = option(args, "--branch");
   const expectedHashOption = option(branchOption.remaining, "--expect-hash");
   const [projectPath, documentId, nodeId, property, rawValue, ...extra] =
@@ -749,9 +678,7 @@ async function setPropertyCommand(
       operationProposal(
         branchName,
         STANDARD_MOTION_OPERATIONS.setProperty,
-        [
-          createProjectResourceUri("document", documentId, ["node", nodeId])
-        ],
+        [createProjectResourceUri("document", documentId, ["node", nodeId])],
         {
           documentId,
           nodeId,
@@ -762,23 +689,17 @@ async function setPropertyCommand(
       )
     );
     await project.save();
-    io.stdout(
-      `Committed ${result.commit.commitId}; updated ${documentId}/${nodeId}.${property}\n`
-    );
+    io.stdout(`Committed ${result.commit.commitId}; updated ${documentId}/${nodeId}.${property}\n`);
     return 0;
   } finally {
     await project.dispose();
   }
 }
 
-async function insertTextCommand(
-  args: readonly string[],
-  io: CliIo
-): Promise<number> {
+async function insertTextCommand(args: readonly string[], io: CliIo): Promise<number> {
   const branchOption = option(args, "--branch");
   const indexOption = option(branchOption.remaining, "--index");
-  const [projectPath, documentId, nodeId, text, ...extra] =
-    indexOption.remaining;
+  const [projectPath, documentId, nodeId, text, ...extra] = indexOption.remaining;
   if (
     projectPath === undefined ||
     documentId === undefined ||
@@ -819,10 +740,7 @@ async function insertTextCommand(
   }
 }
 
-export async function runCli(
-  argv: readonly string[],
-  io: CliIo = defaultIo
-): Promise<number> {
+export async function runCli(argv: readonly string[], io: CliIo = defaultIo): Promise<number> {
   const [command, ...args] = argv;
   if (command === undefined || command === "help" || command === "--help") {
     io.stdout(HELP);

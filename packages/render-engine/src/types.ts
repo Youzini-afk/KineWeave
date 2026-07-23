@@ -8,12 +8,10 @@ import type {
   ResolvedPresentationGraph
 } from "@kineweave/protocol";
 
-export const OUTPUT_RENDERER_CAPABILITY_ID =
-  "org.kineweave.renderer/output";
+export const OUTPUT_RENDERER_CAPABILITY_ID = "org.kineweave.renderer/output";
 export const OUTPUT_RENDERER_CONTRACT_VERSION = "1.0.0";
 
-export const INTERACTIVE_RENDERER_CAPABILITY_ID =
-  "org.kineweave.renderer/interactive";
+export const INTERACTIVE_RENDERER_CAPABILITY_ID = "org.kineweave.renderer/interactive";
 export const INTERACTIVE_RENDERER_CONTRACT_VERSION = "1.0.0";
 
 interface OutputRenderArtifactBase {
@@ -32,9 +30,7 @@ export interface BinaryOutputRenderArtifact extends OutputRenderArtifactBase {
   readonly bytes: Uint8Array;
 }
 
-export type OutputRenderArtifact =
-  | TextOutputRenderArtifact
-  | BinaryOutputRenderArtifact;
+export type OutputRenderArtifact = TextOutputRenderArtifact | BinaryOutputRenderArtifact;
 
 export interface OutputRendererRequest {
   readonly graph: ResolvedPresentationGraph;

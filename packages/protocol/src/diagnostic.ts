@@ -13,8 +13,6 @@ export interface Diagnostic {
   readonly details?: JsonObject;
 }
 
-export function hasErrorDiagnostics(
-  diagnostics: readonly Diagnostic[]
-): boolean {
+export function hasErrorDiagnostics(diagnostics: readonly Diagnostic[]): boolean {
   return diagnostics.some((diagnostic) => diagnostic.severity === "error");
 }

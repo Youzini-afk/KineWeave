@@ -15,7 +15,6 @@ describe("canonical JSON", () => {
   });
 
   it("rejects values JSON cannot represent", () => {
-    expect(() => canonicalStringify({ value: Number.POSITIVE_INFINITY }))
-      .toThrow(/valid JSON/i);
+    expect(() => canonicalStringify({ value: Number.POSITIVE_INFINITY })).toThrow(/valid JSON/i);
   });
 });

@@ -1,24 +1,18 @@
-import { describe, expect, it } from "vitest";
 import { createEsmExtensionSource } from "@kineweave/extension-host";
 import { ProjectSession } from "@kineweave/project-session";
 import {
+  createProjectResourceUri,
+  type ExtensionManifest,
+  type JsonObject,
+  rational,
   STANDARD_COLOR_SPACES,
   STANDARD_TIME_DOMAINS,
-  createProjectResourceUri,
-  rational,
-  timeValue,
-  type JsonObject,
-  type ExtensionManifest,
-  type TransactionProposal
+  type TransactionProposal,
+  timeValue
 } from "@kineweave/protocol";
-import {
-  STANDARD_MOTION_OPERATIONS,
-  constant
-} from "@kineweave/standard-motion-document";
-import {
-  KINEWEAVE_VERSION,
-  createOfficialDistributionProfile
-} from "./distribution.js";
+import { constant, STANDARD_MOTION_OPERATIONS } from "@kineweave/standard-motion-document";
+import { describe, expect, it } from "vitest";
+import { createOfficialDistributionProfile, KINEWEAVE_VERSION } from "./distribution.js";
 import { createOfficialProjectTemplate } from "./template.js";
 
 function host() {
@@ -35,9 +29,7 @@ function host() {
 function evaluationRequest(branchName?: string) {
   return {
     documentId: "document_main",
-    ...(branchName === undefined
-      ? {}
-      : { state: { kind: "branch" as const, branchName } }),
+    ...(branchName === undefined ? {} : { state: { kind: "branch" as const, branchName } }),
     time: timeValue(rational(1, 2), STANDARD_TIME_DOMAINS.seconds),
     mode: "deterministic" as const,
     viewport: { width: 1920, height: 1080, pixelRatio: rational(1) },
@@ -64,9 +56,7 @@ describe("official distribution", () => {
     const session = opened.session!;
 
     const mainEvaluation = await session.evaluate(evaluationRequest());
-    expect(mainEvaluation.graph.nodes.node_headline?.data.text).toBe(
-      "Hello KineWeave"
-    );
+    expect(mainEvaluation.graph.nodes.node_headline?.data.text).toBe("Hello KineWeave");
     const profile = bundle.manifest.outputProfiles.svg!;
     const rendered = await session.renderOutput({
       graph: mainEvaluation.graph,
@@ -93,10 +83,7 @@ describe("official distribution", () => {
           operationType: STANDARD_MOTION_OPERATIONS.setProperty,
           schemaVersion: 1,
           targets: [
-            createProjectResourceUri("document", "document_main", [
-              "node",
-              "node_headline"
-            ])
+            createProjectResourceUri("document", "document_main", ["node", "node_headline"])
           ],
           payload: {
             documentId: "document_main",
@@ -108,21 +95,15 @@ describe("official distribution", () => {
       ]
     };
     await session.execute(proposal);
-    const branchEvaluation = await session.evaluate(
-      evaluationRequest("proposal/alternate")
-    );
-    expect(branchEvaluation.graph.nodes.node_headline?.data.text).toBe(
-      "Branch Version"
-    );
+    const branchEvaluation = await session.evaluate(evaluationRequest("proposal/alternate"));
+    expect(branchEvaluation.graph.nodes.node_headline?.data.text).toBe("Branch Version");
     expect((await session.evaluate(evaluationRequest())).graph.nodes.node_headline?.data.text).toBe(
       "Hello KineWeave"
     );
     const persistedMain = session.toBundle().documents.document_main as unknown as {
       data: JsonObject;
     };
-    expect(
-      (persistedMain.data.nodes as JsonObject).node_headline
-    ).toMatchObject({
+    expect((persistedMain.data.nodes as JsonObject).node_headline).toMatchObject({
       properties: { content: constant("Hello KineWeave") }
     });
 
@@ -148,9 +129,7 @@ describe("official distribution", () => {
         }
       ],
       contributes: {
-        operationTypes: [
-          { operationType: "org.example.incomplete/change", schemaVersions: [1] }
-        ]
+        operationTypes: [{ operationType: "org.example.incomplete/change", schemaVersions: [1] }]
       }
     };
     let deactivationCount = 0;
@@ -204,9 +183,7 @@ describe("official distribution", () => {
 
     expect(opened.session).toBeUndefined();
     expect(opened.diagnostics).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ code: "extension.contribution.missing" })
-      ])
+      expect.arrayContaining([expect.objectContaining({ code: "extension.contribution.missing" })])
     );
     expect(deactivationCount).toBe(1);
   });

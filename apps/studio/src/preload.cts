@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer } = require("electron") as typeof import("electron");
+
 import type { LoadedProjectBundle } from "@kineweave/project-format";
 import type {
   OpenedStudioProject,
@@ -20,31 +21,22 @@ const channels = {
 
 const api: StudioHostApi = {
   chooseProjectDirectory: () =>
-    ipcRenderer.invoke(channels.chooseProject) as Promise<
-      string | undefined
-    >,
+    ipcRenderer.invoke(channels.chooseProject) as Promise<string | undefined>,
   openProject: (rootPath) =>
-    ipcRenderer.invoke(
-      channels.openProject,
-      rootPath
-    ) as Promise<StudioHostResult<OpenedStudioProject>>,
+    ipcRenderer.invoke(channels.openProject, rootPath) as Promise<
+      StudioHostResult<OpenedStudioProject>
+    >,
   saveProject: (hostSessionId, bundle: LoadedProjectBundle) =>
-    ipcRenderer.invoke(
-      channels.saveProject,
-      hostSessionId,
-      bundle
-    ) as Promise<StudioHostResult<SavedStudioProject>>,
+    ipcRenderer.invoke(channels.saveProject, hostSessionId, bundle) as Promise<
+      StudioHostResult<SavedStudioProject>
+    >,
   closeProject: (hostSessionId) =>
-    ipcRenderer.invoke(
-      channels.closeProject,
-      hostSessionId
-    ) as Promise<void>,
+    ipcRenderer.invoke(channels.closeProject, hostSessionId) as Promise<void>,
   respondToClose: (shouldClose) => {
     ipcRenderer.send(channels.closeResponse, shouldClose);
   },
   onInitialProject(listener) {
-    const handler = (_event: Electron.IpcRendererEvent, rootPath: string) =>
-      listener(rootPath);
+    const handler = (_event: Electron.IpcRendererEvent, rootPath: string) => listener(rootPath);
     ipcRenderer.on(channels.initialProject, handler);
     return () => ipcRenderer.removeListener(channels.initialProject, handler);
   },

@@ -5,14 +5,8 @@ import type {
   ExtensionManifest,
   JsonValue
 } from "@kineweave/protocol";
-import type {
-  InteractiveRendererProvider,
-  OutputRendererProvider
-} from "@kineweave/render-engine";
-import type {
-  DocumentValidator,
-  OperationHandler
-} from "@kineweave/transaction-engine";
+import type { InteractiveRendererProvider, OutputRendererProvider } from "@kineweave/render-engine";
+import type { DocumentValidator, OperationHandler } from "@kineweave/transaction-engine";
 import type { KineWeaveExtensionContext } from "./context.js";
 
 export interface KineWeaveExtensionContributionAudit {
@@ -58,7 +52,9 @@ function evaluatorKey(evaluator: {
 }): string {
   return `${versionedKey(evaluator.documentType, evaluator.schemaVersion)}->${[
     ...evaluator.presentationGraphVersions
-  ].sort((left, right) => left - right).join(",")}`;
+  ]
+    .sort((left, right) => left - right)
+    .join(",")}`;
 }
 
 function difference(left: ReadonlySet<string>, right: ReadonlySet<string>): string[] {
@@ -97,27 +93,18 @@ export function createKineWeaveExtensionContributionAudit(
     },
     evaluation: {
       registerDocumentEvaluator: (evaluator) =>
-        trackedRegistration(
-          evaluator,
-          evaluatorKey(evaluator),
-          evaluators,
-          (value) => context.evaluation.registerDocumentEvaluator(value)
+        trackedRegistration(evaluator, evaluatorKey(evaluator), evaluators, (value) =>
+          context.evaluation.registerDocumentEvaluator(value)
         )
     },
     rendering: {
       registerOutputRenderer: (provider: OutputRendererProvider) =>
-        trackedRegistration(
-          provider.descriptor,
-          provider.descriptor.providerId,
-          capabilities,
-          () => context.rendering.registerOutputRenderer(provider)
+        trackedRegistration(provider.descriptor, provider.descriptor.providerId, capabilities, () =>
+          context.rendering.registerOutputRenderer(provider)
         ),
       registerInteractiveRenderer: (provider: InteractiveRendererProvider) =>
-        trackedRegistration(
-          provider.descriptor,
-          provider.descriptor.providerId,
-          capabilities,
-          () => context.rendering.registerInteractiveRenderer(provider)
+        trackedRegistration(provider.descriptor, provider.descriptor.providerId, capabilities, () =>
+          context.rendering.registerInteractiveRenderer(provider)
         )
     }
   };

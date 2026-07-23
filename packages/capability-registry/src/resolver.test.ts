@@ -1,8 +1,5 @@
+import type { CapabilityProviderDescriptor, CapabilityRequirement } from "@kineweave/protocol";
 import { describe, expect, it } from "vitest";
-import type {
-  CapabilityProviderDescriptor,
-  CapabilityRequirement
-} from "@kineweave/protocol";
 import { resolveCapabilityPlan } from "./resolver.js";
 
 const renderRequirement: CapabilityRequirement = {
@@ -11,9 +8,7 @@ const renderRequirement: CapabilityRequirement = {
   requiredFeatures: ["kineweave.renderer.feature/alpha"]
 };
 
-function provider(
-  overrides: Partial<CapabilityProviderDescriptor>
-): CapabilityProviderDescriptor {
+function provider(overrides: Partial<CapabilityProviderDescriptor>): CapabilityProviderDescriptor {
   return {
     capabilityId: "kineweave.renderer.2d",
     providerId: "org.kineweave.renderer/canvas",
@@ -178,9 +173,7 @@ describe("capability resolution", () => {
       extensionId: "org.example.renderer-legacy",
       features: [],
       priority: 100,
-      requires: [
-        { capabilityId: deviceCapability, contractVersion: "^1.0.0" }
-      ]
+      requires: [{ capabilityId: deviceCapability, contractVersion: "^1.0.0" }]
     });
     const modernRenderer = provider({
       capabilityId: rendererCapability,
@@ -188,9 +181,7 @@ describe("capability resolution", () => {
       extensionId: "org.example.renderer-modern",
       features: [],
       priority: 1,
-      requires: [
-        { capabilityId: deviceCapability, contractVersion: "^2.0.0" }
-      ]
+      requires: [{ capabilityId: deviceCapability, contractVersion: "^2.0.0" }]
     });
     const deviceV1 = provider({
       capabilityId: deviceCapability,
@@ -220,9 +211,7 @@ describe("capability resolution", () => {
     expect(plan.bindings[rendererCapability]?.descriptor.providerId).toBe(
       modernRenderer.providerId
     );
-    expect(plan.bindings[deviceCapability]?.descriptor.providerId).toBe(
-      deviceV2.providerId
-    );
+    expect(plan.bindings[deviceCapability]?.descriptor.providerId).toBe(deviceV2.providerId);
   });
 
   it("rejects provider dependency cycles before activation planning", () => {
@@ -244,9 +233,7 @@ describe("capability resolution", () => {
     });
 
     const plan = resolveCapabilityPlan({
-      requirements: [
-        { capabilityId: capabilityA, contractVersion: "^1.0.0" }
-      ],
+      requirements: [{ capabilityId: capabilityA, contractVersion: "^1.0.0" }],
       providers: [providerA, providerB],
       environment: { hostKind: "desktop" }
     });

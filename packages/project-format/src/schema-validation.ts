@@ -1,6 +1,6 @@
 import {
-  hasErrorDiagnostics,
   type Diagnostic,
+  hasErrorDiagnostics,
   type JsonObject,
   type KineWeaveHistory,
   type KineWeaveLockfile,
@@ -42,9 +42,7 @@ function validateWith(
   return diagnosticsFromErrors(source, validator.errors);
 }
 
-export function validateProjectManifestSchema(
-  value: unknown
-): readonly Diagnostic[] {
+export function validateProjectManifestSchema(value: unknown): readonly Diagnostic[] {
   return validateWith("project", projectValidator, value);
 }
 
@@ -52,9 +50,7 @@ export function validateLockfileSchema(value: unknown): readonly Diagnostic[] {
   return validateWith("lockfile", lockfileValidator, value);
 }
 
-export function validateDocumentEnvelopeSchema(
-  value: unknown
-): readonly Diagnostic[] {
+export function validateDocumentEnvelopeSchema(value: unknown): readonly Diagnostic[] {
   return validateWith("document", documentEnvelopeValidator, value);
 }
 
@@ -62,18 +58,14 @@ export function validateHistorySchema(value: unknown): readonly Diagnostic[] {
   return validateWith("history", historyValidator, value);
 }
 
-export function assertProjectManifest(
-  value: unknown
-): asserts value is KineWeaveProjectManifest {
+export function assertProjectManifest(value: unknown): asserts value is KineWeaveProjectManifest {
   const diagnostics = validateProjectManifestSchema(value);
   if (hasErrorDiagnostics(diagnostics)) {
     throw new TypeError(diagnostics.map((item) => item.message).join("; "));
   }
 }
 
-export function assertLockfile(
-  value: unknown
-): asserts value is KineWeaveLockfile {
+export function assertLockfile(value: unknown): asserts value is KineWeaveLockfile {
   const diagnostics = validateLockfileSchema(value);
   if (hasErrorDiagnostics(diagnostics)) {
     throw new TypeError(diagnostics.map((item) => item.message).join("; "));

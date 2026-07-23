@@ -17,10 +17,7 @@ describe("Rational and TimeValue", () => {
   });
 
   it("does not drift across 30000 NTSC frames", () => {
-    const oneFrame = frameIndexToSeconds(
-      1,
-      rational(30_000, 1_001)
-    );
+    const oneFrame = frameIndexToSeconds(1, rational(30_000, 1_001));
     let cursor = timeValue(rational(0), STANDARD_TIME_DOMAINS.seconds);
     for (let index = 0; index < 30_000; index += 1) {
       cursor = addTime(cursor, oneFrame);

@@ -2,15 +2,15 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { runCli, type CliIo } from "./cli.js";
+import { type CliIo, runCli } from "./cli.js";
 
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((directory) =>
-      rm(directory, { recursive: true, force: true })
-    )
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true }))
   );
 });
 
@@ -42,83 +42,47 @@ describe("KineWeave CLI", () => {
     const projectPath = await temporaryProjectPath();
     const capture = captureIo();
 
-    expect(
-      await runCli(["init", projectPath, "--name", "CLI Demo"], capture.io)
-    ).toBe(0);
+    expect(await runCli(["init", projectPath, "--name", "CLI Demo"], capture.io)).toBe(0);
     expect(await runCli(["validate", projectPath], capture.io)).toBe(0);
     expect(
       await runCli(
-        [
-          "set-property",
-          projectPath,
-          "document_main",
-          "node_headline",
-          "content",
-          '"你好，织时"'
-        ],
+        ["set-property", projectPath, "document_main", "node_headline", "content", '"你好，织时"'],
         capture.io
       )
     ).toBe(0);
     expect(
       await runCli(
-        [
-          "insert-text",
-          projectPath,
-          "document_main",
-          "node_subtitle",
-          "Subtitle",
-          "--index",
-          "1"
-        ],
+        ["insert-text", projectPath, "document_main", "node_subtitle", "Subtitle", "--index", "1"],
         capture.io
       )
     ).toBe(0);
-    expect(await runCli(["inspect", projectPath, "--json"], capture.io)).toBe(
+    expect(await runCli(["inspect", projectPath, "--json"], capture.io)).toBe(0);
+    expect(await runCli(["branch", "create", projectPath, "proposal/alternate"], capture.io)).toBe(
       0
     );
-    expect(
-      await runCli(
-        ["branch", "create", projectPath, "proposal/alternate"],
-        capture.io
-      )
-    ).toBe(0);
     expect(await runCli(["undo", projectPath], capture.io)).toBe(0);
     const undoneDocument = JSON.parse(
-      await readFile(
-        path.join(projectPath, "documents", "main.composition.json"),
-        "utf8"
-      )
+      await readFile(path.join(projectPath, "documents", "main.composition.json"), "utf8")
     ) as { data: { rootNodeIds: string[] } };
     expect(undoneDocument.data.rootNodeIds).toEqual(["node_scene"]);
     expect(await runCli(["redo", projectPath], capture.io)).toBe(0);
-    expect(await runCli(["history", projectPath, "--json"], capture.io)).toBe(
-      0
-    );
+    expect(await runCli(["history", projectPath, "--json"], capture.io)).toBe(0);
 
     const document = JSON.parse(
-      await readFile(
-        path.join(projectPath, "documents", "main.composition.json"),
-        "utf8"
-      )
+      await readFile(path.join(projectPath, "documents", "main.composition.json"), "utf8")
     ) as {
       data: {
         rootNodeIds: string[];
         nodes: Record<string, { properties: Record<string, unknown> }>;
       };
     };
-    expect(document.data.rootNodeIds).toEqual([
-      "node_scene",
-      "node_subtitle"
-    ]);
+    expect(document.data.rootNodeIds).toEqual(["node_scene", "node_subtitle"]);
     expect(document.data.nodes.node_headline?.properties.content).toEqual({
       kind: "constant",
       value: "你好，织时"
     });
     const history = JSON.parse(
-      await readFile(
-        path.join(projectPath, ".kineweave", "history", "history.json"),
-        "utf8"
-      )
+      await readFile(path.join(projectPath, ".kineweave", "history", "history.json"), "utf8")
     ) as {
       branches: { main: string };
       commits: Record<string, { parentCommitIds: string[] }>;
@@ -141,14 +105,7 @@ describe("KineWeave CLI", () => {
     await runCli(["init", projectPath], capture.io);
     expect(
       await runCli(
-        [
-          "set-property",
-          projectPath,
-          "document_main",
-          "node_headline",
-          "content",
-          "not-json"
-        ],
+        ["set-property", projectPath, "document_main", "node_headline", "content", "not-json"],
         capture.io
       )
     ).toBe(2);
@@ -159,10 +116,7 @@ describe("KineWeave CLI", () => {
     const projectPath = await temporaryProjectPath();
     const capture = captureIo();
     await runCli(["init", projectPath], capture.io);
-    await runCli(
-      ["branch", "create", projectPath, "proposal/alternate"],
-      capture.io
-    );
+    await runCli(["branch", "create", projectPath, "proposal/alternate"], capture.io);
 
     expect(
       await runCli(
@@ -180,10 +134,7 @@ describe("KineWeave CLI", () => {
       )
     ).toBe(0);
     const materialized = JSON.parse(
-      await readFile(
-        path.join(projectPath, "documents", "main.composition.json"),
-        "utf8"
-      )
+      await readFile(path.join(projectPath, "documents", "main.composition.json"), "utf8")
     ) as { data: { nodes: Record<string, { properties: Record<string, unknown> }> } };
     expect(materialized.data.nodes.node_headline?.properties.content).toEqual({
       kind: "constant",
@@ -193,15 +144,7 @@ describe("KineWeave CLI", () => {
     const branchCapture = captureIo();
     expect(
       await runCli(
-        [
-          "evaluate",
-          projectPath,
-          "document_main",
-          "0",
-          "--branch",
-          "proposal/alternate",
-          "--json"
-        ],
+        ["evaluate", projectPath, "document_main", "0", "--branch", "proposal/alternate", "--json"],
         branchCapture.io
       )
     ).toBe(0);
@@ -211,10 +154,7 @@ describe("KineWeave CLI", () => {
     expect(graph.nodes.node_headline?.data.text).toBe("Branch Version");
 
     const history = JSON.parse(
-      await readFile(
-        path.join(projectPath, ".kineweave", "history", "history.json"),
-        "utf8"
-      )
+      await readFile(path.join(projectPath, ".kineweave", "history", "history.json"), "utf8")
     ) as { branches: Record<string, string> };
     expect(history.branches["proposal/alternate"]).not.toBe(history.branches.main);
     expect(capture.output().stderr).toBe("");
@@ -226,10 +166,7 @@ describe("KineWeave CLI", () => {
     const capture = captureIo();
 
     expect(
-      await runCli(
-        ["evaluate", projectPath, "document_main", "1/2", "--json"],
-        capture.io
-      )
+      await runCli(["evaluate", projectPath, "document_main", "1/2", "--json"], capture.io)
     ).toBe(0);
     const graph = JSON.parse(capture.output().stdout) as {
       presentationGraphVersion: number;
@@ -251,14 +188,7 @@ describe("KineWeave CLI", () => {
 
     expect(
       await runCli(
-        [
-          "render",
-          projectPath,
-          "document_main",
-          "1/2",
-          outputPath,
-          "--json"
-        ],
+        ["render", projectPath, "document_main", "1/2", outputPath, "--json"],
         capture.io
       )
     ).toBe(0);

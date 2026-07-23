@@ -87,13 +87,7 @@
     },
     "operation": {
       "type": "object",
-      "required": [
-        "operationId",
-        "operationType",
-        "schemaVersion",
-        "targets",
-        "payload"
-      ],
+      "required": ["operationId", "operationType", "schemaVersion", "targets", "payload"],
       "properties": {
         "operationId": { "$ref": "#/$defs/stableId" },
         "operationType": { "type": "string", "minLength": 1 },
@@ -175,20 +169,11 @@
       ]
     },
     "contentHash": {
-      "oneOf": [
-        { "type": "null" },
-        { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
-      ]
+      "oneOf": [{ "type": "null" }, { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }]
     },
     "documentPatch": {
       "type": "object",
-      "required": [
-        "documentId",
-        "beforeHash",
-        "afterHash",
-        "forward",
-        "inverse"
-      ],
+      "required": ["documentId", "beforeHash", "afterHash", "forward", "inverse"],
       "properties": {
         "documentId": { "$ref": "#/$defs/stableId" },
         "beforeHash": { "$ref": "#/$defs/contentHash" },

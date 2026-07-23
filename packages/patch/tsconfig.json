@@ -6,8 +6,5 @@
     "tsBuildInfoFile": "dist/.tsbuildinfo"
   },
   "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../protocol" },
-    { "path": "../content-hash" }
-  ]
+  "references": [{ "path": "../protocol" }, { "path": "../content-hash" }]
 }

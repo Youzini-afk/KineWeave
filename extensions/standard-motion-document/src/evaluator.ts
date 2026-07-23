@@ -1,44 +1,39 @@
 import type { DocumentEvaluator } from "@kineweave/evaluation-engine";
 import {
-  PRESENTATION_GRAPH_VERSION,
-  STANDARD_PRESENTATION_PRIMITIVES,
   cloneJson,
   compareRational,
   createProjectResourceUri,
-  divideRational,
-  hasErrorDiagnostics,
-  parseRational,
-  rationalToNumberLossy,
-  subtractRational,
   type Diagnostic,
+  divideRational,
   type EvaluationRequest,
+  hasErrorDiagnostics,
   type JsonObject,
   type JsonValue,
+  PRESENTATION_GRAPH_VERSION,
   type PresentationNode,
-  type ResolvedPresentationGraph
+  parseRational,
+  type ResolvedPresentationGraph,
+  rationalToNumberLossy,
+  STANDARD_PRESENTATION_PRIMITIVES,
+  subtractRational
 } from "@kineweave/protocol";
 import {
+  type Keyframe,
+  type MotionNode,
+  type PropertyBinding,
+  type PropertyTrack,
   STANDARD_COMPOSITION_SCHEMA_VERSION,
   STANDARD_COMPOSITION_TYPE,
   STANDARD_KEYFRAME_EASINGS,
   STANDARD_NODE_TYPES,
   STANDARD_SIGNAL_TYPES,
   STANDARD_VALUE_TYPES,
-  type Keyframe,
-  type MotionNode,
-  type PropertyBinding,
-  type PropertyTrack,
   type StandardCompositionDocument
 } from "./model.js";
 import { validateStandardComposition } from "./validation.js";
-import {
-  standardPropertyValueIssue,
-  standardValueIssue
-} from "./value-semantics.js";
+import { standardPropertyValueIssue, standardValueIssue } from "./value-semantics.js";
 
-type ValueResult =
-  | { readonly ok: true; readonly value: JsonValue }
-  | { readonly ok: false };
+type ValueResult = { readonly ok: true; readonly value: JsonValue } | { readonly ok: false };
 
 function error(
   code: string,
@@ -75,20 +70,14 @@ function parseHexColor(
   const match = /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.exec(value);
   if (match === null) return undefined;
   const hex = match[1]!;
-  const channels = [0, 2, 4].map((offset) =>
-    Number.parseInt(hex.slice(offset, offset + 2), 16)
-  );
+  const channels = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
   channels.push(hex.length === 8 ? Number.parseInt(hex.slice(6, 8), 16) : 255);
   return { channels, alpha: hex.length === 8 };
 }
 
 function cubicBezierCoordinate(t: number, first: number, second: number): number {
   const inverse = 1 - t;
-  return (
-    3 * inverse * inverse * t * first +
-    3 * inverse * t * t * second +
-    t * t * t
-  );
+  return 3 * inverse * inverse * t * first + 3 * inverse * t * t * second + t * t * t;
 }
 
 function cubicBezierProgress(
@@ -157,13 +146,7 @@ function interpolateValue(
   documentId: string,
   diagnostics: Diagnostic[]
 ): ValueResult {
-  const adjustedProgress = easedProgress(
-    easing,
-    progress,
-    track,
-    documentId,
-    diagnostics
-  );
+  const adjustedProgress = easedProgress(easing, progress, track, documentId, diagnostics);
   if (adjustedProgress === undefined) return success(left);
   if (!Number.isFinite(adjustedProgress)) return { ok: false };
 
@@ -179,10 +162,8 @@ function interpolateValue(
     const rightVector = vector2(right);
     if (leftVector !== undefined && rightVector !== undefined) {
       return success([
-        leftVector[0]! +
-          (rightVector[0]! - leftVector[0]!) * adjustedProgress,
-        leftVector[1]! +
-          (rightVector[1]! - leftVector[1]!) * adjustedProgress
+        leftVector[0]! + (rightVector[0]! - leftVector[0]!) * adjustedProgress,
+        leftVector[1]! + (rightVector[1]! - leftVector[1]!) * adjustedProgress
       ]);
     }
   }
@@ -191,10 +172,7 @@ function interpolateValue(
     const rightColor = parseHexColor(right);
     if (leftColor !== undefined && rightColor !== undefined) {
       const channels = leftColor.channels.map((channel, index) =>
-        Math.round(
-          channel +
-            (rightColor.channels[index]! - channel) * adjustedProgress
-        )
+        Math.round(channel + (rightColor.channels[index]! - channel) * adjustedProgress)
       );
       const includeAlpha = leftColor.alpha || rightColor.alpha;
       return success(
@@ -233,9 +211,7 @@ function sampleTrack(
 ): ValueResult {
   const keyframes = Object.values(track.keyframes).sort((left, right) => {
     const order = compareRational(left.time.value, right.time.value);
-    return order === 0
-      ? left.keyframeId.localeCompare(right.keyframeId)
-      : order;
+    return order === 0 ? left.keyframeId.localeCompare(right.keyframeId) : order;
   });
   if (keyframes.length === 0) {
     diagnostics.push(
@@ -306,16 +282,14 @@ function resolveBinding(
   }
   if (binding.kind === "track") {
     const trackId = binding.trackId;
-    const track =
-      typeof trackId === "string" ? document.data.tracks[trackId] : undefined;
+    const track = typeof trackId === "string" ? document.data.tracks[trackId] : undefined;
     if (track !== undefined) {
       return sampleTrack(track, request, document.documentId, diagnostics);
     }
   }
   if (binding.kind === "signal") {
     const signalId = binding.signalId;
-    const signal =
-      typeof signalId === "string" ? document.data.signals[signalId] : undefined;
+    const signal = typeof signalId === "string" ? document.data.signals[signalId] : undefined;
     if (signal?.signalType === STANDARD_SIGNAL_TYPES.external) {
       const key = signal.data.key;
       if (typeof key === "string") {
@@ -482,39 +456,12 @@ function evaluateComposition(
     const children = node.children
       .map((childId) => evaluateNode(childId))
       .filter((childId): childId is string => childId !== undefined);
-    const position = vector2(
-      property(node, "position", [0, 0], document, request, diagnostics)
-    );
-    const scale = vector2(
-      property(node, "scale", [1, 1], document, request, diagnostics)
-    );
-    const anchor = vector2(
-      property(node, "anchor", [0, 0], document, request, diagnostics)
-    );
-    const rotation = property(
-      node,
-      "rotation",
-      0,
-      document,
-      request,
-      diagnostics
-    );
-    const opacity = property(
-      node,
-      "opacity",
-      1,
-      document,
-      request,
-      diagnostics
-    );
-    const visible = property(
-      node,
-      "visible",
-      true,
-      document,
-      request,
-      diagnostics
-    );
+    const position = vector2(property(node, "position", [0, 0], document, request, diagnostics));
+    const scale = vector2(property(node, "scale", [1, 1], document, request, diagnostics));
+    const anchor = vector2(property(node, "anchor", [0, 0], document, request, diagnostics));
+    const rotation = property(node, "rotation", 0, document, request, diagnostics);
+    const opacity = property(node, "opacity", 1, document, request, diagnostics);
+    const visible = property(node, "visible", true, document, request, diagnostics);
     if (position === undefined || scale === undefined || anchor === undefined) {
       diagnostics.push(
         error(
@@ -535,12 +482,7 @@ function evaluateComposition(
         )
       );
     }
-    if (
-      typeof opacity !== "number" ||
-      !Number.isFinite(opacity) ||
-      opacity < 0 ||
-      opacity > 1
-    ) {
+    if (typeof opacity !== "number" || !Number.isFinite(opacity) || opacity < 0 || opacity > 1) {
       diagnostics.push(
         error(
           "standard-motion.evaluation.opacity-type-invalid",
@@ -564,37 +506,14 @@ function evaluateComposition(
     let primitive: string;
     let data: JsonObject;
     const shapeStyle = (): JsonObject => {
-      const fill = property(
-        node,
-        "fill",
-        "#00000000",
-        document,
-        request,
-        diagnostics
-      );
-      const stroke = property(
-        node,
-        "stroke",
-        "#00000000",
-        document,
-        request,
-        diagnostics
-      );
-      const strokeWidth = property(
-        node,
-        "strokeWidth",
-        0,
-        document,
-        request,
-        diagnostics
-      );
+      const fill = property(node, "fill", "#00000000", document, request, diagnostics);
+      const stroke = property(node, "stroke", "#00000000", document, request, diagnostics);
+      const strokeWidth = property(node, "strokeWidth", 0, document, request, diagnostics);
       return {
         fill: typeof fill === "string" ? fill : "#00000000",
         stroke: typeof stroke === "string" ? stroke : "#00000000",
         strokeWidth:
-          typeof strokeWidth === "number" &&
-          Number.isFinite(strokeWidth) &&
-          strokeWidth >= 0
+          typeof strokeWidth === "number" && Number.isFinite(strokeWidth) && strokeWidth >= 0
             ? strokeWidth
             : 0
       };
@@ -604,30 +523,9 @@ function evaluateComposition(
       data = cloneJson(node.data);
     } else if (node.nodeType === STANDARD_NODE_TYPES.text) {
       primitive = STANDARD_PRESENTATION_PRIMITIVES.text;
-      const content = property(
-        node,
-        "content",
-        "",
-        document,
-        request,
-        diagnostics
-      );
-      const fontSize = property(
-        node,
-        "fontSize",
-        16,
-        document,
-        request,
-        diagnostics
-      );
-      const fill = property(
-        node,
-        "fill",
-        "#000000",
-        document,
-        request,
-        diagnostics
-      );
+      const content = property(node, "content", "", document, request, diagnostics);
+      const fontSize = property(node, "fontSize", 16, document, request, diagnostics);
+      const fill = property(node, "fill", "#000000", document, request, diagnostics);
       if (typeof content !== "string") {
         diagnostics.push(
           error(
@@ -657,75 +555,40 @@ function evaluateComposition(
       }
       data = {
         text: typeof content === "string" ? content : "",
-        fontSize:
-          typeof fontSize === "number" && Number.isFinite(fontSize)
-            ? fontSize
-            : 16,
+        fontSize: typeof fontSize === "number" && Number.isFinite(fontSize) ? fontSize : 16,
         fill: typeof fill === "string" ? fill : "#000000"
       };
     } else if (node.nodeType === STANDARD_NODE_TYPES.rectangle) {
       primitive = STANDARD_PRESENTATION_PRIMITIVES.rectangle;
-      const size = vector2(
-        property(node, "size", [100, 100], document, request, diagnostics)
-      );
-      const cornerRadius = property(
-        node,
-        "cornerRadius",
-        0,
-        document,
-        request,
-        diagnostics
-      );
+      const size = vector2(property(node, "size", [100, 100], document, request, diagnostics));
+      const cornerRadius = property(node, "cornerRadius", 0, document, request, diagnostics);
       const width = size?.[0];
       const height = size?.[1];
       data = {
-        width:
-          typeof width === "number" && Number.isFinite(width) && width > 0
-            ? width
-            : 100,
-        height:
-          typeof height === "number" && Number.isFinite(height) && height > 0
-            ? height
-            : 100,
+        width: typeof width === "number" && Number.isFinite(width) && width > 0 ? width : 100,
+        height: typeof height === "number" && Number.isFinite(height) && height > 0 ? height : 100,
         cornerRadius:
-          typeof cornerRadius === "number" &&
-          Number.isFinite(cornerRadius) &&
-          cornerRadius >= 0
+          typeof cornerRadius === "number" && Number.isFinite(cornerRadius) && cornerRadius >= 0
             ? cornerRadius
             : 0,
         ...shapeStyle()
       };
     } else if (node.nodeType === STANDARD_NODE_TYPES.ellipse) {
       primitive = STANDARD_PRESENTATION_PRIMITIVES.ellipse;
-      const size = vector2(
-        property(node, "size", [100, 100], document, request, diagnostics)
-      );
+      const size = vector2(property(node, "size", [100, 100], document, request, diagnostics));
       const width = size?.[0];
       const height = size?.[1];
       data = {
-        radiusX:
-          typeof width === "number" && Number.isFinite(width) && width > 0
-            ? width / 2
-            : 50,
+        radiusX: typeof width === "number" && Number.isFinite(width) && width > 0 ? width / 2 : 50,
         radiusY:
-          typeof height === "number" && Number.isFinite(height) && height > 0
-            ? height / 2
-            : 50,
+          typeof height === "number" && Number.isFinite(height) && height > 0 ? height / 2 : 50,
         ...shapeStyle()
       };
     } else if (node.nodeType === STANDARD_NODE_TYPES.path) {
       primitive = STANDARD_PRESENTATION_PRIMITIVES.path;
-      const path = property(
-        node,
-        "path",
-        "M 0 0",
-        document,
-        request,
-        diagnostics
-      );
+      const path = property(node, "path", "M 0 0", document, request, diagnostics);
       data = {
-        path:
-          typeof path === "string" && path.trim().length > 0 ? path : "M 0 0",
+        path: typeof path === "string" && path.trim().length > 0 ? path : "M 0 0",
         ...shapeStyle()
       };
     } else {
@@ -750,19 +613,13 @@ function evaluateComposition(
       children,
       visible: typeof visible === "boolean" ? visible : true,
       opacity:
-        typeof opacity === "number" &&
-        Number.isFinite(opacity) &&
-        opacity >= 0 &&
-        opacity <= 1
+        typeof opacity === "number" && Number.isFinite(opacity) && opacity >= 0 && opacity <= 1
           ? opacity
           : 1,
       transform: {
         translation: position ?? [0, 0],
         scale: scale ?? [1, 1],
-        rotation:
-          typeof rotation === "number" && Number.isFinite(rotation)
-            ? rotation
-            : 0,
+        rotation: typeof rotation === "number" && Number.isFinite(rotation) ? rotation : 0,
         anchor: anchor ?? [0, 0]
       },
       sourceResourceUri: createProjectResourceUri("document", document.documentId, [
@@ -791,12 +648,7 @@ function evaluateComposition(
       time: request.time,
       viewport: request.viewport,
       colorSpace: request.colorSpace,
-      background:
-        background !== null &&
-        background.ok &&
-        typeof background.value === "string"
-          ? background.value
-          : null,
+      background: background?.ok && typeof background.value === "string" ? background.value : null,
       rootNodeIds,
       nodes,
       requiredFeatures: [...requiredFeatures].sort(),
