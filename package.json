@@ -8,15 +8,21 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -b",
+    "build": "pnpm run build:types && pnpm run build:studio",
+    "build:types": "pnpm run check:schema-validators && tsc -b",
+    "build:studio": "pnpm --filter @kineweave/studio build:renderer",
+    "generate:schema-validators": "node scripts/generate-schema-validators.mjs",
+    "check:schema-validators": "node scripts/generate-schema-validators.mjs --check",
     "clean": "tsc -b --clean",
     "test": "pnpm run build && vitest run",
     "check": "pnpm run test",
     "cli": "node apps/cli/dist/index.js",
+    "studio": "pnpm run build && pnpm --filter @kineweave/studio start --",
     "example:validate": "node apps/cli/dist/index.js validate examples/hello-kineweave"
   },
   "devDependencies": {
     "@types/node": "22.20.1",
+    "ajv": "8.20.0",
     "typescript": "7.0.2",
     "vitest": "4.1.10"
   }

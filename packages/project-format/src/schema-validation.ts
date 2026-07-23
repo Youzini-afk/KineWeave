@@ -7,28 +7,18 @@ import {
   type KineWeaveProjectManifest,
   type ProjectDocumentEnvelope
 } from "@kineweave/protocol";
+import type { ErrorObject } from "ajv";
 import {
-  Ajv2020,
-  type ErrorObject,
-  type ValidateFunction
-} from "ajv/dist/2020.js";
-import documentEnvelopeSchema from "./schemas/document-envelope-v1.schema.json" with { type: "json" };
-import historySchema from "./schemas/history-v1.schema.json" with { type: "json" };
-import lockfileSchema from "./schemas/lockfile-v1.schema.json" with { type: "json" };
-import projectSchema from "./schemas/project-v1.schema.json" with { type: "json" };
+  documentEnvelopeValidator,
+  historyValidator,
+  lockfileValidator,
+  projectValidator
+} from "./generated/schema-validators.js";
 
-const ajv = new Ajv2020({
-  allErrors: true,
-  strict: true,
-  removeAdditional: false,
-  useDefaults: false,
-  coerceTypes: false
-});
-
-const projectValidator = ajv.compile(projectSchema);
-const lockfileValidator = ajv.compile(lockfileSchema);
-const documentEnvelopeValidator = ajv.compile(documentEnvelopeSchema);
-const historyValidator = ajv.compile(historySchema);
+interface SchemaValidator {
+  (value: unknown): boolean;
+  readonly errors?: readonly ErrorObject[] | null;
+}
 
 function diagnosticsFromErrors(
   source: string,
@@ -45,7 +35,7 @@ function diagnosticsFromErrors(
 
 function validateWith(
   source: string,
-  validator: ValidateFunction,
+  validator: SchemaValidator,
   value: unknown
 ): readonly Diagnostic[] {
   validator(value);

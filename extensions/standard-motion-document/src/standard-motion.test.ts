@@ -213,6 +213,25 @@ describe("Standard Motion Document", () => {
     expect(history.getBranchHead("main")).toBe(before);
   });
 
+  it("renames and disables a node through a semantic operation", async () => {
+    const { history, transactionEngine } = engine();
+    await transactionEngine.execute(
+      proposal(STANDARD_MOTION_OPERATIONS.setNodeAttributes, {
+        documentId: "document_main",
+        nodeId: "node_headline",
+        name: "Primary title",
+        enabled: false
+      })
+    );
+
+    const document = history.stateOfBranch("main")
+      .document_main as unknown as StandardCompositionDocument;
+    expect(document.data.nodes.node_headline).toMatchObject({
+      name: "Primary title",
+      enabled: false
+    });
+  });
+
   it("rejects hierarchy cycles without committing", async () => {
     const { history, transactionEngine } = engine();
     await transactionEngine.execute(

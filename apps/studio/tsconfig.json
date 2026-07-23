@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist-main",
+    "tsBuildInfoFile": "dist-main/.tsbuildinfo",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.cts"],
+  "references": [
+    { "path": "../../packages/project-format" },
+    { "path": "../../packages/project-repository-node" },
+    { "path": "../../packages/project-session" },
+    { "path": "../../packages/protocol" },
+    { "path": "../../packages/render-engine" },
+    { "path": "../../packages/official-distribution" },
+    { "path": "../../extensions/standard-motion-document" },
+    { "path": "../../extensions/canvas2d-renderer" }
+  ]
+}

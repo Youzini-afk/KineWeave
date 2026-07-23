@@ -20,6 +20,7 @@ export const STANDARD_MOTION_OPERATIONS = {
   insertNode: "org.kineweave.standard-motion/insert-node",
   removeNode: "org.kineweave.standard-motion/remove-node",
   moveNode: "org.kineweave.standard-motion/move-node",
+  setNodeAttributes: "org.kineweave.standard-motion/set-node-attributes",
   setProperty: "org.kineweave.standard-motion/set-property"
 } as const;
 
@@ -218,9 +219,40 @@ export const setPropertyHandler: OperationHandler = {
   }
 };
 
+export const setNodeAttributesHandler: OperationHandler = {
+  operationType: STANDARD_MOTION_OPERATIONS.setNodeAttributes,
+  schemaVersion: 1,
+  prepare(operation, context) {
+    const input = payload(operation);
+    const hasName = input.name !== undefined;
+    const hasEnabled = input.enabled !== undefined;
+    if (
+      typeof input.documentId !== "string" ||
+      typeof input.nodeId !== "string" ||
+      (!hasName && !hasEnabled) ||
+      (hasName && (typeof input.name !== "string" || input.name.trim().length === 0)) ||
+      (hasEnabled && typeof input.enabled !== "boolean")
+    ) {
+      throw new TypeError("set-node-attributes payload is invalid");
+    }
+    const next = cloneJson(
+      composition(context, input.documentId) as unknown as JsonValue
+    ) as unknown as StandardCompositionDocument;
+    const node = next.data.nodes[input.nodeId];
+    if (node === undefined) throw new Error(`Node ${input.nodeId} is missing`);
+    next.data.nodes[input.nodeId] = {
+      ...node,
+      ...(hasName ? { name: (input.name as string).trim() } : {}),
+      ...(hasEnabled ? { enabled: input.enabled as boolean } : {})
+    };
+    return { mutations: [replaceMutation(next)] };
+  }
+};
+
 export const standardMotionOperationHandlers: readonly OperationHandler[] = [
   insertNodeHandler,
   removeNodeHandler,
   moveNodeHandler,
+  setNodeAttributesHandler,
   setPropertyHandler
 ];

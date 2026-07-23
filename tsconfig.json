@@ -19,6 +19,7 @@
     { "path": "./packages/project-session" },
     { "path": "./packages/project-session-node" },
     { "path": "./packages/official-distribution" },
-    { "path": "./apps/cli" }
+    { "path": "./apps/cli" },
+    { "path": "./apps/studio" }
   ]
 }

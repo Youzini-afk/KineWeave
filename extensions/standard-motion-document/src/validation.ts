@@ -8,8 +8,8 @@ import {
   type JsonValue,
   type ProjectDocumentEnvelope
 } from "@kineweave/protocol";
-import { Ajv2020, type ErrorObject } from "ajv/dist/2020.js";
-import compositionSchema from "./schemas/composition-v2.schema.json" with { type: "json" };
+import type { ErrorObject } from "ajv";
+import { compositionValidator } from "./generated/composition-validator.js";
 import {
   STANDARD_KEYFRAME_EASINGS,
   STANDARD_NODE_SCHEMA_VERSION,
@@ -28,8 +28,10 @@ import {
   standardValueIssue
 } from "./value-semantics.js";
 
-const ajv = new Ajv2020({ allErrors: true, strict: true });
-const validateSchema = ajv.compile(compositionSchema);
+const validateSchema: {
+  (value: unknown): boolean;
+  readonly errors?: readonly ErrorObject[] | null;
+} = compositionValidator;
 const STANDARD_NODE_TYPE_SET = new Set<string>(Object.values(STANDARD_NODE_TYPES));
 const LEAF_NODE_TYPE_SET = new Set<string>([
   STANDARD_NODE_TYPES.text,
