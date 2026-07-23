@@ -8,7 +8,7 @@
     "authoringTransactionIterations": 80
   },
   "reference": {
-    "source": "GitHub Actions run 29972341519",
+    "source": "GitHub Actions run 30009366796",
     "capturedAt": "2026-07-23",
     "environment": {
       "node": "v22.23.1",
@@ -16,21 +16,28 @@
       "architecture": "x64"
     },
     "metrics": {
-      "repositoryReadMs": 19.853,
-      "sessionOpenMs": 17.195,
+      "repositoryReadMs": 14.663,
+      "sessionOpenMs": 17.338,
       "evaluation": {
-        "totalMs": 103.033,
-        "meanMs": 0.859,
-        "p50Ms": 0.779,
-        "p95Ms": 1.284,
-        "maxMs": 1.462
+        "totalMs": 113.855,
+        "meanMs": 0.949,
+        "p50Ms": 0.853,
+        "p95Ms": 1.409,
+        "maxMs": 1.846
       },
       "svgRender": {
-        "totalMs": 24.999,
-        "meanMs": 0.208,
-        "p50Ms": 0.184,
-        "p95Ms": 0.352,
-        "maxMs": 0.708
+        "totalMs": 30.061,
+        "meanMs": 0.251,
+        "p50Ms": 0.218,
+        "p95Ms": 0.397,
+        "maxMs": 0.714
+      },
+      "authoringTransaction": {
+        "totalMs": 480.789,
+        "meanMs": 6.01,
+        "p50Ms": 5.73,
+        "p95Ms": 7.04,
+        "maxMs": 15.812
       },
       "svgBytes": 1539
     }
