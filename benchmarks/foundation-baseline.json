@@ -6,14 +6,42 @@
     "evaluationIterations": 120,
     "svgRenderIterations": 120
   },
+  "reference": {
+    "source": "GitHub Actions run 29972341519",
+    "capturedAt": "2026-07-23",
+    "environment": {
+      "node": "v22.23.1",
+      "platform": "linux",
+      "architecture": "x64"
+    },
+    "metrics": {
+      "repositoryReadMs": 19.853,
+      "sessionOpenMs": 17.195,
+      "evaluation": {
+        "totalMs": 103.033,
+        "meanMs": 0.859,
+        "p50Ms": 0.779,
+        "p95Ms": 1.284,
+        "maxMs": 1.462
+      },
+      "svgRender": {
+        "totalMs": 24.999,
+        "meanMs": 0.208,
+        "p50Ms": 0.184,
+        "p95Ms": 0.352,
+        "maxMs": 0.708
+      },
+      "svgBytes": 1539
+    }
+  },
   "budgets": {
-    "repositoryReadMs": 1500,
-    "sessionOpenMs": 3000,
-    "evaluationTotalMs": 6000,
-    "evaluationP95Ms": 75,
-    "evaluationMaxMs": 250,
-    "svgRenderTotalMs": 4000,
-    "svgRenderP95Ms": 40,
-    "svgRenderMaxMs": 200
+    "repositoryReadMs": 500,
+    "sessionOpenMs": 1000,
+    "evaluationTotalMs": 2000,
+    "evaluationP95Ms": 20,
+    "evaluationMaxMs": 150,
+    "svgRenderTotalMs": 1000,
+    "svgRenderP95Ms": 10,
+    "svgRenderMaxMs": 100
   }
 }

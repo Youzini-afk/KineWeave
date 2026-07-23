@@ -54,7 +54,7 @@ E2E 使用系统临时目录和官方 Template 创建工程，启动已构建的
 
 ## 5. 性能预算
 
-版本化工作负载位于 `benchmarks/foundation-baseline.json`，执行器是 `scripts/benchmark-foundation.mjs`。每次报告包含 Node、平台、架构、工作负载、各阶段 total/p50/p95/max 和 SVG 字节数。
+版本化工作负载位于 `benchmarks/foundation-baseline.json`，执行器是 `scripts/benchmark-foundation.mjs`。Baseline 保留首个全绿 GitHub Actions 运行的环境、实测值与来源 Run ID；每次新报告同时包含该参考、当前 Node/平台/架构、各阶段 total/p50/p95/max 和 SVG 字节数。
 
 当前预算刻意高于正常 CI 耗时，用来发现死循环、意外 I/O、重复装配和数量级退化，而不是拒绝几个毫秒的噪声。调整预算必须同时说明工作负载是否改变，并查看多次 `foundation-performance` Artifact；不能因为单次失败直接放宽阈值。
 

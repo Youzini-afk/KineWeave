@@ -174,6 +174,7 @@ try {
 const report = {
   schemaVersion: 1,
   workload: baseline.workload,
+  reference: baseline.reference,
   environment: {
     node: process.version,
     platform: process.platform,
