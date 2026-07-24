@@ -8,9 +8,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "pnpm run build:types && pnpm run build:studio",
+    "build": "pnpm run build:types && pnpm run build:studio && pnpm run build:web",
     "build:types": "pnpm run check:schema-validators && tsc -b",
     "build:studio": "pnpm --filter @kineweave/studio build:renderer",
+    "build:web": "pnpm --filter @kineweave/web build:client",
     "format": "biome format --write .",
     "format:check": "biome format .",
     "lint": "biome lint .",
@@ -29,6 +30,7 @@
     "check": "pnpm run quality && pnpm run test:unit && pnpm run perf:foundation",
     "cli": "node apps/cli/dist/index.js",
     "studio": "pnpm run build && pnpm --filter @kineweave/studio start --",
+    "web": "pnpm run build && node apps/web/dist-server/server.js",
     "example:validate": "node apps/cli/dist/index.js validate examples/hello-kineweave"
   },
   "devDependencies": {

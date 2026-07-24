@@ -20,10 +20,10 @@ const channels = {
 } satisfies typeof import("./bridge.js").STUDIO_IPC_CHANNELS;
 
 const api: StudioHostApi = {
-  chooseProjectDirectory: () =>
-    ipcRenderer.invoke(channels.chooseProject) as Promise<string | undefined>,
-  openProject: (rootPath) =>
-    ipcRenderer.invoke(channels.openProject, rootPath) as Promise<
+  hostKind: "desktop",
+  chooseProject: () => ipcRenderer.invoke(channels.chooseProject) as Promise<string | undefined>,
+  openProject: (projectLocator) =>
+    ipcRenderer.invoke(channels.openProject, projectLocator) as Promise<
       StudioHostResult<OpenedStudioProject>
     >,
   saveProject: (hostSessionId, bundle: LoadedProjectBundle) =>
@@ -36,7 +36,8 @@ const api: StudioHostApi = {
     ipcRenderer.send(channels.closeResponse, shouldClose);
   },
   onInitialProject(listener) {
-    const handler = (_event: Electron.IpcRendererEvent, rootPath: string) => listener(rootPath);
+    const handler = (_event: Electron.IpcRendererEvent, projectLocator: string) =>
+      listener(projectLocator);
     ipcRenderer.on(channels.initialProject, handler);
     return () => ipcRenderer.removeListener(channels.initialProject, handler);
   },

@@ -6,7 +6,7 @@ KineWeave 是一个本地优先、模型无关、可编程的时间视觉创作�
 
 ## 当前施工状态
 
-工程内核、两条渲染链路、首个桌面创作宿主和持续质量基线已经贯通，但各子系统仍会随真实编辑场景继续扩展：
+工程内核、两条渲染链路、Desktop / Web 创作宿主和持续质量基线已经贯通，但各子系统仍会随真实编辑场景继续扩展：
 
 1. 身份、资源 URI、Rational、开放工程格式和当前版本校验；
 2. Schema、未知字段往返和带 Journal 的原子 Project Repository；
@@ -16,7 +16,8 @@ KineWeave 是一个本地优先、模型无关、可编程的时间视觉创作�
 6. 相互独立的 Output/Interactive Renderer Capability：SVG 负责持久化输出，Canvas2D 负责高 DPI 即时绘制、帧更新和命中测试；
 7. CLI 参考宿主贯通工程编辑、历史、求值和文件渲染；
 8. Electron Studio 以隔离 Renderer 中唯一的 ProjectSession 驱动播放、图层、Inspector、历史和 Timeline；当前支持时长、Track/Keyframe/Easing 编辑，以及 Stage 多选、框选、吸附、对齐、等比缩放、旋转和 Anchor 调整，Main Process 只负责原生目录选择与 Repository 原子持久化；
-9. 四个可直接打开的 Golden Projects、九个确定性求值采样、SVG 字节回归、无 DOM Canvas2D Conformance、覆盖运动创作与重新打开的临时工程桌面 E2E、包含创作事务的版本化性能预算、Biome 质量门禁和 GitHub CI。
+9. Web Studio 复用同一 Renderer、ProjectSession 与 Canvas2D 链路，容器内 Node Host 提供工程会话、访问令牌和 Repository 原子持久化；标准 Docker 镜像可由 Zeabur 等平台直接构建；
+10. 四个可直接打开的 Golden Projects、九个确定性求值采样、SVG 字节回归、无 DOM Canvas2D Conformance、覆盖运动创作与重新打开的临时工程桌面 E2E、Web 容器烟测、包含创作事务的版本化性能预算、Biome 质量门禁和 GitHub CI。
 
 Foundation 1–4 和第一轮运动创作闭环已经建立。下一施工焦点会继续扩展曲线与时间组织、媒体和更丰富的创作工作流，并用 Golden、Conformance、E2E 和性能数据反推现有边界；这是一条可持续演进的基线，不是终局架构。
 
@@ -42,6 +43,7 @@ pnpm perf
 pnpm example:validate
 
 pnpm studio --project ./playground-projects/hello
+pnpm web
 
 pnpm cli init ./playground-projects/hello --name "Hello KineWeave"
 pnpm cli validate ./playground-projects/hello
@@ -56,6 +58,8 @@ pnpm cli set-property ./playground-projects/hello document_main node_headline co
 pnpm cli undo ./playground-projects/hello
 pnpm cli redo ./playground-projects/hello
 ```
+
+`pnpm web` 会在 `http://localhost:8080` 启动 Web Studio 与 Node 云端 Host，默认工程保存在 `./data/project`。生产容器、持久卷、访问令牌和 Zeabur 接入见 [Web 容器部署](docs/deployment/web-container.md)；Web / Desktop 宿主所有权见 [ADR-006](docs/adrs/ADR-006-web-cloud-host-and-container.md)。
 
 `pnpm test` 会构建全部工作区、校验生成的 Schema Validator 与 Golden Projects，再执行单元和 Conformance 测试。`pnpm check` 还会追加 Biome 与性能预算；`pnpm generate:goldens` 只在有意改变工程语义或渲染结果时重建 Golden。桌面 E2E 和性能基准由 GitHub CI 提供权威运行环境，日常开发可以先执行针对性测试与 `pnpm quality`。
 

@@ -118,6 +118,28 @@ importers:
         specifier: 8.1.5
         version: 8.1.5(@types/node@24.13.3)
 
+  apps/web:
+    dependencies:
+      '@kineweave/official-distribution':
+        specifier: workspace:*
+        version: link:../../packages/official-distribution
+      '@kineweave/project-format':
+        specifier: workspace:*
+        version: link:../../packages/project-format
+      '@kineweave/project-repository-node':
+        specifier: workspace:*
+        version: link:../../packages/project-repository-node
+      '@kineweave/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+    devDependencies:
+      '@kineweave/studio':
+        specifier: workspace:*
+        version: link:../studio
+      vite:
+        specifier: 8.1.5
+        version: 8.1.5(@types/node@24.13.3)
+
   extensions/canvas2d-renderer:
     dependencies:
       '@kineweave/extension-api':

@@ -91,9 +91,9 @@ function registerProjectHandlers(): void {
 
   ipcMain.handle(
     STUDIO_IPC_CHANNELS.openProject,
-    async (_event, rawRootPath: unknown): Promise<StudioHostResult<OpenedStudioProject>> => {
+    async (_event, rawProjectLocator: unknown): Promise<StudioHostResult<OpenedStudioProject>> => {
       try {
-        const rootPath = assertString(rawRootPath, "Project path");
+        const rootPath = assertString(rawProjectLocator, "Project path");
         const read = await repository.read(rootPath);
         if (read.snapshot === undefined) {
           return {
@@ -113,7 +113,8 @@ function registerProjectHandlers(): void {
           ok: true,
           value: {
             hostSessionId,
-            rootPath: read.snapshot.rootPath,
+            projectLocator: read.snapshot.rootPath,
+            displayLocation: read.snapshot.rootPath,
             bundle: read.snapshot.bundle,
             diagnostics: read.diagnostics
           }

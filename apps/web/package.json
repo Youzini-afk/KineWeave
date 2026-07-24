@@ -1,0 +1,25 @@
+{
+  "name": "@kineweave/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist-server/server.js",
+  "files": [
+    "dist-client",
+    "dist-server"
+  ],
+  "scripts": {
+    "build:client": "vite build --config vite.config.ts",
+    "start": "node dist-server/server.js"
+  },
+  "dependencies": {
+    "@kineweave/official-distribution": "workspace:*",
+    "@kineweave/project-format": "workspace:*",
+    "@kineweave/project-repository-node": "workspace:*",
+    "@kineweave/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@kineweave/studio": "workspace:*",
+    "vite": "8.1.5"
+  }
+}

@@ -23,11 +23,13 @@ function createHost(bundle: LoadedProjectBundle): {
   let saved: LoadedProjectBundle | undefined;
   const success = <T>(value: T): StudioHostResult<T> => ({ ok: true, value });
   const host: StudioHostApi = {
-    chooseProjectDirectory: async () => undefined,
-    openProject: async (rootPath): Promise<StudioHostResult<OpenedStudioProject>> =>
+    hostKind: "desktop",
+    chooseProject: async () => undefined,
+    openProject: async (projectLocator): Promise<StudioHostResult<OpenedStudioProject>> =>
       success({
         hostSessionId: "host_session",
-        rootPath,
+        projectLocator,
+        displayLocation: projectLocator,
         bundle: cloneBundle(persisted),
         diagnostics: []
       }),

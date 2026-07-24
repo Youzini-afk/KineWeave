@@ -64,7 +64,8 @@ export interface StudioPropertyEdit {
 
 export class StudioProject {
   readonly hostSessionId: string;
-  readonly rootPath: string;
+  readonly projectLocator: string;
+  readonly displayLocation: string;
   readonly session: ProjectSession;
   readonly #host: StudioHostApi;
   #savedBundle: LoadedProjectBundle;
@@ -72,20 +73,22 @@ export class StudioProject {
 
   private constructor(options: {
     readonly hostSessionId: string;
-    readonly rootPath: string;
+    readonly projectLocator: string;
+    readonly displayLocation: string;
     readonly bundle: LoadedProjectBundle;
     readonly session: ProjectSession;
     readonly host: StudioHostApi;
   }) {
     this.hostSessionId = options.hostSessionId;
-    this.rootPath = options.rootPath;
+    this.projectLocator = options.projectLocator;
+    this.displayLocation = options.displayLocation;
     this.#savedBundle = options.bundle;
     this.session = options.session;
     this.#host = options.host;
   }
 
-  static async open(rootPath: string, host: StudioHostApi): Promise<StudioProject> {
-    const opened = await host.openProject(rootPath);
+  static async open(projectLocator: string, host: StudioHostApi): Promise<StudioProject> {
+    const opened = await host.openProject(projectLocator);
     if (!opened.ok) {
       throw new StudioProjectError(opened.error.message, opened.error.diagnostics);
     }
@@ -95,7 +98,7 @@ export class StudioProject {
         bundle: opened.value.bundle,
         distribution: createOfficialDistributionProfile(),
         host: {
-          hostKind: "desktop",
+          hostKind: host.hostKind,
           supportedRuntimes: ["in-process"],
           environment: {
             operatingSystem: navigator.platform,
@@ -113,7 +116,8 @@ export class StudioProject {
       }
       return new StudioProject({
         hostSessionId: opened.value.hostSessionId,
-        rootPath: opened.value.rootPath,
+        projectLocator: opened.value.projectLocator,
+        displayLocation: opened.value.displayLocation,
         bundle: opened.value.bundle,
         session: runtime.session,
         host

@@ -4,6 +4,17 @@
   "private": true,
   "type": "module",
   "main": "./dist-main/main.js",
+  "exports": {
+    "./host-api": {
+      "types": "./dist-main/bridge.d.ts",
+      "import": "./dist-main/bridge.js"
+    },
+    "./renderer": {
+      "types": "./dist-main/renderer/app.d.ts",
+      "import": "./dist-main/renderer/app.js"
+    },
+    "./renderer/styles.css": "./src/renderer/styles.css"
+  },
   "scripts": {
     "build:renderer": "vite build --config vite.config.ts",
     "start": "electron ."

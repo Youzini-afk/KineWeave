@@ -30,7 +30,8 @@ export type StudioHostResult<T> =
 
 export interface OpenedStudioProject {
   readonly hostSessionId: string;
-  readonly rootPath: string;
+  readonly projectLocator: string;
+  readonly displayLocation: string;
   readonly bundle: LoadedProjectBundle;
   readonly diagnostics: readonly Diagnostic[];
 }
@@ -40,14 +41,15 @@ export interface SavedStudioProject {
 }
 
 export interface StudioHostApi {
-  chooseProjectDirectory(): Promise<string | undefined>;
-  openProject(rootPath: string): Promise<StudioHostResult<OpenedStudioProject>>;
+  readonly hostKind: "desktop" | "web";
+  chooseProject(): Promise<string | undefined>;
+  openProject(projectLocator: string): Promise<StudioHostResult<OpenedStudioProject>>;
   saveProject(
     hostSessionId: string,
     bundle: LoadedProjectBundle
   ): Promise<StudioHostResult<SavedStudioProject>>;
   closeProject(hostSessionId: string): Promise<void>;
   respondToClose(shouldClose: boolean): void;
-  onInitialProject(listener: (rootPath: string) => void): () => void;
+  onInitialProject(listener: (projectLocator: string) => void): () => void;
   onCommand(listener: (command: StudioCommand) => void): () => void;
 }

@@ -2,7 +2,7 @@
 
 - 状态：Working Architecture
 - 日期：2026-07-23
-- 适用范围：Kernel、开放工程、扩展、事务历史、时间求值、渲染边界、首批官方扩展及桌面 Studio 宿主
+- 适用范围：Kernel、开放工程、扩展、事务历史、时间求值、渲染边界、首批官方扩展及 Desktop / Web Studio 宿主
 
 ## 1. 施工原则
 
@@ -119,6 +119,7 @@ Kernel 不内置 Composition、Node、Track、字幕、Remotion、FFmpeg 或任�
 flowchart TB
     CLI["CLI composition root"]
     STUDIO["Studio desktop host"]
+    WEB["Studio web + cloud host"]
     SESSIONNODE["project-session-node"]
     SESSION["project-session"]
     DIST["official-distribution"]
@@ -144,6 +145,10 @@ flowchart TB
     STUDIO --> REPO
     STUDIO --> DIST
     STUDIO --> CANVAS
+    WEB --> SESSION
+    WEB --> REPO
+    WEB --> DIST
+    WEB --> CANVAS
     SESSIONNODE --> SESSION
     SESSIONNODE --> REPO
     SESSION --> EXTHOST
@@ -428,7 +433,8 @@ Renderer 必须声明契约版本、支持的 Primitive/Feature、颜色和确�
 6. `org.kineweave.renderer/svg` 将同一 Presentation Graph 确定性序列化为 SVG，并保留节点 ID 与来源 Resource URI；产物契约显式区分 UTF-8 文本和二进制字节。
 7. `org.kineweave.renderer/canvas2d` 在宿主提供的 Canvas2D Surface 上执行高 DPI contain 布局、层级变换、透明度与全部当前标准 Primitive 绘制，并以逆绘制顺序返回源节点命中结果。
 8. Electron Studio 的 Main Process 持有 Node Project Repository 与原生窗口能力；Context-isolated Preload 只暴露窄类型桥；Renderer 持有唯一 ProjectSession、Canvas2D Surface 和全部工作区状态。打开工程采用候选会话验证后切换，编辑与求值串行协调，关闭窗口先等待编辑队列和原子保存完成。
-9. 三个真实 Golden Projects 覆盖静态图元、Track/Signal/缓动和嵌套变换/可见性；同一 Graph 经过 SVG 字节回归与无 DOM Canvas2D 语义 Conformance。Studio 临时工程 E2E、版本化性能预算、Biome 和 Node 22/24 CI 共同构成当前持续质量门禁。
+9. Web Studio 复用同一个 Renderer、ProjectSession 与 Canvas2D 链路；容器内 Node Host 持有 Project Repository、云会话、访问令牌边界和静态资源服务。Web 与 Desktop 通过 Host-neutral project locator 使用同一 StudioHostApi，不建立浏览器专用工程语义。
+10. 四个真实 Golden Projects 覆盖静态图元、Track/Signal/缓动和嵌套变换/可见性；同一 Graph 经过 SVG 字节回归与无 DOM Canvas2D 语义 Conformance。Studio 临时工程 E2E、Web 容器烟测、版本化性能预算、Biome 和 Node 22/24 CI 共同构成当前持续质量门禁。
 
 两条渲染链路、Studio 真实交互和持续质量门禁用于持续施压边界，不表示 Presentation Graph 或 Standard Motion 已经封口。后续更丰富的时间编辑、媒体、长帧序列和高级输出会继续检验语义一致性、求值缓存与性能边界；基线暴露错误时直接修正当前设计。
 
@@ -488,6 +494,6 @@ Renderer 必须声明契约版本、支持的 Primitive/Feature、颜色和确�
 - Headless Render CLI；
 - Golden Projects、Conformance Suite 和性能基线。
 
-当前进度：Workbench Shell、Stage、播放头、图层、Inspector、历史编辑和 Headless Render CLI 已贯通；Golden Projects、跨 Renderer Conformance、桌面关闭保存 E2E、性能预算和多版本 CI 已建立，Foundation 4 的当前施工闭环完成。
+当前进度：Workbench Shell、Stage、播放头、图层、Inspector、历史编辑和 Headless Render CLI 已贯通；Desktop 与 Web 两个 Studio Host 共享工作台及领域会话，Web 容器贯通 Node Repository 持久化；Golden Projects、跨 Renderer Conformance、桌面关闭保存 E2E、Web 容器烟测、性能预算和多版本 CI 已建立，Foundation 4 的当前施工闭环完成。
 
 这之后继续建设 Storyboard、Graph、Code、AI、媒体理解和高级输出，并以真实工作流和基准数据决定复用或重构上述边界，不为开发期旧实现保留兼容层。

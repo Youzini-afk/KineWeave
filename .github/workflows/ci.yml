@@ -73,7 +73,7 @@ jobs:
           retention-days: 14
 
   desktop-e2e:
-    name: Studio desktop E2E
+    name: Studio desktop and web E2E
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -87,3 +87,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Run Electron workflow in Xvfb
         run: xvfb-run --auto-servernum pnpm test:e2e
+
+  web-container:
+    name: Web container smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build production image
+        run: docker build --tag kineweave-web:ci .
+      - name: Verify Web Studio and cloud host
+        run: |
+          docker run --detach --name kineweave-web-ci --publish 127.0.0.1:18080:8080 kineweave-web:ci
+          trap 'docker rm --force kineweave-web-ci' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null; then break; fi
+            if [ "$attempt" = 30 ]; then docker logs kineweave-web-ci; exit 1; fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:18080/ | grep --quiet 'KineWeave Studio'
+          curl --fail --silent \
+            --header 'content-type: application/json' \
+            --data '{"projectLocator":"kw+cloud://default"}' \
+            http://127.0.0.1:18080/api/project/open | grep --quiet '"ok":true'

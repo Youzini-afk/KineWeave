@@ -46,7 +46,7 @@ export interface StudioStatus {
 export interface StudioSnapshot {
   readonly phase: StudioPhase;
   readonly projectName?: string;
-  readonly rootPath?: string;
+  readonly projectLocation?: string;
   readonly document?: StandardCompositionDocument;
   readonly presentation?: ResolvedPresentationGraph;
   readonly selectedNodeId?: string;
@@ -144,7 +144,7 @@ export class StudioController {
         ? {}
         : {
             projectName: this.#project.name,
-            rootPath: this.#project.rootPath
+            projectLocation: this.#project.displayLocation
           }),
       ...(this.#document === undefined ? {} : { document: this.#document }),
       ...(this.#presentation === undefined ? {} : { presentation: this.#presentation }),
@@ -166,11 +166,11 @@ export class StudioController {
 
   async chooseAndOpenProject(): Promise<void> {
     if (this.#prepareClosePromise !== undefined) return;
-    const rootPath = await this.#host.chooseProjectDirectory();
-    if (rootPath !== undefined) await this.openProject(rootPath);
+    const projectLocator = await this.#host.chooseProject();
+    if (projectLocator !== undefined) await this.openProject(projectLocator);
   }
 
-  async openProject(rootPath: string): Promise<void> {
+  async openProject(projectLocator: string): Promise<void> {
     if (this.#phase === "opening" || this.#prepareClosePromise !== undefined) return;
     this.pause();
     this.#stage.cancelActiveGesture();
@@ -187,7 +187,7 @@ export class StudioController {
       if (previousProject !== undefined && (this.#dirty || this.#savePromise !== undefined)) {
         await this.save();
       }
-      candidate = await StudioProject.open(rootPath, this.#host);
+      candidate = await StudioProject.open(projectLocator, this.#host);
       const document = candidate.document();
       const durationSeconds = Math.max(0.001, compositionDurationSeconds(document));
       const selectedNodeId =

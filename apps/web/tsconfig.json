@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist-server",
+    "tsBuildInfoFile": "dist-server/.tsbuildinfo",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    { "path": "../../packages/project-format" },
+    { "path": "../../packages/project-repository-node" },
+    { "path": "../../packages/protocol" },
+    { "path": "../../packages/official-distribution" },
+    { "path": "../studio" }
+  ]
+}

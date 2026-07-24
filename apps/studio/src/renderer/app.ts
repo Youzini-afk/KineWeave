@@ -1,4 +1,3 @@
-import "./styles.css";
 import type { JsonValue } from "@kineweave/protocol";
 import type { MotionNode } from "@kineweave/standard-motion-document";
 import type { StudioCommand } from "../bridge.js";
@@ -511,7 +510,7 @@ function render(snapshot: StudioSnapshot): void {
   elements.shell.dataset.saving = String(snapshot.saving);
   elements.shell.dataset.playing = String(snapshot.playing);
   elements.projectName.textContent = snapshot.projectName ?? "No project open";
-  elements.projectPath.textContent = snapshot.rootPath ?? "";
+  elements.projectPath.textContent = snapshot.projectLocation ?? "";
   elements.welcome.classList.toggle("hidden", ready);
   elements.welcome.toggleAttribute("inert", ready);
   elements.welcome.setAttribute("aria-hidden", String(ready));
@@ -644,7 +643,9 @@ function handleCommand(command: StudioCommand): void {
 }
 
 window.kineweaveHost.onCommand(handleCommand);
-window.kineweaveHost.onInitialProject((rootPath) => run(controller.openProject(rootPath)));
+window.kineweaveHost.onInitialProject((projectLocator) =>
+  run(controller.openProject(projectLocator))
+);
 
 window.addEventListener("keydown", (event) => {
   if (event.code === "Space" && !editingText()) {
