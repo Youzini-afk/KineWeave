@@ -5,8 +5,7 @@ import type {
   StudioHostResult
 } from "@kineweave/studio/host-api";
 import { CLOUD_PROJECT_LOCATOR } from "../shared.js";
-
-const ACCESS_TOKEN_KEY = "kineweave.web.access-token";
+import { requireWebAuthentication, signOutWebAuthentication } from "./web-auth.js";
 
 function failure<T>(caught: unknown): StudioHostResult<T> {
   const message = caught instanceof Error ? caught.message : String(caught);
@@ -38,24 +37,11 @@ function isHostResult<T>(value: unknown): value is StudioHostResult<T> {
 }
 
 async function request(path: string, init: RequestInit): Promise<Response> {
-  const send = (token: string | null) => {
-    const headers = new Headers(init.headers);
-    if (token !== null) headers.set("authorization", `Bearer ${token}`);
-    return fetch(path, { ...init, headers });
-  };
-
-  let token = sessionStorage.getItem(ACCESS_TOKEN_KEY);
-  let response = await send(token);
+  const send = () => fetch(path, { ...init, credentials: "same-origin" });
+  const response = await send();
   if (response.status !== 401) return response;
-
-  token = window.prompt("Enter the KineWeave deployment access token:");
-  if (token === null || token.length === 0) {
-    throw new Error("Access to this KineWeave deployment requires a token");
-  }
-  sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
-  response = await send(token);
-  if (response.status === 401) sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-  return response;
+  await requireWebAuthentication();
+  return send();
 }
 
 async function requestResult<T>(path: string, init: RequestInit): Promise<StudioHostResult<T>> {
@@ -73,9 +59,10 @@ async function requestResult<T>(path: string, init: RequestInit): Promise<Studio
   }
 }
 
-export function createWebStudioHost(): StudioHostApi {
+export function createWebStudioHost(authenticationRequired: boolean): StudioHostApi {
   return {
     hostKind: "web",
+    ...(authenticationRequired ? { signOut: signOutWebAuthentication } : {}),
     chooseProject: async () => CLOUD_PROJECT_LOCATOR,
     openProject: (projectLocator) =>
       requestResult<OpenedStudioProject>("./api/project/open", {

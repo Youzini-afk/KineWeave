@@ -14,7 +14,8 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
   const server = await createKineWeaveWebServer({
     projectRoot: path.join(temporaryRoot, "project"),
     clientRoot: path.join(repositoryRoot, "apps", "web", "dist-client"),
-    displayLocation: "Web E2E cloud"
+    displayLocation: "Web E2E cloud",
+    accessToken: "e2e-access-token"
   });
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
@@ -26,6 +27,13 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${address.port}`);
+
+    await expect.poll(() => page.locator("#auth-gate").isVisible()).toBe(true);
+    await page.locator("#auth-token").fill("wrong-token");
+    await page.locator("#auth-submit").click();
+    await expect.poll(() => page.locator("#auth-error").textContent()).toContain("wasn't accepted");
+    await page.locator("#auth-token").fill("e2e-access-token");
+    await page.locator("#auth-submit").click();
 
     await expect.poll(() => page.locator(".studio-shell").getAttribute("data-phase")).toBe("ready");
     expect(await page.locator("#project-name").textContent()).toBe("KineWeave Cloud Project");
@@ -40,6 +48,8 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
     await page.reload();
     await expect.poll(() => page.locator(".studio-shell").getAttribute("data-phase")).toBe("ready");
     expect(await page.locator('[role="treeitem"]').count()).toBe(6);
+    await page.locator("#sign-out").click();
+    await expect.poll(() => page.locator("#auth-gate").isVisible()).toBe(true);
     expect(errors).toEqual([]);
   } finally {
     await browser.close();

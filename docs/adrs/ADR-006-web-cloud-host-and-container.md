@@ -14,7 +14,7 @@ Studio 的界面和交互渲染本来运行在 Chromium Renderer 中，但桌面
 3. Web 容器同时交付浏览器客户端和 Node 云端 Host。浏览器拥有唯一 ProjectSession、工作台状态和 Interactive Render Session；Node Host 拥有 Project Repository、文件事务、云会话和静态资源服务。双方只传递版本化 LoadedProjectBundle 和不透明 Host Session ID。
 4. 当前云端 Host 管理一个 Canonical Project 目录。保存继续经过 `NodeProjectRepository` 的校验、内容哈希、Journal 和原子文件事务，不在 Web 服务中实现第二套 JSON 写入逻辑。
 5. 容器使用普通 `PORT`、`KINEWEAVE_PROJECT_DIR` 和持久卷，不写入 Zeabur、GitHub Pages 或其他平台专属运行协议。任何能构建 Dockerfile、挂载卷并转发 HTTP 的平台都可运行。
-6. 公网部署可以设置 `KINEWEAVE_ACCESS_TOKEN`。令牌只由 Node Host 校验，不进入客户端构建产物；浏览器只在当前标签页的 Session Storage 中保存用户输入。未设置令牌只适用于本地或已有外围访问控制的网络。
+6. 公网部署可以设置 `KINEWEAVE_ACCESS_TOKEN`。令牌只由 Node Host 校验，不进入客户端构建产物，也不写入浏览器存储。应用内登录成功后，Host 签发 12 小时有效的 `HttpOnly`、`SameSite=Strict` 进程内会话 Cookie；失败登录按连接地址限流。未设置令牌只适用于本地或已有外围访问控制的网络。
 7. 当前进程内云会话服务于单容器部署。多实例、账号、多租户、协作与对象存储需要真实产品场景后再引入共享会话和存储服务，不在首个 Web Host 中伪装实现。
 8. Docker 的构建与运行烟测进入 GitHub CI；部署仍由用户选择的平台根据主分支和 Dockerfile 自动完成，仓库不包含平台专属发布工作流。
 
@@ -24,7 +24,7 @@ Studio 的界面和交互渲染本来运行在 Chromium Renderer 中，但桌面
 - Desktop Main 与 Web Node Host 对 Renderer 提供同一宿主契约，但各自保留合适的持久化所有权。
 - 浏览器崩溃不会破坏已提交工程；服务端并发保存继续由 Repository Snapshot 和文件哈希检测冲突。
 - 未挂载持久卷时，容器重建会丢失工程目录；部署文档必须明确这一运维边界。
-- 当前令牌是单部署访问边界，不等同于用户账号或权限模型。
+- 当前登录令牌和进程内会话是单部署访问边界，不等同于用户账号或权限模型；服务重启会使现有登录会话失效。
 
 ## 重新评审条件
 

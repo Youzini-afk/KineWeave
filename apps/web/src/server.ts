@@ -18,6 +18,9 @@ import { CLOUD_PROJECT_LOCATOR } from "./shared.js";
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1_000;
 const SESSION_PATH = /^\/api\/project\/sessions\/([A-Za-z0-9_-]+)$/;
+const AUTH_COOKIE_NAME = "kineweave_session";
+const LOGIN_FAILURE_LIMIT = 10;
+const LOGIN_FAILURE_WINDOW_MS = 5 * 60 * 1_000;
 
 interface HostedProject {
   snapshot: ProjectSnapshot;
@@ -128,13 +131,46 @@ function tokenMatches(expected: string, presented: string): boolean {
   );
 }
 
-function authorized(request: IncomingMessage, accessToken: string | undefined): boolean {
-  if (accessToken === undefined || accessToken.length === 0) return true;
-  const header = request.headers.authorization;
+function cookieValue(request: IncomingMessage, name: string): string | undefined {
+  const prefix = `${name}=`;
+  return request.headers.cookie
+    ?.split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix))
+    ?.slice(prefix.length);
+}
+
+function firstHeaderValue(value: string | readonly string[] | undefined): string | undefined {
+  return (Array.isArray(value) ? value[0] : value)?.split(",")[0]?.trim();
+}
+
+function clientAddress(request: IncomingMessage): string {
   return (
-    header?.startsWith("Bearer ") === true &&
-    tokenMatches(accessToken, header.slice("Bearer ".length))
+    firstHeaderValue(request.headers["x-real-ip"]) ??
+    firstHeaderValue(request.headers["x-forwarded-for"]) ??
+    request.socket.remoteAddress ??
+    "unknown"
   );
+}
+
+function authenticationCookie(
+  request: IncomingMessage,
+  value: string,
+  maxAgeSeconds: number
+): string {
+  const protocol = firstHeaderValue(request.headers["x-forwarded-proto"])?.toLowerCase();
+  const localHost = /^(?:localhost\.?|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?$/i.test(
+    request.headers.host ?? ""
+  );
+  return [
+    `${AUTH_COOKIE_NAME}=${value}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Strict",
+    `Max-Age=${maxAgeSeconds}`,
+    ...(maxAgeSeconds === 0 ? ["Expires=Thu, 01 Jan 1970 00:00:00 GMT"] : []),
+    ...(protocol === "https" || !localHost ? ["Secure"] : [])
+  ].join("; ");
 }
 
 function mimeType(filePath: string): string {
@@ -255,15 +291,38 @@ export async function createKineWeaveWebServer(
   const displayLocation =
     options.displayLocation ?? process.env.KINEWEAVE_PROJECT_LABEL ?? "Cloud workspace";
   const repository = options.repository ?? new NodeProjectRepository();
+  const authenticationRequired = accessToken !== undefined && accessToken.length > 0;
   await initializeProject(repository, projectRoot);
 
   // ponytail: process-local sessions fit one container; use a shared session service before scaling horizontally.
   const sessions = new Map<string, HostedProject>();
+  const authenticationSessions = new Map<string, number>();
+  // ponytail: managed hosting must overwrite forwarded client headers; add explicit trusted proxies for self-hosted chains.
+  const loginFailures = new Map<string, { attempts: number; resetAt: number }>();
   const pruneSessions = () => {
-    const staleBefore = Date.now() - SESSION_TTL_MS;
+    const now = Date.now();
+    const staleBefore = now - SESSION_TTL_MS;
     for (const [sessionId, hosted] of sessions) {
       if (hosted.lastAccess < staleBefore) sessions.delete(sessionId);
     }
+    for (const [sessionId, expiresAt] of authenticationSessions) {
+      if (expiresAt <= now) authenticationSessions.delete(sessionId);
+    }
+    for (const [address, failure] of loginFailures) {
+      if (failure.resetAt <= now) loginFailures.delete(address);
+    }
+  };
+
+  const authenticated = (request: IncomingMessage): boolean => {
+    if (!authenticationRequired) return true;
+    const sessionId = cookieValue(request, AUTH_COOKIE_NAME);
+    if (sessionId === undefined) return false;
+    const expiresAt = authenticationSessions.get(sessionId);
+    if (expiresAt === undefined || expiresAt <= Date.now()) {
+      authenticationSessions.delete(sessionId);
+      return false;
+    }
+    return true;
   };
 
   const handleApi = async (
@@ -271,12 +330,69 @@ export async function createKineWeaveWebServer(
     response: ServerResponse,
     pathname: string
   ): Promise<void> => {
-    if (!authorized(request, accessToken)) {
-      response.setHeader("www-authenticate", 'Bearer realm="KineWeave"');
+    pruneSessions();
+
+    if (pathname === "/api/auth/session" && request.method === "GET") {
+      const isAuthenticated = authenticated(request);
+      sendJson(response, isAuthenticated ? 200 : 401, {
+        authenticated: isAuthenticated,
+        required: authenticationRequired
+      });
+      return;
+    }
+
+    if (pathname === "/api/auth/login" && request.method === "POST") {
+      if (!authenticationRequired) {
+        sendEmpty(response, 204);
+        return;
+      }
+      const address = clientAddress(request);
+      const failure = loginFailures.get(address);
+      if (failure !== undefined && failure.attempts >= LOGIN_FAILURE_LIMIT) {
+        response.setHeader(
+          "retry-after",
+          String(Math.max(1, Math.ceil((failure.resetAt - Date.now()) / 1_000)))
+        );
+        sendJson(response, 429, { error: "Too many sign-in attempts" });
+        return;
+      }
+      const body = await readJsonBody(request);
+      const presented = requiredString(requestField(body, "accessToken"), "accessToken");
+      if (!tokenMatches(accessToken!, presented)) {
+        const now = Date.now();
+        loginFailures.set(address, {
+          attempts: (failure?.attempts ?? 0) + 1,
+          resetAt: failure?.resetAt ?? now + LOGIN_FAILURE_WINDOW_MS
+        });
+        sendJson(response, 401, { error: "The access token is not valid" });
+        return;
+      }
+
+      loginFailures.delete(address);
+      const previousSessionId = cookieValue(request, AUTH_COOKIE_NAME);
+      if (previousSessionId !== undefined) authenticationSessions.delete(previousSessionId);
+      const sessionId = randomUUID().replaceAll("-", "");
+      authenticationSessions.set(sessionId, Date.now() + SESSION_TTL_MS);
+      response.setHeader(
+        "set-cookie",
+        authenticationCookie(request, sessionId, SESSION_TTL_MS / 1_000)
+      );
+      sendEmpty(response, 204);
+      return;
+    }
+
+    if (pathname === "/api/auth/session" && request.method === "DELETE") {
+      const sessionId = cookieValue(request, AUTH_COOKIE_NAME);
+      if (sessionId !== undefined) authenticationSessions.delete(sessionId);
+      response.setHeader("set-cookie", authenticationCookie(request, "", 0));
+      sendEmpty(response, 204);
+      return;
+    }
+
+    if (!authenticated(request)) {
       sendJson(response, 401, { error: "Unauthorized" });
       return;
     }
-    pruneSessions();
 
     if (pathname === "/api/project/open" && request.method === "POST") {
       try {

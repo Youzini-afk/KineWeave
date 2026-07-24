@@ -218,6 +218,16 @@ function run(action: Promise<unknown>): void {
   void action.catch((error) => controller.reportError(error));
 }
 
+if (window.kineweaveHost.signOut !== undefined) {
+  const signOut = document.createElement("button");
+  signOut.id = "sign-out";
+  signOut.className = "button subtle";
+  signOut.type = "button";
+  signOut.textContent = "Sign out";
+  signOut.addEventListener("click", () => run(window.kineweaveHost.signOut!()));
+  required<HTMLElement>(".app-actions").append(signOut);
+}
+
 function inputLabel(text: string): HTMLLabelElement {
   const label = document.createElement("label");
   label.className = "field-label";

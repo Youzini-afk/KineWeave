@@ -42,6 +42,7 @@ export interface SavedStudioProject {
 
 export interface StudioHostApi {
   readonly hostKind: "desktop" | "web";
+  signOut?(): Promise<void>;
   chooseProject(): Promise<string | undefined>;
   openProject(projectLocator: string): Promise<StudioHostResult<OpenedStudioProject>>;
   saveProject(
