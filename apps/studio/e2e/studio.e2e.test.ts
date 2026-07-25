@@ -237,7 +237,10 @@ test("authors motion, aligns layers, and reopens the saved project", async () =>
     ).toContain("<svg");
     expect(
       JSON.parse(await readFile(path.join(outputDirectory, "manifest.json"), "utf8"))
-    ).toMatchObject({ frameCount: 1, mediaType: "image/svg+xml" });
+    ).toMatchObject({
+      timing: { frameCount: 1 },
+      output: { mediaType: "image/svg+xml" }
+    });
     await window.locator("#close-output").click();
 
     await window.locator("#layer-name").fill("Persisted on close");

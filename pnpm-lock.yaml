@@ -138,10 +138,10 @@ importers:
       '@kineweave/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
-    devDependencies:
       '@kineweave/studio':
         specifier: workspace:*
         version: link:../studio
+    devDependencies:
       vite:
         specifier: 8.1.5
         version: 8.1.5(@types/node@24.13.3)

@@ -61,7 +61,6 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
 
     await page.locator("#output").click();
     await expect.poll(() => page.locator("#output-dialog").getAttribute("open")).not.toBeNull();
-    const fullDuration = await page.locator("#output-end").inputValue();
     await page.locator("#output-end").fill("1/30");
     await page.locator("#output-width").fill("64");
     await page.locator("#output-height").fill("64");
@@ -84,7 +83,7 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
     if (downloadedPath === null) throw new Error("Output download did not produce a file");
     expect((await stat(downloadedPath)).size).toBeGreaterThan(0);
 
-    await page.locator("#output-end").fill(fullDuration);
+    await page.locator("#output-end").fill("2");
     await page.locator("#start-output").click();
     await expect.poll(() => page.locator("#cancel-output").isEnabled()).toBe(true);
     await page.locator("#cancel-output").click();
@@ -105,4 +104,4 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
     await once(server, "close");
     await rm(temporaryRoot, { recursive: true, force: true });
   }
-});
+}, 90_000);

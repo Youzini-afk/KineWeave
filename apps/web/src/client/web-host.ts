@@ -112,8 +112,6 @@ export function createWebStudioHost(authenticationRequired: boolean): StudioHost
     async openOutput(hostSessionId, jobId) {
       try {
         const downloadPath = `./api/project/sessions/${encodeURIComponent(hostSessionId)}/outputs/${encodeURIComponent(jobId)}/download`;
-        const response = await request(downloadPath, { method: "HEAD" });
-        if (!response.ok) throw new Error(`Output download failed with HTTP ${response.status}`);
         const link = document.createElement("a");
         link.href = downloadPath;
         link.download = "";
