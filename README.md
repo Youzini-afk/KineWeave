@@ -14,7 +14,7 @@ KineWeave 是一个本地优先、模型无关、可编程的时间视觉创作�
 4. 宿主无关的 ProjectSession、Node 持久化会话、Operation、事务、Patch、持久化 Commit DAG、Branch、Undo/Redo；
 5. Standard Motion v2、精确时间求值和 Presentation Graph，当前覆盖 group、text、rectangle、ellipse、path、可见性与 cubic-bezier 关键帧；
 6. 相互独立的 Output/Interactive Renderer Capability：SVG 负责持久化输出，Canvas2D 负责高 DPI 即时绘制、帧更新和命中测试；
-7. CLI 参考宿主贯通工程编辑、历史、求值、单帧渲染和 Commit 固定的确定性 SVG 帧序列导出；
+7. CLI 参考宿主贯通工程编辑、历史、求值、单帧渲染和 Commit 固定的确定性 SVG/PNG 帧序列、H.264 MP4、VP9 WebM 导出；PNG 使用关闭系统字体的 Resvg 与内置 Noto Sans SC，视频通过宿主管理的 FFmpeg 编码；
 8. Electron Studio 以隔离 Renderer 中唯一的 ProjectSession 驱动播放、图层、Inspector、历史和 Timeline；当前支持时长、Track/Keyframe、Easing Preset 与任意 cubic-bezier 出段曲线编辑，以及 Stage 多选、框选、吸附、对齐、等比缩放、旋转和 Anchor 调整，Main Process 只负责原生目录选择与 Repository 原子持久化；
 9. Web Studio 复用同一 Renderer、ProjectSession 与 Canvas2D 链路，容器内 Node Host 提供工程会话、访问令牌和 Repository 原子持久化；标准 Docker 镜像可由 Zeabur 等平台直接构建；
 10. 四个可直接打开的 Golden Projects、九个确定性求值采样、SVG 字节回归、无 DOM Canvas2D Conformance、覆盖运动创作与重新打开的临时工程桌面 E2E、Web 容器烟测、包含创作事务的版本化性能预算、Biome 质量门禁和 GitHub CI。
@@ -26,7 +26,7 @@ Foundation 1–4 和第一轮运动创作闭环已经建立。下一施工焦点
 ## 技术基线
 
 - TypeScript：协议、Kernel、SDK、编辑器与 CLI；
-- Rust：后续媒体、帧传输、原生桥接和性能敏感模块；
+- Rust：不预建空框架；媒体、帧传输、原生桥接或性能数据证明需要时再进入仓库；
 - pnpm workspace；
 - Node.js 22+ 作为首个 CLI/桌面宿主基线。
 
@@ -51,6 +51,9 @@ pnpm cli inspect ./playground-projects/hello
 pnpm cli evaluate ./playground-projects/hello document_main 1/2 --json
 pnpm cli render ./playground-projects/hello document_main 1/2 ./playground-projects/frame.svg --json
 pnpm cli export ./playground-projects/hello document_main ./playground-projects/hello-svg-sequence --format svg-sequence --fps 30 --json
+pnpm cli export ./playground-projects/hello document_main ./playground-projects/hello-png-sequence --format png-sequence --fps 30 --json
+pnpm cli export ./playground-projects/hello document_main ./playground-projects/hello.mp4 --format mp4 --quality balanced --fps 30 --json
+pnpm cli export ./playground-projects/hello document_main ./playground-projects/hello.webm --format webm --quality balanced --fps 30 --json
 pnpm cli history ./playground-projects/hello
 pnpm cli set-property ./playground-projects/hello document_main node_headline content '"你好，织时"'
 pnpm cli insert-text ./playground-projects/hello document_main node_subtitle "Subtitle" --index 1
@@ -62,6 +65,6 @@ pnpm cli redo ./playground-projects/hello
 
 `pnpm web` 会在 `http://localhost:8080` 启动 Web Studio 与 Node 云端 Host，默认工程保存在 `./data/project`。生产容器、持久卷、访问令牌和 Zeabur 接入见 [Web 容器部署](docs/deployment/web-container.md)；Web / Desktop 宿主所有权见 [ADR-006](docs/adrs/ADR-006-web-cloud-host-and-container.md)。
 
-`pnpm test` 会构建全部工作区、校验生成的 Schema Validator 与 Golden Projects，再执行单元和 Conformance 测试。`pnpm check` 还会追加 Biome 与性能预算；`pnpm generate:goldens` 只在有意改变工程语义或渲染结果时重建 Golden。桌面 E2E 和性能基准由 GitHub CI 提供权威运行环境，日常开发可以先执行针对性测试与 `pnpm quality`。
+`pnpm test` 会构建全部工作区、校验生成的 Schema Validator 与 Golden Projects，再执行单元和 Conformance 测试。`pnpm check` 还会追加 Biome 与性能预算；`pnpm generate:goldens` 只在有意改变工程语义或渲染结果时重建 Golden。桌面/Web E2E、FFmpeg 媒体 E2E 和性能基准由 GitHub CI 提供权威运行环境，日常开发可以先执行针对性测试与 `pnpm quality`。
 
-CLI 通过共享的 ProjectSession、Node Project Session 和官方 Distribution Profile 使用 Project Repository、Extension Host、Transaction Engine、Evaluation Engine 与 Render Engine，不维护独立的文件修改或求值逻辑。文档与 `.kineweave/history/history.json` 中的 Commit DAG/Branch Ref 在同一个文件事务中保存；写操作可以显式提交到非主分支，而磁盘上的物化文档始终对应主分支。`evaluate` 可读取当前 Branch 或指定 Commit，`render` 通过 Output Profile 的 `target`、附加 Feature、Capability 与 Lockfile 选择兼容输出 Renderer，并按文本或二进制产物原样写入。`export --format svg-sequence` 使用精确的 `[from, to)` 帧计划，把 Branch 固定为启动时的 Commit，只在全部帧、内容哈希和 Manifest 完整后原子发布目标目录；已存在的目录不会被覆盖，具体语义见 [ADR-007](docs/adrs/ADR-007-deterministic-frame-sequence-output.md)。Studio 在同一个工程会话上使用 Interactive Renderer；它的 Main/Preload/Renderer 边界、关闭保存握手和 CSP 约束见 [ADR-003](docs/adrs/ADR-003-studio-desktop-host.md)，运动创作、时间编辑与舞台变换语义见 [ADR-005](docs/adrs/ADR-005-motion-authoring-semantics.md)。Primitive、Custom Packet、Color Space、输出目标与 Surface Type 都进入 Feature 协商，缺失能力、Manifest 声明与实际注册不一致或扩展输出结构错误时都会被明确拒绝。
+CLI 通过共享的 ProjectSession、Node Project Session 和官方 Distribution Profile 使用 Project Repository、Extension Host、Transaction Engine、Evaluation Engine 与 Render Engine，不维护独立的文件修改或求值逻辑。文档与 `.kineweave/history/history.json` 中的 Commit DAG/Branch Ref 在同一个文件事务中保存；写操作可以显式提交到非主分支，而磁盘上的物化文档始终对应主分支。`evaluate` 可读取当前 Branch 或指定 Commit，`render` 通过 Output Profile 的 `target`、附加 Feature、Capability 与 Lockfile 选择兼容输出 Renderer，并按文本或二进制产物原样写入。`export` 的四种格式共享精确的 `[from, to)` 帧计划和启动时固定的 Commit：SVG/PNG 序列只在 Manifest 与全部帧完整后原子发布；MP4/WebM 在完整编码和哈希后排他发布目标文件；任何已存在目标都不会被覆盖。PNG/视频当前从 SVG Renderer 产物进入固定 Resvg/字体管线，视频再由 FFmpeg 编码，具体语义见 [ADR-007](docs/adrs/ADR-007-deterministic-frame-sequence-output.md)。Studio 在同一个工程会话上使用 Interactive Renderer；它的 Main/Preload/Renderer 边界、关闭保存握手和 CSP 约束见 [ADR-003](docs/adrs/ADR-003-studio-desktop-host.md)，运动创作、时间编辑与舞台变换语义见 [ADR-005](docs/adrs/ADR-005-motion-authoring-semantics.md)。Primitive、Custom Packet、Color Space、输出目标与 Surface Type 都进入 Feature 协商，缺失能力、Manifest 声明与实际注册不一致或扩展输出结构错误时都会被明确拒绝。

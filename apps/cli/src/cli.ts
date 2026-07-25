@@ -19,7 +19,9 @@ import {
 } from "@kineweave/project-session";
 import {
   type NodeProjectSession,
-  publishOutputFrameSequence
+  publishOutputFrameSequence,
+  publishOutputVideo,
+  rasterizeSvgOutputFrames
 } from "@kineweave/project-session-node";
 import {
   compareRational,
@@ -67,7 +69,7 @@ Usage:
   kineweave inspect <project> [--json]
   kineweave evaluate <project> <documentId> <time> [--domain <id>] [--branch <name> | --commit <commitId>] [--width <px>] [--height <px>] [--pixel-ratio <rational>] [--color-space <id>] [--locale <tag>] [--seed <value>] [--mode <interactive|deterministic|live>] [--signals <jsonObject>] [--json]
   kineweave render <project> <documentId> <time> <outputPath> [evaluation options] [--profile <id>] [--provider <providerId>]
-  kineweave export <project> <documentId> <outputDirectory> --format svg-sequence [--from <seconds>] [--to <seconds>] [--fps <rational>] [--branch <name> | --commit <commitId>] [--width <px>] [--height <px>] [--pixel-ratio <rational>] [--color-space <id>] [--locale <tag>] [--seed <value>] [--signals <jsonObject>] [--profile <id>] [--provider <providerId>] [--json]
+  kineweave export <project> <documentId> <outputPath> --format <svg-sequence|png-sequence|mp4|webm> [--from <seconds>] [--to <seconds>] [--fps <rational>] [--quality <high|balanced|compact>] [--branch <name> | --commit <commitId>] [--width <px>] [--height <px>] [--pixel-ratio <rational>] [--color-space <id>] [--locale <tag>] [--seed <value>] [--signals <jsonObject>] [--profile <id>] [--provider <providerId>] [--json]
   kineweave history <project> [--json]
   kineweave undo <project> [--branch <name>]
   kineweave redo <project> [--branch <name>] [--commit <commitId>]
@@ -577,19 +579,38 @@ async function exportCommand(args: readonly string[], io: CliIo): Promise<number
   const frameRateOption = option(toOption.remaining, "--fps");
   const profileOption = option(frameRateOption.remaining, "--profile");
   const providerOption = option(profileOption.remaining, "--provider");
-  const options = evaluationCliOptions(providerOption.remaining);
-  const [projectPath, documentId, outputDirectory, ...extra] = options.remaining;
+  const qualityOption = option(providerOption.remaining, "--quality");
+  const options = evaluationCliOptions(qualityOption.remaining);
+  const [projectPath, documentId, outputPath, ...extra] = options.remaining;
   if (
     projectPath === undefined ||
     documentId === undefined ||
-    outputDirectory === undefined ||
+    outputPath === undefined ||
     formatOption.value === undefined ||
     extra.length > 0
   ) {
     throw new TypeError(HELP);
   }
-  if (formatOption.value !== "svg-sequence") {
-    throw new TypeError("--format currently supports svg-sequence");
+  const format = formatOption.value;
+  if (
+    format !== "svg-sequence" &&
+    format !== "png-sequence" &&
+    format !== "mp4" &&
+    format !== "webm"
+  ) {
+    throw new TypeError("--format must be svg-sequence, png-sequence, mp4 or webm");
+  }
+  const quality = qualityOption.value;
+  if (
+    quality !== undefined &&
+    quality !== "high" &&
+    quality !== "balanced" &&
+    quality !== "compact"
+  ) {
+    throw new TypeError("--quality must be high, balanced or compact");
+  }
+  if (quality !== undefined && format !== "mp4" && format !== "webm") {
+    throw new TypeError("--quality is only available for mp4 and webm output");
   }
   if (options.mode !== undefined && options.mode !== "deterministic") {
     throw new TypeError("Animation export requires deterministic evaluation mode");
@@ -664,23 +685,75 @@ async function exportCommand(args: readonly string[], io: CliIo): Promise<number
         ? {}
         : { preferredProviderIds: [providerOption.value] })
     };
-    const summary = await publishOutputFrameSequence({
-      outputDirectory,
-      projectId: snapshot.bundle.manifest.projectId,
-      documentId,
-      sourceCommitId,
-      profileId,
-      plan,
-      evaluation,
-      rendering,
-      expectedArtifact: { mediaType: "image/svg+xml", fileExtension: ".svg" },
-      frames: renderOutputFrames(runtime, { plan, evaluation, rendering })
-    });
-    if (options.json) io.stdout(`${JSON.stringify(summary, null, 2)}\n`);
-    else {
-      io.stdout(
-        `Exported ${plan.frameCount} frames from ${documentId}@${sourceCommitId} to ${summary.outputDirectory}.\n`
-      );
+    const sourceFrames = renderOutputFrames(runtime, { plan, evaluation, rendering });
+    if (format === "svg-sequence") {
+      const summary = await publishOutputFrameSequence({
+        outputDirectory: outputPath,
+        projectId: snapshot.bundle.manifest.projectId,
+        documentId,
+        sourceCommitId,
+        profileId,
+        plan,
+        evaluation,
+        rendering,
+        expectedArtifact: { mediaType: "image/svg+xml", fileExtension: ".svg" },
+        delivery: { kind: "direct-renderer-artifact" },
+        frames: sourceFrames
+      });
+      if (options.json) io.stdout(`${JSON.stringify(summary, null, 2)}\n`);
+      else {
+        io.stdout(
+          `Exported ${plan.frameCount} frames from ${documentId}@${sourceCommitId} to ${summary.outputDirectory}.\n`
+        );
+      }
+    } else {
+      const pngFrames = rasterizeSvgOutputFrames(sourceFrames, {
+        ...(format === "mp4" || format === "webm" ? { background: "#000000" } : {})
+      });
+      if (format === "png-sequence") {
+        const summary = await publishOutputFrameSequence({
+          outputDirectory: outputPath,
+          projectId: snapshot.bundle.manifest.projectId,
+          documentId,
+          sourceCommitId,
+          profileId,
+          plan,
+          evaluation,
+          rendering,
+          expectedArtifact: { mediaType: "image/png", fileExtension: ".png", kind: "binary" },
+          delivery: {
+            kind: "rasterized-svg",
+            rasterizer: "@resvg/resvg-js",
+            fontPackage: "@fontsource-variable/noto-sans-sc"
+          },
+          frames: pngFrames
+        });
+        if (options.json) io.stdout(`${JSON.stringify(summary, null, 2)}\n`);
+        else {
+          io.stdout(
+            `Exported ${plan.frameCount} frames from ${documentId}@${sourceCommitId} to ${summary.outputDirectory}.\n`
+          );
+        }
+      } else {
+        const summary = await publishOutputVideo({
+          outputPath,
+          projectId: snapshot.bundle.manifest.projectId,
+          documentId,
+          sourceCommitId,
+          profileId,
+          plan,
+          evaluation,
+          format,
+          ...(quality === undefined ? {} : { quality }),
+          frames: pngFrames
+        });
+        if (options.json) io.stdout(`${JSON.stringify(summary, null, 2)}\n`);
+        else {
+          io.stdout(
+            `Exported ${plan.frameCount} frames from ${documentId}@${sourceCommitId} to ${summary.outputPath}.\n`
+          );
+        }
+      }
     }
     return 0;
   } finally {

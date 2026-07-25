@@ -23,8 +23,9 @@ docker run --rm \
 | `KINEWEAVE_PROJECT_DIR` | `/data/project` | Canonical Project 目录 |
 | `KINEWEAVE_PROJECT_LABEL` | `Cloud workspace` | Studio 顶栏显示的位置名称 |
 | `KINEWEAVE_ACCESS_TOKEN` | 未设置 | Web Studio 登录令牌；公网部署应设置高强度随机值 |
+| `KINEWEAVE_FFMPEG_PATH` | `ffmpeg` | FFmpeg 可执行文件；官方镜像已安装并可直接使用 |
 
-健康检查位于 `/healthz`。容器以非 root 用户运行，并声明 `/data` 为数据卷。
+健康检查位于 `/healthz`。容器以非 root 用户运行，并声明 `/data` 为数据卷。官方镜像同时安装带 H.264/libx264 与 VP9/libvpx-vp9 的 FFmpeg，供云端 Output Job 使用；自定义镜像必须提供同等编码器，服务不会静默切换 Codec。
 
 ## Zeabur 与其他自动部署平台
 

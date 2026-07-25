@@ -20,7 +20,9 @@ ENV PORT=8080
 ENV KINEWEAVE_PROJECT_DIR=/data/project
 WORKDIR /app
 
-RUN mkdir -p /data && chown node:node /data /app
+RUN apk add --no-cache ffmpeg \
+  && mkdir -p /data \
+  && chown node:node /data /app
 COPY --from=build --chown=node:node /opt/kineweave/ ./
 
 USER node

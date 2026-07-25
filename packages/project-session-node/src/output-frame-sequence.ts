@@ -5,10 +5,14 @@ import {
   createOutputFramePlan,
   type OutputFramePlan,
   type OutputFrameSequenceRequest,
-  type OutputFrameSequenceResult,
-  outputFrameAt
+  type OutputFrameSequenceResult
 } from "@kineweave/project-session";
-import { compareRational, STANDARD_TIME_DOMAINS } from "@kineweave/protocol";
+import { type JsonObject, STANDARD_TIME_DOMAINS } from "@kineweave/protocol";
+import {
+  type ExpectedOutputArtifact,
+  type OutputFrameShape,
+  validateOutputFrame
+} from "./output-frame-validation.js";
 
 export interface PublishOutputFrameSequenceRequest {
   readonly outputDirectory: string;
@@ -19,10 +23,9 @@ export interface PublishOutputFrameSequenceRequest {
   readonly plan: OutputFramePlan;
   readonly evaluation: OutputFrameSequenceRequest["evaluation"];
   readonly rendering: OutputFrameSequenceRequest["rendering"];
-  readonly expectedArtifact: {
-    readonly mediaType: string;
-    readonly fileExtension: string;
-  };
+  readonly expectedArtifact: ExpectedOutputArtifact;
+  readonly delivery?: JsonObject;
+  readonly onProgress?: (completedFrames: number, totalFrames: number) => void;
   readonly frames: AsyncIterable<OutputFrameSequenceResult>;
 }
 
@@ -70,56 +73,24 @@ export async function publishOutputFrameSequence(
     const framesDirectory = path.join(stagingDirectory, "frames");
     await mkdir(framesDirectory);
     const fileNameWidth = Math.max(6, String(plan.frameCount - 1).length);
-    const expectedExtension = request.expectedArtifact.fileExtension.toLowerCase();
     const frames: Array<{
       readonly frameIndex: number;
       readonly time: OutputFrameSequenceResult["time"]["value"];
       readonly file: string;
       readonly contentHash: string;
     }> = [];
-    let outputShape:
-      | {
-          readonly artifactKind: OutputFrameSequenceResult["rendering"]["artifact"]["kind"];
-          readonly mediaType: string;
-          readonly fileExtension: string;
-          readonly rendererProviderId: string;
-        }
-      | undefined;
+    let outputShape: OutputFrameShape | undefined;
 
     for await (const frame of request.frames) {
-      const expectedFrame = outputFrameAt(plan, frames.length);
-      if (
-        frame.frameIndex !== frames.length ||
-        frame.sourceCommitId !== request.sourceCommitId ||
-        frame.time.domain !== STANDARD_TIME_DOMAINS.seconds ||
-        compareRational(frame.time.value, expectedFrame.time.value) !== 0
-      ) {
-        throw new Error(`Output frame sequence received unexpected frame ${frame.frameIndex}`);
-      }
+      const currentShape = validateOutputFrame(
+        frame,
+        plan,
+        frames.length,
+        request.sourceCommitId,
+        request.expectedArtifact,
+        outputShape
+      );
       const artifact = frame.rendering.artifact;
-      const currentShape = {
-        artifactKind: artifact.kind,
-        mediaType: artifact.mediaType,
-        fileExtension: artifact.fileExtension.toLowerCase(),
-        rendererProviderId: frame.rendering.provider.providerId
-      };
-      if (
-        currentShape.mediaType !== request.expectedArtifact.mediaType ||
-        currentShape.fileExtension !== expectedExtension
-      ) {
-        throw new TypeError(
-          `Expected ${request.expectedArtifact.mediaType} ${expectedExtension}, received ${artifact.mediaType} ${artifact.fileExtension}`
-        );
-      }
-      if (
-        outputShape !== undefined &&
-        (outputShape.artifactKind !== currentShape.artifactKind ||
-          outputShape.mediaType !== currentShape.mediaType ||
-          outputShape.fileExtension !== currentShape.fileExtension ||
-          outputShape.rendererProviderId !== currentShape.rendererProviderId)
-      ) {
-        throw new Error("Output renderer changed artifact shape during the frame sequence");
-      }
       outputShape ??= currentShape;
       const fileName = `frame_${String(frame.frameIndex).padStart(fileNameWidth, "0")}${currentShape.fileExtension}`;
       if (artifact.kind === "text") {
@@ -133,6 +104,7 @@ export async function publishOutputFrameSequence(
         file: path.posix.join("frames", fileName),
         contentHash: artifact.kind === "text" ? hashUtf8(artifact.text) : hashBytes(artifact.bytes)
       });
+      request.onProgress?.(frames.length, plan.frameCount);
     }
     if (frames.length !== plan.frameCount || outputShape === undefined) {
       throw new Error(
@@ -170,7 +142,8 @@ export async function publishOutputFrameSequence(
         ...(request.rendering.preferredProviderIds === undefined
           ? {}
           : { preferredProviderIds: request.rendering.preferredProviderIds }),
-        ...outputShape
+        ...outputShape,
+        ...(request.delivery === undefined ? {} : { delivery: request.delivery })
       },
       frames
     };

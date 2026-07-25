@@ -300,6 +300,51 @@ describe("KineWeave CLI", () => {
     expect(capture.output().stderr).toBe("");
   });
 
+  it("exports a PNG sequence through the deterministic SVG raster pipeline", async () => {
+    const projectPath = await temporaryProjectPath();
+    await runCli(["init", projectPath], captureIo().io);
+    const output = path.join(projectPath, "outputs", "png-sequence");
+    const capture = captureIo();
+
+    expect(
+      await runCli(
+        [
+          "export",
+          projectPath,
+          "document_main",
+          output,
+          "--format",
+          "png-sequence",
+          "--to",
+          "1/30",
+          "--fps",
+          "30",
+          "--width",
+          "320",
+          "--height",
+          "180",
+          "--json"
+        ],
+        capture.io
+      )
+    ).toBe(0);
+    const manifest = JSON.parse(await readFile(path.join(output, "manifest.json"), "utf8")) as {
+      output: { mediaType: string; delivery: { kind: string } };
+      frames: Array<{ file: string }>;
+    };
+    const png = await readFile(path.join(output, manifest.frames[0]!.file));
+    expect(manifest.output).toMatchObject({
+      mediaType: "image/png",
+      delivery: { kind: "rasterized-svg" }
+    });
+    expect([...png.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    expect(JSON.parse(capture.output().stdout)).toMatchObject({
+      frameCount: 1,
+      mediaType: "image/png"
+    });
+    expect(capture.output().stderr).toBe("");
+  });
+
   it("rejects a project whose locked required extension is unavailable", async () => {
     const projectPath = await temporaryProjectPath();
     const capture = captureIo();

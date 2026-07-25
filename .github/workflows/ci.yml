@@ -72,8 +72,8 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  desktop-e2e:
-    name: Studio desktop and web E2E
+  product-e2e:
+    name: Studio desktop, web and media E2E
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -85,6 +85,12 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Verify media toolchain
+        run: |
+          ffmpeg -version
+          ffprobe -version
+          ffmpeg -hide_banner -h encoder=libx264
+          ffmpeg -hide_banner -h encoder=libvpx-vp9
       - name: Run Electron workflow in Xvfb
         run: xvfb-run --auto-servernum pnpm test:e2e
 
@@ -104,6 +110,8 @@ jobs:
             if [ "$attempt" = 30 ]; then docker logs kineweave-web-ci; exit 1; fi
             sleep 1
           done
+          docker exec kineweave-web-ci ffmpeg -hide_banner -h encoder=libx264 >/dev/null
+          docker exec kineweave-web-ci ffmpeg -hide_banner -h encoder=libvpx-vp9 >/dev/null
           curl --fail --silent http://127.0.0.1:18080/ | grep --quiet 'KineWeave Studio'
           curl --fail --silent \
             --header 'content-type: application/json' \

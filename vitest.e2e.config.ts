@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    include: ["apps/{studio,web}/**/*.e2e.test.ts"],
+    include: ["apps/{cli,studio,web}/**/*.e2e.test.ts"],
     exclude: ["**/dist/**", "**/dist-*/**", "**/node_modules/**"],
     fileParallelism: false,
     maxWorkers: 1,
