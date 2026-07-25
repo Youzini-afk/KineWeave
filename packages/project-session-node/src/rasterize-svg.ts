@@ -192,7 +192,8 @@ export async function rasterizeSvgOutputFrame(
       fontBuffers
     }
   };
-  const image = await renderAsync(source.text, renderOptions as ResvgRenderOptions, options.signal);
+  const renderSignal = options.signal === undefined ? undefined : AbortSignal.any([options.signal]);
+  const image = await renderAsync(source.text, renderOptions as ResvgRenderOptions, renderSignal);
   options.signal?.throwIfAborted();
   return {
     ...frame,

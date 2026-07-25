@@ -67,8 +67,9 @@ function svgFrame(): OutputFrameSequenceResult {
 
 describe("SVG output rasterization", () => {
   it("renders bundled Latin and Chinese glyphs to deterministic PNG bytes", async () => {
-    const first = await rasterizeSvgOutputFrame(svgFrame());
-    const second = await rasterizeSvgOutputFrame(svgFrame());
+    const controller = new AbortController();
+    const first = await rasterizeSvgOutputFrame(svgFrame(), { signal: controller.signal });
+    const second = await rasterizeSvgOutputFrame(svgFrame(), { signal: controller.signal });
     expect(first.rendering.artifact.kind).toBe("binary");
     if (first.rendering.artifact.kind !== "binary" || second.rendering.artifact.kind !== "binary") {
       throw new Error("Expected binary PNG artifacts");
@@ -84,6 +85,10 @@ describe("SVG output rasterization", () => {
       width: 320,
       height: 100
     });
+    controller.abort();
+    await expect(
+      rasterizeSvgOutputFrame(svgFrame(), { signal: controller.signal })
+    ).rejects.toThrow(/aborted/i);
   });
 
   it("rejects raster work above the configured pixel budget", async () => {
