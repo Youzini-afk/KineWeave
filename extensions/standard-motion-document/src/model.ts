@@ -40,6 +40,8 @@ export const STANDARD_KEYFRAME_EASINGS = {
   cubicBezier: "cubic-bezier"
 } as const;
 
+export const MAX_CUBIC_BEZIER_Y_MAGNITUDE = 1_000_000;
+
 export type SerializedRational = Rational & JsonObject;
 export type SerializedTimeValue = TimeValue & JsonObject;
 

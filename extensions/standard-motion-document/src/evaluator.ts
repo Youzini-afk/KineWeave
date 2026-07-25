@@ -19,6 +19,7 @@ import {
 } from "@kineweave/protocol";
 import {
   type Keyframe,
+  MAX_CUBIC_BEZIER_Y_MAGNITUDE,
   type MotionNode,
   type PropertyBinding,
   type PropertyTrack,
@@ -117,12 +118,14 @@ function easedProgress(
       x1 <= 1 &&
       typeof y1 === "number" &&
       Number.isFinite(y1) &&
+      Math.abs(y1) <= MAX_CUBIC_BEZIER_Y_MAGNITUDE &&
       typeof x2 === "number" &&
       Number.isFinite(x2) &&
       x2 >= 0 &&
       x2 <= 1 &&
       typeof y2 === "number" &&
-      Number.isFinite(y2)
+      Number.isFinite(y2) &&
+      Math.abs(y2) <= MAX_CUBIC_BEZIER_Y_MAGNITUDE
     ) {
       return cubicBezierProgress(progress, x1, y1, x2, y2);
     }

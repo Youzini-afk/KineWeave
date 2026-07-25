@@ -8,7 +8,7 @@ const equalRuntime = equalModule.default ?? equalModule;
 
 "use strict";
 export const compositionValidator = validate20;
-const schema31 = {"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://schemas.kineweave.dev/standard-motion/composition/v2","title":"KineWeave Standard Motion Composition v2","type":"object","required":["documentId","documentType","schemaVersion","data"],"properties":{"documentId":{"$ref":"#/$defs/stableId"},"documentType":{"const":"org.kineweave.standard-motion/composition"},"schemaVersion":{"const":2},"data":{"type":"object","required":["name","duration","canvas","rootNodeIds","nodes","tracks","signals"],"properties":{"name":{"type":"string","minLength":1},"duration":{"$ref":"#/$defs/timeValue"},"canvas":{"type":"object","required":["width","height","pixelAspectRatio","colorSpace"],"properties":{"width":{"type":"integer","minimum":1},"height":{"type":"integer","minimum":1},"pixelAspectRatio":{"$ref":"#/$defs/rational"},"colorSpace":{"$ref":"#/$defs/qualifiedName"},"background":{"$ref":"#/$defs/propertyBinding"}},"additionalProperties":true},"rootNodeIds":{"type":"array","items":{"$ref":"#/$defs/stableId"},"uniqueItems":true},"nodes":{"type":"object","propertyNames":{"$ref":"#/$defs/stableId"},"additionalProperties":{"$ref":"#/$defs/node"}},"tracks":{"type":"object","propertyNames":{"$ref":"#/$defs/stableId"},"additionalProperties":{"$ref":"#/$defs/track"}},"signals":{"type":"object","propertyNames":{"$ref":"#/$defs/stableId"},"additionalProperties":{"$ref":"#/$defs/signal"}},"metadata":{"type":"object"}},"additionalProperties":true}},"additionalProperties":true,"$defs":{"stableId":{"type":"string","pattern":"^[A-Za-z][A-Za-z0-9_-]{0,127}$"},"qualifiedName":{"type":"string","pattern":"^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+\\/[a-z][a-z0-9-]*(?:[.-][a-z0-9-]+)*$"},"rational":{"type":"object","required":["numerator","denominator"],"properties":{"numerator":{"type":"string","pattern":"^-?(0|[1-9][0-9]*)$"},"denominator":{"type":"string","pattern":"^[1-9][0-9]*$"}},"additionalProperties":false},"timeValue":{"type":"object","required":["value","domain"],"properties":{"value":{"$ref":"#/$defs/rational"},"domain":{"$ref":"#/$defs/qualifiedName"}},"additionalProperties":true},"propertyBinding":{"type":"object","required":["kind"],"properties":{"kind":{"enum":["constant","track","signal"]},"value":{},"trackId":{"$ref":"#/$defs/stableId"},"signalId":{"$ref":"#/$defs/stableId"}},"allOf":[{"if":{"properties":{"kind":{"const":"constant"}},"required":["kind"]},"then":{"properties":{"value":{}},"required":["value"]}},{"if":{"properties":{"kind":{"const":"track"}},"required":["kind"]},"then":{"properties":{"trackId":{"$ref":"#/$defs/stableId"}},"required":["trackId"]}},{"if":{"properties":{"kind":{"const":"signal"}},"required":["kind"]},"then":{"properties":{"signalId":{"$ref":"#/$defs/stableId"}},"required":["signalId"]}}],"additionalProperties":true},"node":{"type":"object","required":["nodeId","nodeType","schemaVersion","name","enabled","children","properties","data"],"properties":{"nodeId":{"$ref":"#/$defs/stableId"},"nodeType":{"$ref":"#/$defs/qualifiedName"},"schemaVersion":{"type":"integer","minimum":1},"name":{"type":"string","minLength":1},"enabled":{"type":"boolean"},"children":{"type":"array","items":{"$ref":"#/$defs/stableId"},"uniqueItems":true},"properties":{"type":"object","additionalProperties":{"$ref":"#/$defs/propertyBinding"}},"data":{"type":"object"}},"additionalProperties":true},"track":{"type":"object","required":["trackId","valueType","target","keyframes"],"properties":{"trackId":{"$ref":"#/$defs/stableId"},"valueType":{"$ref":"#/$defs/qualifiedName"},"target":{"type":"object","required":["nodeId","property"],"properties":{"nodeId":{"$ref":"#/$defs/stableId"},"property":{"type":"string","minLength":1}},"additionalProperties":true},"keyframes":{"type":"object","minProperties":1,"propertyNames":{"$ref":"#/$defs/stableId"},"additionalProperties":{"type":"object","required":["keyframeId","time","value"],"properties":{"keyframeId":{"$ref":"#/$defs/stableId"},"time":{"$ref":"#/$defs/timeValue"},"value":{},"easing":{"type":"object","required":["kind"],"properties":{"kind":{"enum":["linear","hold","cubic-bezier"]},"x1":{"type":"number","minimum":0,"maximum":1},"y1":{"type":"number"},"x2":{"type":"number","minimum":0,"maximum":1},"y2":{"type":"number"}},"allOf":[{"if":{"properties":{"kind":{"const":"cubic-bezier"}},"required":["kind"]},"then":{"properties":{"x1":{},"y1":{},"x2":{},"y2":{}},"required":["x1","y1","x2","y2"]}}],"additionalProperties":true}},"additionalProperties":true}}},"additionalProperties":true},"signal":{"type":"object","required":["signalId","signalType","schemaVersion","valueType","data"],"properties":{"signalId":{"$ref":"#/$defs/stableId"},"signalType":{"$ref":"#/$defs/qualifiedName"},"schemaVersion":{"type":"integer","minimum":1},"valueType":{"$ref":"#/$defs/qualifiedName"},"data":{"type":"object"}},"additionalProperties":true}}};
+const schema31 = {"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://schemas.kineweave.dev/standard-motion/composition/v2","title":"KineWeave Standard Motion Composition v2","type":"object","required":["documentId","documentType","schemaVersion","data"],"properties":{"documentId":{"$ref":"#/$defs/stableId"},"documentType":{"const":"org.kineweave.standard-motion/composition"},"schemaVersion":{"const":2},"data":{"type":"object","required":["name","duration","canvas","rootNodeIds","nodes","tracks","signals"],"properties":{"name":{"type":"string","minLength":1},"duration":{"$ref":"#/$defs/timeValue"},"canvas":{"type":"object","required":["width","height","pixelAspectRatio","colorSpace"],"properties":{"width":{"type":"integer","minimum":1},"height":{"type":"integer","minimum":1},"pixelAspectRatio":{"$ref":"#/$defs/rational"},"colorSpace":{"$ref":"#/$defs/qualifiedName"},"background":{"$ref":"#/$defs/propertyBinding"}},"additionalProperties":true},"rootNodeIds":{"type":"array","items":{"$ref":"#/$defs/stableId"},"uniqueItems":true},"nodes":{"type":"object","propertyNames":{"$ref":"#/$defs/stableId"},"additionalProperties":{"$ref":"#/$defs/node"}},"tracks":{"type":"object","propertyNames":{"$ref":"#/$defs/stableId"},"additionalProperties":{"$ref":"#/$defs/track"}},"signals":{"type":"object","propertyNames":{"$ref":"#/$defs/stableId"},"additionalProperties":{"$ref":"#/$defs/signal"}},"metadata":{"type":"object"}},"additionalProperties":true}},"additionalProperties":true,"$defs":{"stableId":{"type":"string","pattern":"^[A-Za-z][A-Za-z0-9_-]{0,127}$"},"qualifiedName":{"type":"string","pattern":"^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+\\/[a-z][a-z0-9-]*(?:[.-][a-z0-9-]+)*$"},"rational":{"type":"object","required":["numerator","denominator"],"properties":{"numerator":{"type":"string","pattern":"^-?(0|[1-9][0-9]*)$"},"denominator":{"type":"string","pattern":"^[1-9][0-9]*$"}},"additionalProperties":false},"timeValue":{"type":"object","required":["value","domain"],"properties":{"value":{"$ref":"#/$defs/rational"},"domain":{"$ref":"#/$defs/qualifiedName"}},"additionalProperties":true},"propertyBinding":{"type":"object","required":["kind"],"properties":{"kind":{"enum":["constant","track","signal"]},"value":{},"trackId":{"$ref":"#/$defs/stableId"},"signalId":{"$ref":"#/$defs/stableId"}},"allOf":[{"if":{"properties":{"kind":{"const":"constant"}},"required":["kind"]},"then":{"properties":{"value":{}},"required":["value"]}},{"if":{"properties":{"kind":{"const":"track"}},"required":["kind"]},"then":{"properties":{"trackId":{"$ref":"#/$defs/stableId"}},"required":["trackId"]}},{"if":{"properties":{"kind":{"const":"signal"}},"required":["kind"]},"then":{"properties":{"signalId":{"$ref":"#/$defs/stableId"}},"required":["signalId"]}}],"additionalProperties":true},"node":{"type":"object","required":["nodeId","nodeType","schemaVersion","name","enabled","children","properties","data"],"properties":{"nodeId":{"$ref":"#/$defs/stableId"},"nodeType":{"$ref":"#/$defs/qualifiedName"},"schemaVersion":{"type":"integer","minimum":1},"name":{"type":"string","minLength":1},"enabled":{"type":"boolean"},"children":{"type":"array","items":{"$ref":"#/$defs/stableId"},"uniqueItems":true},"properties":{"type":"object","additionalProperties":{"$ref":"#/$defs/propertyBinding"}},"data":{"type":"object"}},"additionalProperties":true},"track":{"type":"object","required":["trackId","valueType","target","keyframes"],"properties":{"trackId":{"$ref":"#/$defs/stableId"},"valueType":{"$ref":"#/$defs/qualifiedName"},"target":{"type":"object","required":["nodeId","property"],"properties":{"nodeId":{"$ref":"#/$defs/stableId"},"property":{"type":"string","minLength":1}},"additionalProperties":true},"keyframes":{"type":"object","minProperties":1,"propertyNames":{"$ref":"#/$defs/stableId"},"additionalProperties":{"type":"object","required":["keyframeId","time","value"],"properties":{"keyframeId":{"$ref":"#/$defs/stableId"},"time":{"$ref":"#/$defs/timeValue"},"value":{},"easing":{"type":"object","required":["kind"],"properties":{"kind":{"enum":["linear","hold","cubic-bezier"]},"x1":{"type":"number","minimum":0,"maximum":1},"y1":{"type":"number","minimum":-1000000,"maximum":1000000},"x2":{"type":"number","minimum":0,"maximum":1},"y2":{"type":"number","minimum":-1000000,"maximum":1000000}},"allOf":[{"if":{"properties":{"kind":{"const":"cubic-bezier"}},"required":["kind"]},"then":{"properties":{"x1":{},"y1":{},"x2":{},"y2":{}},"required":["x1","y1","x2","y2"]}}],"additionalProperties":true}},"additionalProperties":true}}},"additionalProperties":true},"signal":{"type":"object","required":["signalId","signalType","schemaVersion","valueType","data"],"properties":{"signalId":{"$ref":"#/$defs/stableId"},"signalType":{"$ref":"#/$defs/qualifiedName"},"schemaVersion":{"type":"integer","minimum":1},"valueType":{"$ref":"#/$defs/qualifiedName"},"data":{"type":"object"}},"additionalProperties":true}}};
 const schema32 = {"type":"string","pattern":"^[A-Za-z][A-Za-z0-9_-]{0,127}$"};
 const schema34 = {"type":"object","required":["numerator","denominator"],"properties":{"numerator":{"type":"string","pattern":"^-?(0|[1-9][0-9]*)$"},"denominator":{"type":"string","pattern":"^[1-9][0-9]*$"}},"additionalProperties":false};
 const schema35 = {"type":"string","pattern":"^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+\\/[a-z][a-z0-9-]*(?:[.-][a-z0-9-]+)*$"};
@@ -891,7 +891,7 @@ return errors === 0;
 }
 validate25.evaluated = {"props":true,"dynamicProps":false,"dynamicItems":false};
 
-const schema50 = {"type":"object","required":["trackId","valueType","target","keyframes"],"properties":{"trackId":{"$ref":"#/$defs/stableId"},"valueType":{"$ref":"#/$defs/qualifiedName"},"target":{"type":"object","required":["nodeId","property"],"properties":{"nodeId":{"$ref":"#/$defs/stableId"},"property":{"type":"string","minLength":1}},"additionalProperties":true},"keyframes":{"type":"object","minProperties":1,"propertyNames":{"$ref":"#/$defs/stableId"},"additionalProperties":{"type":"object","required":["keyframeId","time","value"],"properties":{"keyframeId":{"$ref":"#/$defs/stableId"},"time":{"$ref":"#/$defs/timeValue"},"value":{},"easing":{"type":"object","required":["kind"],"properties":{"kind":{"enum":["linear","hold","cubic-bezier"]},"x1":{"type":"number","minimum":0,"maximum":1},"y1":{"type":"number"},"x2":{"type":"number","minimum":0,"maximum":1},"y2":{"type":"number"}},"allOf":[{"if":{"properties":{"kind":{"const":"cubic-bezier"}},"required":["kind"]},"then":{"properties":{"x1":{},"y1":{},"x2":{},"y2":{}},"required":["x1","y1","x2","y2"]}}],"additionalProperties":true}},"additionalProperties":true}}},"additionalProperties":true};
+const schema50 = {"type":"object","required":["trackId","valueType","target","keyframes"],"properties":{"trackId":{"$ref":"#/$defs/stableId"},"valueType":{"$ref":"#/$defs/qualifiedName"},"target":{"type":"object","required":["nodeId","property"],"properties":{"nodeId":{"$ref":"#/$defs/stableId"},"property":{"type":"string","minLength":1}},"additionalProperties":true},"keyframes":{"type":"object","minProperties":1,"propertyNames":{"$ref":"#/$defs/stableId"},"additionalProperties":{"type":"object","required":["keyframeId","time","value"],"properties":{"keyframeId":{"$ref":"#/$defs/stableId"},"time":{"$ref":"#/$defs/timeValue"},"value":{},"easing":{"type":"object","required":["kind"],"properties":{"kind":{"enum":["linear","hold","cubic-bezier"]},"x1":{"type":"number","minimum":0,"maximum":1},"y1":{"type":"number","minimum":-1000000,"maximum":1000000},"x2":{"type":"number","minimum":0,"maximum":1},"y2":{"type":"number","minimum":-1000000,"maximum":1000000}},"allOf":[{"if":{"properties":{"kind":{"const":"cubic-bezier"}},"required":["kind"]},"then":{"properties":{"x1":{},"y1":{},"x2":{},"y2":{}},"required":["x1","y1","x2","y2"]}}],"additionalProperties":true}},"additionalProperties":true}}},"additionalProperties":true};
 
 function validate28(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 let vErrors = null;
@@ -1360,8 +1360,9 @@ errors++;
 }
 if(data9.y1 !== undefined){
 let data13 = data9.y1;
-if(!((typeof data13 == "number") && (isFinite(data13)))){
-const err36 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/y1",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/y1/type",keyword:"type",params:{type: "number"},message:"must be number"};
+if((typeof data13 == "number") && (isFinite(data13))){
+if(data13 > 1000000 || isNaN(data13)){
+const err36 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/y1",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/y1/maximum",keyword:"maximum",params:{comparison: "<=", limit: 1000000},message:"must be <= 1000000"};
 if(vErrors === null){
 vErrors = [err36];
 }
@@ -1370,12 +1371,8 @@ vErrors.push(err36);
 }
 errors++;
 }
-}
-if(data9.x2 !== undefined){
-let data14 = data9.x2;
-if((typeof data14 == "number") && (isFinite(data14))){
-if(data14 > 1 || isNaN(data14)){
-const err37 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/x2",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/x2/maximum",keyword:"maximum",params:{comparison: "<=", limit: 1},message:"must be <= 1"};
+if(data13 < -1000000 || isNaN(data13)){
+const err37 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/y1",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/y1/minimum",keyword:"minimum",params:{comparison: ">=", limit: -1000000},message:"must be >= -1000000"};
 if(vErrors === null){
 vErrors = [err37];
 }
@@ -1384,8 +1381,9 @@ vErrors.push(err37);
 }
 errors++;
 }
-if(data14 < 0 || isNaN(data14)){
-const err38 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/x2",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/x2/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"};
+}
+else {
+const err38 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/y1",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/y1/type",keyword:"type",params:{type: "number"},message:"must be number"};
 if(vErrors === null){
 vErrors = [err38];
 }
@@ -1395,8 +1393,11 @@ vErrors.push(err38);
 errors++;
 }
 }
-else {
-const err39 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/x2",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/x2/type",keyword:"type",params:{type: "number"},message:"must be number"};
+if(data9.x2 !== undefined){
+let data14 = data9.x2;
+if((typeof data14 == "number") && (isFinite(data14))){
+if(data14 > 1 || isNaN(data14)){
+const err39 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/x2",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/x2/maximum",keyword:"maximum",params:{comparison: "<=", limit: 1},message:"must be <= 1"};
 if(vErrors === null){
 vErrors = [err39];
 }
@@ -1405,11 +1406,8 @@ vErrors.push(err39);
 }
 errors++;
 }
-}
-if(data9.y2 !== undefined){
-let data15 = data9.y2;
-if(!((typeof data15 == "number") && (isFinite(data15)))){
-const err40 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/y2",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/y2/type",keyword:"type",params:{type: "number"},message:"must be number"};
+if(data14 < 0 || isNaN(data14)){
+const err40 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/x2",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/x2/minimum",keyword:"minimum",params:{comparison: ">=", limit: 0},message:"must be >= 0"};
 if(vErrors === null){
 vErrors = [err40];
 }
@@ -1419,9 +1417,8 @@ vErrors.push(err40);
 errors++;
 }
 }
-}
 else {
-const err41 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/type",keyword:"type",params:{type: "object"},message:"must be object"};
+const err41 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/x2",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/x2/type",keyword:"type",params:{type: "number"},message:"must be number"};
 if(vErrors === null){
 vErrors = [err41];
 }
@@ -1431,9 +1428,11 @@ vErrors.push(err41);
 errors++;
 }
 }
-}
-else {
-const err42 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1"),schemaPath:"#/properties/keyframes/additionalProperties/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(data9.y2 !== undefined){
+let data15 = data9.y2;
+if((typeof data15 == "number") && (isFinite(data15))){
+if(data15 > 1000000 || isNaN(data15)){
+const err42 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/y2",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/y2/maximum",keyword:"maximum",params:{comparison: "<=", limit: 1000000},message:"must be <= 1000000"};
 if(vErrors === null){
 vErrors = [err42];
 }
@@ -1442,10 +1441,8 @@ vErrors.push(err42);
 }
 errors++;
 }
-}
-}
-else {
-const err43 = {instancePath:instancePath+"/keyframes",schemaPath:"#/properties/keyframes/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(data15 < -1000000 || isNaN(data15)){
+const err43 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/y2",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/y2/minimum",keyword:"minimum",params:{comparison: ">=", limit: -1000000},message:"must be >= -1000000"};
 if(vErrors === null){
 vErrors = [err43];
 }
@@ -1455,14 +1452,61 @@ vErrors.push(err43);
 errors++;
 }
 }
-}
 else {
-const err44 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"};
+const err44 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing/y2",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/properties/y2/type",keyword:"type",params:{type: "number"},message:"must be number"};
 if(vErrors === null){
 vErrors = [err44];
 }
 else {
 vErrors.push(err44);
+}
+errors++;
+}
+}
+}
+else {
+const err45 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1")+"/easing",schemaPath:"#/properties/keyframes/additionalProperties/properties/easing/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err45];
+}
+else {
+vErrors.push(err45);
+}
+errors++;
+}
+}
+}
+else {
+const err46 = {instancePath:instancePath+"/keyframes/" + key1.replace(/~/g, "~0").replace(/\//g, "~1"),schemaPath:"#/properties/keyframes/additionalProperties/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err46];
+}
+else {
+vErrors.push(err46);
+}
+errors++;
+}
+}
+}
+else {
+const err47 = {instancePath:instancePath+"/keyframes",schemaPath:"#/properties/keyframes/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err47];
+}
+else {
+vErrors.push(err47);
+}
+errors++;
+}
+}
+}
+else {
+const err48 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err48];
+}
+else {
+vErrors.push(err48);
 }
 errors++;
 }

@@ -4,22 +4,16 @@ import {
   STANDARD_KEYFRAME_EASINGS
 } from "@kineweave/standard-motion-document";
 import {
-  CUBIC_BEZIER_GRAPH,
-  type CubicBezierCoordinate,
   type CubicBezierCurve,
-  type CubicBezierViewport,
-  cubicBezierControlAtPlotPoint,
   cubicBezierEasingValue,
   cubicBezierParameters,
-  cubicBezierPlotPoint,
-  cubicBezierViewport,
   customCurveFromEasing,
   EASING_PRESETS,
   easingPreset,
   easingSignature,
-  sameCubicBezierCurve,
-  withCubicBezierCoordinate
+  sameCubicBezierCurve
 } from "./easing-curve.js";
+import { EasingCurveEditor } from "./easing-curve-editor.js";
 import type { StudioController, StudioSnapshot } from "./studio-controller.js";
 import {
   keyframeSeconds,
@@ -56,20 +50,6 @@ interface EasingDraftState extends SelectedKeyframe {
   pendingMutations: number;
 }
 
-interface CurveDragState {
-  readonly draft: EasingDraftState;
-  readonly pointerId: number;
-  readonly coordinateX: "x1" | "x2";
-  readonly coordinateY: "y1" | "y2";
-  readonly persistedCurve: CubicBezierCurve;
-  readonly persistedSelection: string;
-  readonly persistedTargetSignature: string;
-  readonly viewport: CubicBezierViewport;
-  moved: boolean;
-}
-
-const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
-
 function required<T extends Element>(selector: string): T {
   const value = document.querySelector<T>(selector);
   if (value === null) throw new Error(`Timeline element is missing: ${selector}`);
@@ -78,14 +58,6 @@ function required<T extends Element>(selector: string): T {
 
 function sameTime(left: number, right: number): boolean {
   return Math.abs(left - right) < 0.000_000_5;
-}
-
-function svgElement<K extends keyof SVGElementTagNameMap>(name: K): SVGElementTagNameMap[K] {
-  return document.createElementNS(SVG_NAMESPACE, name);
-}
-
-function pathCoordinate(value: number): string {
-  return String(Math.round(value * 1000) / 1000);
 }
 
 export class TimelineController {
@@ -104,15 +76,7 @@ export class TimelineController {
   readonly #summary = required<HTMLElement>("#track-summary");
   readonly #selectionLabel = required<HTMLElement>("#keyframe-selection");
   readonly #easing = required<HTMLSelectElement>("#keyframe-easing");
-  readonly #workspace = required<HTMLElement>(".workspace");
-  readonly #curveEditor = required<HTMLElement>("#easing-curve-editor");
-  readonly #curveGraph = required<SVGSVGElement>("#easing-curve-graph");
-  readonly #curveInputs = new Map<CubicBezierCoordinate, HTMLInputElement>(
-    (["x1", "y1", "x2", "y2"] as const).map((coordinate) => [
-      coordinate,
-      required<HTMLInputElement>(`#easing-${coordinate}`)
-    ])
-  );
+  readonly #curveEditor: EasingCurveEditor;
   readonly #delete = required<HTMLButtonElement>("#delete-keyframe");
   readonly #previous = required<HTMLButtonElement>("#previous-keyframe");
   readonly #next = required<HTMLButtonElement>("#next-keyframe");
@@ -124,7 +88,6 @@ export class TimelineController {
   #pendingSelection: PendingSelection | undefined;
   #drag: DragState | undefined;
   #easingDraft: EasingDraftState | undefined;
-  #curveDrag: CurveDragState | undefined;
   #suppressClick: string | undefined;
 
   constructor(
@@ -142,6 +105,10 @@ export class TimelineController {
   ) {
     this.#controller = controller;
     this.#snapshot = controller.snapshot();
+    this.#curveEditor = new EasingCurveEditor(
+      required<HTMLElement>("#easing-curve-editor"),
+      (curve) => this.#commitCurve(curve)
+    );
     this.#easing.addEventListener("change", () => {
       const selected = this.#selected;
       const current = this.#selectedKeyframe();
@@ -153,7 +120,7 @@ export class TimelineController {
           draft.curve = customCurveFromEasing(current.keyframe.easing);
           draft.targetSignature = easingSignature(current.keyframe.easing);
         }
-        this.#renderCurveEditor(draft.curve, false);
+        this.#showCurveEditor(selected, draft.curve);
         return;
       }
       const selection = this.#easing.value;
@@ -163,18 +130,12 @@ export class TimelineController {
       draft.targetSignature = easingSignature(preset ?? undefined);
       if (preset?.kind === STANDARD_KEYFRAME_EASINGS.cubicBezier) {
         draft.curve = cubicBezierParameters(preset) ?? draft.curve;
-        this.#renderCurveEditor(draft.curve, false);
+        this.#showCurveEditor(selected, draft.curve);
       } else {
         this.#hideCurveEditor(false);
       }
       this.#commitEasingDraft(draft, preset);
     });
-    for (const [coordinate, input] of this.#curveInputs) {
-      input.addEventListener("change", () => this.#commitCurveInput(coordinate, input));
-    }
-    this.#curveGraph.addEventListener("pointermove", (event) => this.#curveDragMove(event));
-    this.#curveGraph.addEventListener("pointerup", (event) => this.#curveDragEnd(event));
-    this.#curveGraph.addEventListener("pointercancel", (event) => this.#curveDragCancel(event));
     this.#delete.addEventListener("click", () => this.#deleteSelected());
     this.#previous.addEventListener("click", () => this.#jumpKeyframe(-1));
     this.#next.addEventListener("click", () => this.#jumpKeyframe(1));
@@ -199,7 +160,7 @@ export class TimelineController {
       this.#renderedNodeId !== snapshot.selectedNodeId;
     if (mustRebuild) {
       const draft = this.#matchingEasingDraft();
-      if (draft === undefined || draft.pendingMutations === 0) this.#cancelCurveDrag();
+      if (draft === undefined || draft.pendingMutations === 0) this.#curveEditor.cancelGesture();
       this.#renderedRevision = snapshot.panelRevision;
       this.#renderedNodeId = snapshot.selectedNodeId;
       this.#resolvePendingSelection();
@@ -416,11 +377,11 @@ export class TimelineController {
         existingDraft.trackId !== identity.trackId ||
         existingDraft.keyframeId !== identity.keyframeId)
     ) {
-      this.#cancelCurveDrag();
+      this.#curveEditor.cancelGesture();
       this.#easingDraft = undefined;
     }
     const selected = this.#selectedKeyframe();
-    if (selected === undefined) {
+    if (selected === undefined || identity === undefined) {
       this.#selectionLabel.textContent = "No keyframe selected";
       this.#easing.value = "auto";
       this.#easing.disabled = true;
@@ -466,11 +427,7 @@ export class TimelineController {
         isStandardInterpolatedValueType(track.valueType) &&
         displayedCurve !== undefined
       ) {
-        this.#renderCurveEditor(
-          displayedCurve,
-          this.#curveDrag === undefined &&
-            [...this.#curveInputs.values()].includes(document.activeElement as HTMLInputElement)
-        );
+        this.#showCurveEditor(identity, displayedCurve);
       } else {
         this.#hideCurveEditor(false);
       }
@@ -571,7 +528,7 @@ export class TimelineController {
       this.#selected !== undefined &&
       (selected === undefined || selected.track.target.nodeId !== this.#snapshot.selectedNodeId)
     ) {
-      this.#cancelCurveDrag();
+      this.#curveEditor.cancelGesture();
       this.#selected = undefined;
       this.#easingDraft = undefined;
     }
@@ -649,7 +606,7 @@ export class TimelineController {
         if (
           draft.pendingMutations === 0 &&
           easingSignature(canonical) === draft.targetSignature &&
-          this.#curveDrag?.draft !== draft
+          !this.#curveEditor.dragging
         ) {
           this.#normalizeEasingDraft(draft, canonical);
           this.#renderToolbar();
@@ -665,210 +622,25 @@ export class TimelineController {
       });
   }
 
-  #renderCurveEditor(
-    curve: CubicBezierCurve,
-    preserveFocusedInput: boolean,
-    viewport = cubicBezierViewport(curve)
-  ): void {
-    this.#curveEditor.hidden = false;
-    this.#curveEditor.setAttribute("aria-hidden", "false");
-    this.#workspace.classList.add("easing-editor-open");
-    const draft = this.#matchingEasingDraft();
-    if (draft !== undefined) draft.curve = curve;
-    for (const [coordinate, input] of this.#curveInputs) {
-      if (!preserveFocusedInput || document.activeElement !== input) {
-        input.value = String(curve[coordinate]);
-      }
-    }
-    this.#curveGraph.replaceChildren();
-    const origin = cubicBezierPlotPoint(0, 0, viewport);
-    const target = cubicBezierPlotPoint(1, 1, viewport);
-    const first = cubicBezierPlotPoint(curve.x1, curve.y1, viewport);
-    const second = cubicBezierPlotPoint(curve.x2, curve.y2, viewport);
-
-    const grid = svgElement("path");
-    const quarterXs = [0, 0.25, 0.5, 0.75, 1].map(
-      (value) => cubicBezierPlotPoint(value, 0, viewport).x
-    );
-    const baselineY = cubicBezierPlotPoint(0, 0, viewport).y;
-    const targetLineY = cubicBezierPlotPoint(0, 1, viewport).y;
-    grid.setAttribute(
-      "d",
-      `${quarterXs.map((x) => `M ${pathCoordinate(x)} ${CUBIC_BEZIER_GRAPH.paddingY} V ${CUBIC_BEZIER_GRAPH.height - CUBIC_BEZIER_GRAPH.paddingY}`).join(" ")} M ${CUBIC_BEZIER_GRAPH.paddingX} ${pathCoordinate(baselineY)} H ${CUBIC_BEZIER_GRAPH.width - CUBIC_BEZIER_GRAPH.paddingX} M ${CUBIC_BEZIER_GRAPH.paddingX} ${pathCoordinate(targetLineY)} H ${CUBIC_BEZIER_GRAPH.width - CUBIC_BEZIER_GRAPH.paddingX}`
-    );
-    grid.setAttribute("class", "easing-curve-grid");
-
-    const handles = svgElement("path");
-    handles.setAttribute(
-      "d",
-      `M ${pathCoordinate(origin.x)} ${pathCoordinate(origin.y)} L ${pathCoordinate(first.x)} ${pathCoordinate(first.y)} M ${pathCoordinate(target.x)} ${pathCoordinate(target.y)} L ${pathCoordinate(second.x)} ${pathCoordinate(second.y)}`
-    );
-    handles.setAttribute("class", "easing-curve-lines");
-
-    const curvePath = svgElement("path");
-    curvePath.setAttribute(
-      "d",
-      `M ${pathCoordinate(origin.x)} ${pathCoordinate(origin.y)} C ${pathCoordinate(first.x)} ${pathCoordinate(first.y)} ${pathCoordinate(second.x)} ${pathCoordinate(second.y)} ${pathCoordinate(target.x)} ${pathCoordinate(target.y)}`
-    );
-    curvePath.setAttribute("class", "easing-curve-path");
-
-    const startPoint = svgElement("circle");
-    startPoint.setAttribute("cx", pathCoordinate(origin.x));
-    startPoint.setAttribute("cy", pathCoordinate(origin.y));
-    startPoint.setAttribute("r", "3");
-    startPoint.setAttribute("class", "easing-curve-endpoint");
-    const endPoint = svgElement("circle");
-    endPoint.setAttribute("cx", pathCoordinate(target.x));
-    endPoint.setAttribute("cy", pathCoordinate(target.y));
-    endPoint.setAttribute("r", "3");
-    endPoint.setAttribute("class", "easing-curve-endpoint");
-
-    const firstHandle = this.#curveHandle("p1", "x1", "y1", first, viewport);
-    const secondHandle = this.#curveHandle("p2", "x2", "y2", second, viewport);
-    this.#curveGraph.append(
-      grid,
-      handles,
-      curvePath,
-      startPoint,
-      endPoint,
-      firstHandle,
-      secondHandle
-    );
+  #showCurveEditor(selected: SelectedKeyframe, curve: CubicBezierCurve): void {
+    this.#curveEditor.show(`${selected.trackId}/${selected.keyframeId}`, curve);
   }
 
-  #curveHandle(
-    name: "p1" | "p2",
-    coordinateX: "x1" | "x2",
-    coordinateY: "y1" | "y2",
-    point: { readonly x: number; readonly y: number },
-    viewport: CubicBezierViewport
-  ): SVGCircleElement {
-    const handle = svgElement("circle");
-    handle.setAttribute("cx", pathCoordinate(point.x));
-    handle.setAttribute("cy", pathCoordinate(point.y));
-    handle.setAttribute("r", "6");
-    handle.setAttribute("class", "easing-curve-handle");
-    handle.dataset.handle = name;
-    handle.setAttribute("aria-hidden", "true");
-    handle.addEventListener("pointerdown", (event) => {
-      const selected = this.#selected;
-      const current = this.#selectedKeyframe();
-      if (event.button !== 0 || selected === undefined || current === undefined) return;
-      event.preventDefault();
-      const draft = this.#ensureEasingDraft(selected, current.keyframe.easing);
-      this.#curveDrag = {
-        draft,
-        pointerId: event.pointerId,
-        coordinateX,
-        coordinateY,
-        persistedCurve: draft.curve,
-        persistedSelection: draft.selection,
-        persistedTargetSignature: draft.targetSignature,
-        viewport,
-        moved: false
-      };
-      this.#curveGraph.setPointerCapture(event.pointerId);
-      handle.classList.add("dragging");
-    });
-    return handle;
-  }
-
-  #curveDragMove(event: PointerEvent): void {
-    const drag = this.#curveDrag;
-    if (drag === undefined || drag.pointerId !== event.pointerId) return;
-    const point = this.#curveClientPoint(event);
-    const current = drag.draft.curve;
-    const next = withCubicBezierCoordinate(
-      withCubicBezierCoordinate(current, drag.coordinateX, point.x),
-      drag.coordinateY,
-      point.y
-    );
-    drag.moved ||= !sameCubicBezierCurve(next, drag.persistedCurve);
-    this.#renderCurveEditor(next, false, drag.viewport);
-  }
-
-  #curveClientPoint(event: PointerEvent): { readonly x: number; readonly y: number } {
-    const drag = this.#curveDrag!;
-    const transform = this.#curveGraph.getScreenCTM();
-    if (transform !== null) {
-      const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(transform.inverse());
-      return cubicBezierControlAtPlotPoint(point.x, point.y, drag.viewport);
-    }
-    const bounds = this.#curveGraph.getBoundingClientRect();
-    return cubicBezierControlAtPlotPoint(
-      ((event.clientX - bounds.left) / Math.max(1, bounds.width)) * CUBIC_BEZIER_GRAPH.width,
-      ((event.clientY - bounds.top) / Math.max(1, bounds.height)) * CUBIC_BEZIER_GRAPH.height,
-      drag.viewport
-    );
-  }
-
-  #curveDragEnd(event: PointerEvent): void {
-    const drag = this.#curveDrag;
-    if (drag === undefined || drag.pointerId !== event.pointerId) return;
-    const next = drag.draft.curve;
-    this.#curveDrag = undefined;
-    if (this.#curveGraph.hasPointerCapture(event.pointerId)) {
-      this.#curveGraph.releasePointerCapture(event.pointerId);
-    }
-    if (!drag.moved || sameCubicBezierCurve(next, drag.persistedCurve)) {
-      drag.draft.curve = drag.persistedCurve;
-      this.#renderCurveEditor(drag.persistedCurve, false);
-      return;
-    }
-    drag.draft.selection = "custom";
-    this.#easing.value = "custom";
-    this.#commitEasingDraft(drag.draft, cubicBezierEasingValue(next));
-  }
-
-  #curveDragCancel(event: PointerEvent): void {
-    if (this.#curveDrag?.pointerId !== event.pointerId) return;
-    this.#cancelCurveDrag();
-  }
-
-  #cancelCurveDrag(): void {
-    const drag = this.#curveDrag;
-    if (drag === undefined) return;
-    this.#curveDrag = undefined;
-    if (this.#curveGraph.hasPointerCapture(drag.pointerId)) {
-      this.#curveGraph.releasePointerCapture(drag.pointerId);
-    }
-    drag.draft.curve = drag.persistedCurve;
-    drag.draft.selection = drag.persistedSelection;
-    drag.draft.targetSignature = drag.persistedTargetSignature;
-    this.#renderCurveEditor(drag.persistedCurve, false);
-  }
-
-  #commitCurveInput(coordinate: CubicBezierCoordinate, input: HTMLInputElement): void {
+  #commitCurve(curve: CubicBezierCurve): void {
     const selected = this.#selected;
     const persisted = this.#selectedKeyframe();
-    const rawValue = input.value.trim();
-    const value = input.valueAsNumber;
     if (selected === undefined || persisted === undefined) return;
     const draft = this.#ensureEasingDraft(selected, persisted.keyframe.easing);
-    const current = draft.curve;
-    if (rawValue.length === 0 || !Number.isFinite(value)) {
-      input.setCustomValidity("Enter a finite number.");
-      input.reportValidity();
-      input.value = String(current[coordinate]);
-      input.setCustomValidity("");
-      return;
-    }
-    const next = withCubicBezierCoordinate(current, coordinate, value);
-    input.value = String(next[coordinate]);
-    input.setCustomValidity("");
-    if (sameCubicBezierCurve(next, current)) return;
-    draft.curve = next;
+    if (sameCubicBezierCurve(curve, draft.curve)) return;
+    draft.curve = curve;
     draft.selection = "custom";
     this.#easing.value = "custom";
-    this.#renderCurveEditor(next, true);
-    this.#commitEasingDraft(draft, cubicBezierEasingValue(next));
+    this.#showCurveEditor(selected, curve);
+    this.#commitEasingDraft(draft, cubicBezierEasingValue(curve));
   }
 
   #hideCurveEditor(clearDraft = true): void {
-    this.#curveEditor.hidden = true;
-    this.#curveEditor.setAttribute("aria-hidden", "true");
-    this.#workspace.classList.remove("easing-editor-open");
-    this.#curveGraph.replaceChildren();
+    this.#curveEditor.hide();
     if (clearDraft) this.#easingDraft = undefined;
   }
 

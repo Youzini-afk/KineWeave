@@ -428,10 +428,6 @@ button:disabled {
   background: #0a0c11;
 }
 
-.workspace.easing-editor-open {
-  grid-template-rows: 39px minmax(0, 1fr) minmax(390px, 46vh);
-}
-
 .stage-toolbar {
   z-index: 4;
   display: grid;
@@ -751,10 +747,10 @@ button:disabled {
 
 .easing-curve-editor {
   display: grid;
-  grid-template-columns: minmax(170px, 1fr) 190px;
-  gap: 12px;
+  grid-template-columns: minmax(140px, 1fr) minmax(160px, 190px);
+  gap: 8px;
   min-height: 0;
-  padding: 8px 0;
+  padding: 6px 0;
   border-bottom: 1px solid #202631;
 }
 
@@ -764,7 +760,7 @@ button:disabled {
 
 .easing-curve-graph-wrap {
   min-width: 0;
-  height: 112px;
+  height: 92px;
   padding: 3px 8px;
   border: 1px solid #252d3a;
   border-radius: 5px;
@@ -1575,24 +1571,27 @@ dialog::backdrop {
   }
 
   .easing-curve-editor {
-    grid-template-columns: minmax(150px, 1fr) 164px;
-  }
-
-  .workspace.easing-editor-open {
-    grid-template-rows: 39px minmax(0, 1fr) minmax(390px, 52vh);
+    grid-template-columns: minmax(140px, 1fr) 164px;
   }
 }
 
 @media (max-width: 1050px) {
   .easing-curve-editor {
     grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .easing-curve-graph-wrap {
+    height: 78px;
   }
 
   .easing-curve-values {
-    grid-template-columns: repeat(4, minmax(68px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
   }
 
-  .workspace.easing-editor-open {
-    grid-template-rows: 39px minmax(0, 1fr) minmax(480px, 68vh);
+  .easing-curve-values label {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 3px;
   }
 }

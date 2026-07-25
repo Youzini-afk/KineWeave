@@ -193,9 +193,9 @@
                 "properties": {
                   "kind": { "enum": ["linear", "hold", "cubic-bezier"] },
                   "x1": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "y1": { "type": "number" },
+                  "y1": { "type": "number", "minimum": -1000000, "maximum": 1000000 },
                   "x2": { "type": "number", "minimum": 0, "maximum": 1 },
-                  "y2": { "type": "number" }
+                  "y2": { "type": "number", "minimum": -1000000, "maximum": 1000000 }
                 },
                 "allOf": [
                   {

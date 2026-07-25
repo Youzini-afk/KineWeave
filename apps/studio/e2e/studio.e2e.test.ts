@@ -124,8 +124,17 @@ test("authors motion, aligns layers, and reopens the saved project", async () =>
 
     await positionRow.locator('.timeline-keyframe[data-seconds="0"]').click();
     const historyBeforeCustomSelection = await window.locator(".history-row").count();
+    const stageHeightBeforeCustomSelection = await window
+      .locator(".stage-viewport")
+      .evaluate((element) => element.getBoundingClientRect().height);
     await window.locator("#keyframe-easing").selectOption("custom");
     await expect.poll(() => window.locator("#easing-curve-editor").isVisible()).toBe(true);
+    const stageHeightAfterCustomSelection = await window
+      .locator(".stage-viewport")
+      .evaluate((element) => element.getBoundingClientRect().height);
+    expect(
+      Math.abs(stageHeightAfterCustomSelection - stageHeightBeforeCustomSelection)
+    ).toBeLessThan(1);
     expect(await window.locator(".history-row").count()).toBe(historyBeforeCustomSelection);
     const historyBeforeCustomEdit = await window.locator(".history-row").count();
     const customValues = {

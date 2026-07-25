@@ -1,6 +1,12 @@
 import { canonicalStringify } from "@kineweave/project-format";
 import type { JsonObject } from "@kineweave/protocol";
-import { cubicBezierEasing, STANDARD_KEYFRAME_EASINGS } from "@kineweave/standard-motion-document";
+import {
+  cubicBezierEasing,
+  MAX_CUBIC_BEZIER_Y_MAGNITUDE,
+  STANDARD_KEYFRAME_EASINGS
+} from "@kineweave/standard-motion-document";
+
+export { MAX_CUBIC_BEZIER_Y_MAGNITUDE };
 
 export interface CubicBezierCurve {
   readonly x1: number;
@@ -20,8 +26,6 @@ export interface CubicBezierPlotPoint {
   readonly x: number;
   readonly y: number;
 }
-
-export const MAX_CUBIC_BEZIER_Y_MAGNITUDE = 1_000_000;
 
 export const CUBIC_BEZIER_GRAPH = {
   width: 220,

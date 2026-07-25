@@ -13,6 +13,8 @@ import {
   createRectangleNode,
   createStandardComposition,
   createTextNode,
+  cubicBezierEasing,
+  MAX_CUBIC_BEZIER_Y_MAGNITUDE,
   type StandardCompositionDocument
 } from "./model.js";
 import { STANDARD_MOTION_OPERATIONS } from "./operations.js";
@@ -82,6 +84,48 @@ function proposal(
 describe("Standard Motion Document", () => {
   it("creates a structurally valid open composition", () => {
     expect(validateStandardComposition(createStandardComposition())).toEqual([]);
+  });
+
+  it("enforces the cubic-bezier overshoot bound in the document contract", () => {
+    const document = createStandardComposition();
+    document.data.tracks.track_position = {
+      trackId: "track_position",
+      valueType: "org.kineweave.value/vector2",
+      target: { nodeId: "node_headline", property: "position" },
+      keyframes: {
+        keyframe_start: {
+          keyframeId: "keyframe_start",
+          time: document.data.duration,
+          value: [960, 620],
+          easing: cubicBezierEasing(
+            0.25,
+            -MAX_CUBIC_BEZIER_Y_MAGNITUDE,
+            0.75,
+            MAX_CUBIC_BEZIER_Y_MAGNITUDE
+          )
+        }
+      }
+    };
+    document.data.nodes.node_headline!.properties.position = {
+      kind: "track",
+      trackId: "track_position"
+    };
+
+    expect(validateStandardComposition(document)).toEqual([]);
+    document.data.tracks.track_position.keyframes.keyframe_start = {
+      ...document.data.tracks.track_position.keyframes.keyframe_start!,
+      easing: cubicBezierEasing(0.25, -(MAX_CUBIC_BEZIER_Y_MAGNITUDE + 1), 0.75, 1)
+    };
+    expect(validateStandardComposition(document)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "standard-motion.schema.minimum" })])
+    );
+    document.data.tracks.track_position.keyframes.keyframe_start = {
+      ...document.data.tracks.track_position.keyframes.keyframe_start!,
+      easing: cubicBezierEasing(0.25, 0, 0.75, MAX_CUBIC_BEZIER_Y_MAGNITUDE + 1)
+    };
+    expect(validateStandardComposition(document)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: "standard-motion.schema.maximum" })])
+    );
   });
 
   it("rejects incomplete constants and invalid standard property values", () => {

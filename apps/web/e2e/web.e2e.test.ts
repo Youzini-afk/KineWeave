@@ -40,6 +40,19 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
     expect(await page.locator("#project-path").textContent()).toBe("Web E2E cloud");
     expect(await page.locator('[role="treeitem"]').count()).toBe(5);
 
+    await page.setViewportSize({ width: 1000, height: 900 });
+    const curveEditor = page.locator("#easing-curve-editor");
+    await curveEditor.evaluate((element) => {
+      (element as HTMLElement).hidden = false;
+    });
+    expect(
+      await curveEditor.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)
+    ).toBe(true);
+    await curveEditor.evaluate((element) => {
+      (element as HTMLElement).hidden = true;
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+
     await page.locator('[data-add-node="rectangle"]').click();
     await expect.poll(() => page.locator('[role="treeitem"]').count()).toBe(6);
     await page.locator("#save").click();
