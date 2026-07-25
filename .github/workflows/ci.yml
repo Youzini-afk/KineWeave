@@ -108,14 +108,16 @@ jobs:
           docker run --detach --name kineweave-web-ci --publish 127.0.0.1:18080:8080 kineweave-web:ci
           trap 'docker rm --force kineweave-web-ci' EXIT
           for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null; then break; fi
+            if curl --fail --silent http://127.0.0.1:18080/readyz >/dev/null; then break; fi
             if [ "$attempt" = 30 ]; then docker logs kineweave-web-ci; exit 1; fi
             sleep 1
           done
           docker exec kineweave-web-ci ffmpeg -hide_banner -h encoder=libx264 >/dev/null
           docker exec kineweave-web-ci ffmpeg -hide_banner -h encoder=libvpx-vp9 >/dev/null
+          docker exec kineweave-web-ci test -d /data/project -a -d /data/outputs
           curl --fail --silent http://127.0.0.1:18080/ | grep --quiet 'KineWeave Studio'
           curl --fail --silent \
             --header 'content-type: application/json' \
+            --header 'origin: http://127.0.0.1:18080' \
             --data '{"projectLocator":"kw+cloud://default"}' \
             http://127.0.0.1:18080/api/project/open | grep --quiet '"ok":true'

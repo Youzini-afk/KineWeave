@@ -22,7 +22,7 @@
 - CLI、Desktop 和 Web 共用一条高层 Node 输出函数，ProjectSession 求值、Renderer 选择、Resvg、FFmpeg 与原子发布语义不再由各宿主复制。
 - Studio 有可访问的格式、区间、精确帧率、尺寸、Pixel Ratio、质量、进度、取消和结果操作界面；Desktop 与 Web 只在最终交付能力上不同。
 - Browser Renderer 不获得文件系统或媒体进程权限，HTTP 客户端也不能提交输出路径。
-- Job 与结果目前是单进程、单实例、非恢复状态。进程终止后的清理、readiness、draining 和跨实例执行由云端运行阶段另行收敛，而不是在当前状态机中预造分布式抽象。
+- Job 与结果目前是单进程、单实例、非恢复状态。Web Host 已在启动时清理孤儿结果，并在 readiness/draining 中取消当前 Job；跨重启恢复和跨实例执行仍等到真实需求后再引入持久队列与对象存储。
 
 ## 重新评审条件
 

@@ -25,31 +25,29 @@ function captureIo() {
 async function exportVideo(format: "mp4" | "webm", fileName: string) {
   const outputPath = path.join(temporaryDirectory, fileName);
   const capture = captureIo();
-  expect(
-    await runCli(
-      [
-        "export",
-        projectPath,
-        "document_main",
-        outputPath,
-        "--format",
-        format,
-        "--to",
-        "1/15",
-        "--fps",
-        "15",
-        "--width",
-        "320",
-        "--height",
-        "180",
-        "--quality",
-        "compact",
-        "--json"
-      ],
-      capture.io
-    )
-  ).toBe(0);
-  expect(capture.stderr()).toBe("");
+  const exitCode = await runCli(
+    [
+      "export",
+      projectPath,
+      "document_main",
+      outputPath,
+      "--format",
+      format,
+      "--to",
+      "1",
+      "--fps",
+      "15",
+      "--width",
+      "320",
+      "--height",
+      "180",
+      "--quality",
+      "compact",
+      "--json"
+    ],
+    capture.io
+  );
+  expect({ exitCode, stderr: capture.stderr() }).toEqual({ exitCode: 0, stderr: "" });
   return JSON.parse(capture.stdout()) as {
     readonly outputPath: string;
     readonly contentHash: string;

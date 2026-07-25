@@ -90,12 +90,18 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
     await page.locator("#start-output").click();
     await expect.poll(() => page.locator("#cancel-output").isEnabled()).toBe(true);
     await page.locator("#cancel-output").click();
-    await expect
-      .poll(() => page.locator("#output-dialog").getAttribute("data-status"), {
-        timeout: 30_000
-      })
-      .toBe("cancelled");
-    expect(await page.locator("#output-status").textContent()).toBe("Output cancelled");
+    await page.waitForFunction(
+      () => {
+        const status = document.querySelector("#output-dialog")?.getAttribute("data-status");
+        return status === "cancelled" || status === "failed" || status === "succeeded";
+      },
+      undefined,
+      { timeout: 30_000 }
+    );
+    expect({
+      status: await page.locator("#output-dialog").getAttribute("data-status"),
+      message: await page.locator("#output-status").textContent()
+    }).toEqual({ status: "cancelled", message: "Output cancelled" });
     await page.locator("#close-output").click();
 
     await page.reload();
@@ -106,8 +112,7 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
     expect(errors).toEqual([]);
   } finally {
     await browser.close();
-    server.close();
-    await once(server, "close");
+    await server.shutdown();
     await rm(temporaryRoot, { recursive: true, force: true });
   }
 }, 90_000);

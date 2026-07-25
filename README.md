@@ -16,7 +16,7 @@ KineWeave 是一个本地优先、模型无关、可编程的时间视觉创作�
 6. 相互独立的 Output/Interactive Renderer Capability：SVG 负责持久化输出，Canvas2D 负责高 DPI 即时绘制、帧更新和命中测试；
 7. CLI 参考宿主贯通工程编辑、历史、求值、单帧渲染和 Commit 固定的确定性 SVG/PNG 帧序列、H.264 MP4、VP9 WebM 导出；PNG 使用关闭系统字体的 Resvg 与内置 Noto Sans SC，视频通过宿主管理的 FFmpeg 编码；
 8. Electron Studio 以隔离 Renderer 中唯一的 ProjectSession 驱动播放、图层、Inspector、历史和 Timeline；当前支持时长、Track/Keyframe、Easing Preset 与任意 cubic-bezier 出段曲线编辑，以及 Stage 多选、框选、吸附、对齐、等比缩放、旋转和 Anchor 调整；Main Process 负责原生目录选择、Repository 原子持久化和所有四种格式的后台 Output Job；
-9. Web Studio 复用同一 Renderer、ProjectSession 与 Canvas2D 链路，容器内 Node Host 提供工程会话、访问令牌、Repository 原子持久化，以及带进度、取消和认证流式下载的 MP4/WebM Output Job；标准 Docker 镜像可由 Zeabur 等平台直接构建；
+9. Web Studio 复用同一 Renderer、ProjectSession 与 Canvas2D 链路，容器内 Node Host 提供工程会话、访问令牌、Repository 原子持久化，以及带进度、取消和认证流式下载的 MP4/WebM Output Job；状态变更受同源与 Session Owner 校验，容器提供独立 liveness/readiness 和有界关闭排空，可由 Zeabur 等平台直接构建；
 10. 四个可直接打开的 Golden Projects、九个确定性求值采样、SVG 字节回归、无 DOM Canvas2D Conformance、覆盖运动创作与重新打开的临时工程桌面 E2E、Web 容器烟测、包含创作事务的版本化性能预算、Biome 质量门禁和 GitHub CI。
 
 Foundation 1–4 和第一轮运动创作闭环已经建立。下一施工焦点会继续扩展曲线与时间组织、媒体和更丰富的创作工作流，并用 Golden、Conformance、E2E 和性能数据反推现有边界；这是一条可持续演进的基线，不是终局架构。

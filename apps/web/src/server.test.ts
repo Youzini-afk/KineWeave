@@ -1,5 +1,5 @@
 import { once } from "node:events";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -23,16 +23,38 @@ describe("KineWeave Web server", () => {
     const root = await mkdtemp(path.join(tmpdir(), "kineweave-web-"));
     temporaryDirectories.push(root);
     const projectRoot = path.join(root, "project");
+    const outputRoot = path.join(root, "outputs");
     const clientRoot = path.join(root, "client");
     await mkdir(clientRoot);
     await writeFile(path.join(clientRoot, "index.html"), "<h1>KineWeave</h1>", "utf8");
+    const unownedOutputRoot = path.join(root, "unowned-outputs");
+    const preservedFile = path.join(unownedOutputRoot, "preserve.txt");
+    await mkdir(unownedOutputRoot);
+    await writeFile(preservedFile, "preserve", "utf8");
+    await expect(
+      createKineWeaveWebServer({ projectRoot, outputRoot: unownedOutputRoot, clientRoot })
+    ).rejects.toThrow("not empty or owned by KineWeave");
+    await expect(readFile(preservedFile, "utf8")).resolves.toBe("preserve");
+
+    await mkdir(outputRoot);
+    await writeFile(
+      path.join(outputRoot, ".kineweave-output-root"),
+      "KineWeave transient output root v1\n",
+      "utf8"
+    );
+    const staleOutput = path.join(outputRoot, "stale-output.mp4");
+    await writeFile(staleOutput, "stale", "utf8");
+    const publicOrigin = "https://kineweave.test";
 
     const server = await createKineWeaveWebServer({
       projectRoot,
+      outputRoot,
       clientRoot,
       accessToken: "test-token",
-      displayLocation: "Test cloud"
+      displayLocation: "Test cloud",
+      publicOrigin
     });
+    await expect(stat(staleOutput)).rejects.toMatchObject({ code: "ENOENT" });
     server.listen(0, "127.0.0.1");
     await once(server, "listening");
     const address = server.address() as AddressInfo;
@@ -40,11 +62,12 @@ describe("KineWeave Web server", () => {
 
     try {
       expect(await (await fetch(`${baseUrl}/healthz`)).json()).toEqual({ status: "ok" });
+      expect(await (await fetch(`${baseUrl}/readyz`)).json()).toEqual({ status: "ready" });
       expect(await (await fetch(baseUrl)).text()).toContain("KineWeave");
 
       const unauthorized = await fetch(`${baseUrl}/api/project/open`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", origin: publicOrigin },
         body: JSON.stringify({ projectLocator: CLOUD_PROJECT_LOCATOR })
       });
       expect(unauthorized.status).toBe(401);
@@ -53,16 +76,30 @@ describe("KineWeave Web server", () => {
       expect(anonymousStatus.status).toBe(401);
       expect(await anonymousStatus.json()).toEqual({ authenticated: false, required: true });
 
-      const rejectedLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      const missingOrigin = await fetch(`${baseUrl}/api/auth/login`, {
         method: "POST",
         headers: { "content-type": "application/json" },
+        body: JSON.stringify({ accessToken: "test-token" })
+      });
+      expect(missingOrigin.status).toBe(403);
+
+      const rejectedLogin = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: publicOrigin },
         body: JSON.stringify({ accessToken: "wrong-token" })
       });
       expect(rejectedLogin.status).toBe(401);
 
+      const oversizedLogin = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: publicOrigin },
+        body: JSON.stringify({ accessToken: "x".repeat(64 * 1024) })
+      });
+      expect(oversizedLogin.status).toBe(413);
+
       const login = await fetch(`${baseUrl}/api/auth/login`, {
         method: "POST",
-        headers: { "content-type": "application/json", "x-forwarded-proto": "https" },
+        headers: { "content-type": "application/json", origin: publicOrigin },
         body: JSON.stringify({ accessToken: "test-token" })
       });
       expect(login.status).toBe(204);
@@ -75,7 +112,8 @@ describe("KineWeave Web server", () => {
 
       const headers = {
         cookie,
-        "content-type": "application/json"
+        "content-type": "application/json",
+        origin: publicOrigin
       };
       const authenticatedStatus = await fetch(`${baseUrl}/api/auth/session`, {
         headers: { cookie }
@@ -92,8 +130,30 @@ describe("KineWeave Web server", () => {
       if (!opened.ok) throw new Error(opened.error.message);
       expect(opened.value.displayLocation).toBe("Test cloud");
 
+      const secondLogin = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: publicOrigin },
+        body: JSON.stringify({ accessToken: "test-token" })
+      });
+      const secondCookie = secondLogin.headers.get("set-cookie")?.split(";", 1)[0];
+      if (secondCookie === undefined) throw new Error("Second authentication cookie is missing");
+      const foreignSession = await fetch(
+        `${baseUrl}/api/project/sessions/${opened.value.hostSessionId}`,
+        { method: "DELETE", headers: { cookie: secondCookie, origin: publicOrigin } }
+      );
+      expect(foreignSession.status).toBe(404);
+
       const bundle = structuredClone(opened.value.bundle) as LoadedProjectBundle;
       (bundle.manifest as { name: string }).name = "Saved through Web";
+      const crossOriginSave = await fetch(
+        `${baseUrl}/api/project/sessions/${opened.value.hostSessionId}`,
+        {
+          method: "PUT",
+          headers: { ...headers, origin: "https://attacker.example" },
+          body: JSON.stringify({ bundle })
+        }
+      );
+      expect(crossOriginSave.status).toBe(403);
       const saveResponse = await fetch(
         `${baseUrl}/api/project/sessions/${opened.value.hostSessionId}`,
         {
@@ -132,7 +192,7 @@ describe("KineWeave Web server", () => {
 
       await fetch(`${baseUrl}/api/project/sessions/${opened.value.hostSessionId}`, {
         method: "DELETE",
-        headers: { cookie }
+        headers: { cookie, origin: publicOrigin }
       });
 
       const persisted = await new NodeProjectRepository().read(projectRoot);
@@ -140,7 +200,7 @@ describe("KineWeave Web server", () => {
 
       const logout = await fetch(`${baseUrl}/api/auth/session`, {
         method: "DELETE",
-        headers: { cookie }
+        headers: { cookie, origin: publicOrigin }
       });
       expect(logout.status).toBe(204);
       expect(logout.headers.get("set-cookie")).toContain("Max-Age=0");
@@ -154,21 +214,20 @@ describe("KineWeave Web server", () => {
       for (let attempt = 0; attempt < 10; attempt += 1) {
         const rejected = await fetch(`${baseUrl}/api/auth/login`, {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", origin: publicOrigin },
           body: JSON.stringify({ accessToken: "wrong-token" })
         });
         expect(rejected.status).toBe(401);
       }
       const limited = await fetch(`${baseUrl}/api/auth/login`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", origin: publicOrigin },
         body: JSON.stringify({ accessToken: "test-token" })
       });
       expect(limited.status).toBe(429);
       expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0);
     } finally {
-      server.close();
-      await once(server, "close");
+      await server.shutdown();
     }
   });
 });
