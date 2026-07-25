@@ -12,7 +12,7 @@ KineWeave 已经用同一个 ProjectSession 贯通工程、事务、历史、求
 1. Standard Motion 扩展正式拥有时长、Track 创建/删除、Keyframe Upsert/移动/删除和 Easing 修改操作。属性绑定到 Track 后，通用 Set Property 不得绕过 Track 写回 Constant。Keyframe 使用与 Composition Duration 相同的精确时间域，规范化后时间唯一，并限制在 `[0, duration]`；Easing 属于该 Keyframe 到下一 Keyframe 的 outgoing 区间。
 2. Studio 的时间编辑以当前 Playhead 的求值结果为基线。Constant 或缺省属性第一次打关键帧时转为 Track；Track 属性在当前时刻 Upsert；Signal 属性保持只读。Inspector 编辑 Track 属性时写当前时刻的 Keyframe，不把整条动画降回 Constant。删除最后一个 Keyframe 会显式删除 Track，并把删除时刻的已求值属性冻结为 Constant。
 3. 一个用户意图对应一个 TransactionProposal。一次 Stage 移动、缩放、旋转、Anchor 调整、对齐或一次时间线关键帧操作只产生一个可撤销提交；Pointer Move 和拖拽预览只更新临时 Overlay，不写 Canonical Project State。操作失败整体回滚，不保留半完成属性更新。
-4. 时间线展示可编辑属性的 Binding 状态、全部关键帧和 outgoing Easing。拖拽与键盘移动先按交互粒度量化，再写为精确 Rational；目标时刻冲突直接拒绝，不自动挤压、合并或重排其他关键帧。Composition Duration 缩短到已有关键帧之前时同样拒绝，由用户先处理超界关键帧。
+4. 时间线展示可编辑属性的 Binding 状态、全部关键帧和 outgoing Easing。拖拽与键盘移动先按交互粒度量化，再写为精确 Rational；目标时刻冲突直接拒绝，不自动挤压、合并或重排其他关键帧。Composition Duration 缩短到已有关键帧之前时同样拒绝，由用户先处理超界关键帧。任意 cubic-bezier 通过预设、可访问数值输入和双控制柄编辑同一个出段 Easing；`x1/x2` 限制在 `[0, 1]`，`y1/y2` 保留 `[-1,000,000, 1,000,000]` 内的有限超调值并由曲线图自适应显示，避免极端浮点范围破坏图形坐标。控制柄移动仅更新本地预览，松手才提交一个事务，取消则恢复持久化值。
 5. Stage 选择集合不同时包含祖先和后代，避免同一可见内容被重复变换。移动和对齐把 Surface Delta 通过父节点 World Transform 的线性逆映射到 Position；Anchor 调整同时补偿 Position 以保持画面不跳；多选等比缩放和旋转围绕统一 Pivot，在一个事务中更新全部节点。吸附只影响手势结果，Alt 可临时关闭，Shift 提供轴锁定或角度量化。
 6. 世界空间旋转柄只在每个选中节点的父级 World Linear Transform 是相似变换（等比缩放、旋转和可选反射）时开放；反射会修正局部角度方向。非均匀父变换下继续允许 Inspector 编辑局部 Rotation，但不伪装成可以由当前 TRS 精确提交的世界空间旋转。若以后引入完整 Affine/Skew 表达，再重新评估这一限制。
 7. Stage 手势开始时暂停播放并完成当前 Playhead 求值，随后固定该 Presentation Graph；手势期间的新求值只保留最新结果，结束或取消后再 Present。异步 Hit Test 使用 Pending Pointer Token，Reset、关闭和切换工程会使旧 Token 失效。工程切换先取消 Stage 手势、排空旧工程编辑/求值队列并核对工程实例，旧闭包不得落到新工程。
@@ -20,7 +20,7 @@ KineWeave 已经用同一个 ProjectSession 贯通工程、事务、历史、求
 
 ## 结果
 
-- Timeline、Inspector 和 Stage 共享 Operation、Transaction、Evaluation 与 History 语义，没有形成 UI 专用动画模型或开发期兼容层。
+- Timeline、Inspector 和 Stage 共享 Operation、Transaction、Evaluation 与 History 语义，没有形成 UI 专用动画模型或开发期兼容层；任意 cubic-bezier 出段曲线也通过既有 Easing Operation 进入同一历史。
 - 当前值、关键帧值和画面预览来自同一求值时刻；播放、异步命中与项目切换不会把一个手势拆到不同 Presentation Graph 或不同工程。
 - 多属性和多节点编辑保持单次撤销；拖拽频率不会线性放大 Commit 数量或持久化写入。
 - 当前 TRS 可表达范围被明确暴露。复杂父变换下宁可暂时隐藏不精确的世界旋转操作，也不提交与预览不一致的结果。

@@ -123,7 +123,56 @@ test("authors motion, aligns layers, and reopens the saved project", async () =>
       .toEqual(["0", "2.1"]);
 
     await positionRow.locator('.timeline-keyframe[data-seconds="0"]').click();
-    await window.locator("#keyframe-easing").selectOption("ease-in-out");
+    const historyBeforeCustomSelection = await window.locator(".history-row").count();
+    await window.locator("#keyframe-easing").selectOption("custom");
+    await expect.poll(() => window.locator("#easing-curve-editor").isVisible()).toBe(true);
+    expect(await window.locator(".history-row").count()).toBe(historyBeforeCustomSelection);
+    const historyBeforeCustomEdit = await window.locator(".history-row").count();
+    const customValues = {
+      x1: "0.18",
+      y1: "-0.35",
+      x2: "0.76",
+      y2: "1.25"
+    };
+    for (const [coordinate, value] of Object.entries(customValues)) {
+      const input = window.locator(`#easing-${coordinate}`);
+      await input.fill(value);
+      await input.blur();
+      await expect.poll(() => input.inputValue()).toBe(value);
+    }
+    for (const [coordinate, value] of Object.entries(customValues)) {
+      await expect.poll(() => window.locator(`#easing-${coordinate}`).inputValue()).toBe(value);
+    }
+    await expect.poll(() => window.locator("#keyframe-easing").inputValue()).toBe("custom");
+    await expect
+      .poll(() => window.locator(".history-row").count())
+      .toBe(historyBeforeCustomEdit + 4);
+    await window.locator("#undo").click();
+    await expect.poll(() => window.locator("#easing-y2").inputValue()).not.toBe("1.25");
+    await window.locator("#redo").click();
+    await expect.poll(() => window.locator("#easing-y2").inputValue()).toBe("1.25");
+    const historyBeforeCurveGesture = await window.locator(".history-row").count();
+    const firstCurveHandle = window.locator('[data-handle="p1"]');
+    const curveGraph = window.locator("#easing-curve-graph");
+    const handleBox = await firstCurveHandle.boundingBox();
+    const graphBox = await curveGraph.boundingBox();
+    expect(handleBox).not.toBeNull();
+    expect(graphBox).not.toBeNull();
+    if (handleBox !== null && graphBox !== null) {
+      const startX = handleBox.x + handleBox.width / 2;
+      const startY = handleBox.y + handleBox.height / 2;
+      await window.mouse.move(startX, startY);
+      await window.mouse.down();
+      await window.mouse.move(startX + graphBox.width * 0.05, startY - graphBox.height * 0.05, {
+        steps: 6
+      });
+      await expect.poll(() => window.locator("#easing-x1").inputValue()).not.toBe("0.18");
+      expect(await window.locator(".history-row").count()).toBe(historyBeforeCurveGesture);
+      await window.mouse.up();
+      await expect
+        .poll(() => window.locator(".history-row").count())
+        .toBe(historyBeforeCurveGesture + 1);
+    }
     await expect
       .poll(() => window.locator("#status").textContent())
       .toContain("Changed keyframe easing");
@@ -188,7 +237,13 @@ test("authors motion, aligns layers, and reopens the saved project", async () =>
     ).toBe(true);
     expect(
       Object.values(positionTrack?.keyframes ?? {}).some(
-        (keyframe) => keyframe.easing?.kind === "cubic-bezier"
+        (keyframe) =>
+          keyframe.easing?.kind === "cubic-bezier" &&
+          typeof keyframe.easing.x1 === "number" &&
+          keyframe.easing.x1 > 0.18 &&
+          keyframe.easing.y1 > -0.35 &&
+          keyframe.easing.x2 === 0.76 &&
+          keyframe.easing.y2 === 1.25
       )
     ).toBe(true);
     const secondPosition = document?.data.nodes[secondNodeId ?? ""]?.properties.position;
@@ -220,9 +275,16 @@ test("authors motion, aligns layers, and reopens the saved project", async () =>
     );
     await expect.poll(() => reopenedPositionRow.locator(".timeline-keyframe").count()).toBe(2);
     await reopenedPositionRow.locator('.timeline-keyframe[data-seconds="0"]').click();
+    await expect.poll(() => reopenedWindow.locator("#keyframe-easing").inputValue()).toBe("custom");
+    await expect.poll(() => reopenedWindow.locator("#easing-curve-editor").isVisible()).toBe(true);
     await expect
-      .poll(() => reopenedWindow.locator("#keyframe-easing").inputValue())
-      .toBe("ease-in-out");
+      .poll(async () => Number(await reopenedWindow.locator("#easing-x1").inputValue()))
+      .toBeGreaterThan(0.18);
+    await expect
+      .poll(async () => Number(await reopenedWindow.locator("#easing-y1").inputValue()))
+      .toBeGreaterThan(-0.35);
+    await expect.poll(() => reopenedWindow.locator("#easing-x2").inputValue()).toBe("0.76");
+    await expect.poll(() => reopenedWindow.locator("#easing-y2").inputValue()).toBe("1.25");
     expect(reopenedErrors).toEqual([]);
   } finally {
     if (application !== undefined && !applicationClosed) {

@@ -15,7 +15,7 @@ KineWeave 是一个本地优先、模型无关、可编程的时间视觉创作�
 5. Standard Motion v2、精确时间求值和 Presentation Graph，当前覆盖 group、text、rectangle、ellipse、path、可见性与 cubic-bezier 关键帧；
 6. 相互独立的 Output/Interactive Renderer Capability：SVG 负责持久化输出，Canvas2D 负责高 DPI 即时绘制、帧更新和命中测试；
 7. CLI 参考宿主贯通工程编辑、历史、求值和文件渲染；
-8. Electron Studio 以隔离 Renderer 中唯一的 ProjectSession 驱动播放、图层、Inspector、历史和 Timeline；当前支持时长、Track/Keyframe/Easing 编辑，以及 Stage 多选、框选、吸附、对齐、等比缩放、旋转和 Anchor 调整，Main Process 只负责原生目录选择与 Repository 原子持久化；
+8. Electron Studio 以隔离 Renderer 中唯一的 ProjectSession 驱动播放、图层、Inspector、历史和 Timeline；当前支持时长、Track/Keyframe、Easing Preset 与任意 cubic-bezier 出段曲线编辑，以及 Stage 多选、框选、吸附、对齐、等比缩放、旋转和 Anchor 调整，Main Process 只负责原生目录选择与 Repository 原子持久化；
 9. Web Studio 复用同一 Renderer、ProjectSession 与 Canvas2D 链路，容器内 Node Host 提供工程会话、访问令牌和 Repository 原子持久化；标准 Docker 镜像可由 Zeabur 等平台直接构建；
 10. 四个可直接打开的 Golden Projects、九个确定性求值采样、SVG 字节回归、无 DOM Canvas2D Conformance、覆盖运动创作与重新打开的临时工程桌面 E2E、Web 容器烟测、包含创作事务的版本化性能预算、Biome 质量门禁和 GitHub CI。
 

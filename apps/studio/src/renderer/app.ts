@@ -112,9 +112,22 @@ root.innerHTML = `
               <option value="ease-in">Ease in</option>
               <option value="ease-out">Ease out</option>
               <option value="ease-in-out">Ease in-out</option>
+              <option value="custom">Custom cubic Bézier</option>
             </select></label>
             <button id="delete-keyframe" class="button subtle compact" type="button" disabled>Delete key</button>
           </div>
+          <section id="easing-curve-editor" class="easing-curve-editor" aria-label="Custom cubic Bézier editor" aria-hidden="true" hidden>
+            <div class="easing-curve-graph-wrap">
+              <svg id="easing-curve-graph" viewBox="0 0 220 132" aria-hidden="true"></svg>
+            </div>
+            <fieldset class="easing-curve-values">
+              <legend>Control points</legend>
+              <label><span>P1 x</span><input id="easing-x1" type="number" min="0" max="1" step="any" inputmode="decimal" /></label>
+              <label><span>P1 y</span><input id="easing-y1" type="number" min="-1000000" max="1000000" step="any" inputmode="decimal" /></label>
+              <label><span>P2 x</span><input id="easing-x2" type="number" min="0" max="1" step="any" inputmode="decimal" /></label>
+              <label><span>P2 y</span><input id="easing-y2" type="number" min="-1000000" max="1000000" step="any" inputmode="decimal" /></label>
+            </fieldset>
+          </section>
           <div class="timeline-ruler"><span>0s</span><span id="duration-label">1s</span></div>
           <div class="scrubber-wrap">
             <input id="playhead" type="range" min="0" max="1" step="0.001" value="0" />
