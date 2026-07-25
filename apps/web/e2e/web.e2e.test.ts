@@ -67,8 +67,11 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
     await page.locator("#output-quality").selectOption("compact");
     await page.locator("#start-output").click();
     await expect
-      .poll(() => page.locator("#output-status").textContent(), { timeout: 30_000 })
-      .toBe("Output ready");
+      .poll(() => page.locator("#output-dialog").getAttribute("data-status"), {
+        timeout: 30_000
+      })
+      .toBe("succeeded");
+    expect(await page.locator("#output-status").textContent()).toBe("Output ready");
     expect(
       await page
         .locator("#output-progress")
@@ -88,8 +91,11 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
     await expect.poll(() => page.locator("#cancel-output").isEnabled()).toBe(true);
     await page.locator("#cancel-output").click();
     await expect
-      .poll(() => page.locator("#output-status").textContent(), { timeout: 30_000 })
-      .toBe("Output cancelled");
+      .poll(() => page.locator("#output-dialog").getAttribute("data-status"), {
+        timeout: 30_000
+      })
+      .toBe("cancelled");
+    expect(await page.locator("#output-status").textContent()).toBe("Output cancelled");
     await page.locator("#close-output").click();
 
     await page.reload();

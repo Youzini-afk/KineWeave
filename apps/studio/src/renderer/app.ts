@@ -696,6 +696,9 @@ function renderOutput(snapshot: StudioSnapshot): void {
   const job = snapshot.outputJob;
   const active =
     snapshot.outputStarting || job?.status === "running" || job?.status === "cancelling";
+  elements.outputDialog.dataset.status = snapshot.outputStarting
+    ? "starting"
+    : (job?.status ?? "idle");
   elements.output.disabled = snapshot.phase !== "ready";
   elements.output.dataset.active = String(active);
   elements.output.title = active ? "Output is rendering" : "Create output";
@@ -744,7 +747,7 @@ function renderOutput(snapshot: StudioSnapshot): void {
           ? "Output ready"
           : job.status === "cancelled"
             ? "Output cancelled"
-            : (job.error?.message ?? "Output failed");
+            : job.error?.message || "Output failed";
 }
 
 function render(snapshot: StudioSnapshot): void {

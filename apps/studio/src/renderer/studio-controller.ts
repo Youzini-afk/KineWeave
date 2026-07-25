@@ -618,7 +618,9 @@ export class StudioController {
     if (project === undefined || !outputJobActive(job)) return;
     this.#outputJob = { ...job, status: "cancelling" };
     this.#emit();
-    this.#outputJob = hostValue(await this.#host.cancelOutput(project.hostSessionId, job.jobId));
+    const cancelled = hostValue(await this.#host.cancelOutput(project.hostSessionId, job.jobId));
+    if (project !== this.#project || this.#outputJob?.jobId !== job.jobId) return;
+    this.#outputJob = cancelled;
     this.#applyOutputTerminalStatus();
     this.#emit();
   }
@@ -757,8 +759,16 @@ export class StudioController {
     const polling = (async () => {
       while (project === this.#project && outputJobActive(this.#outputJob)) {
         await wait(250);
-        if (project !== this.#project) return;
-        this.#outputJob = hostValue(await this.#host.getOutput(project.hostSessionId, jobId));
+        if (project !== this.#project || this.#outputJob?.jobId !== jobId) return;
+        const next = hostValue(await this.#host.getOutput(project.hostSessionId, jobId));
+        if (
+          project !== this.#project ||
+          this.#outputJob?.jobId !== jobId ||
+          !outputJobActive(this.#outputJob)
+        ) {
+          return;
+        }
+        this.#outputJob = next;
         this.#applyOutputTerminalStatus();
         this.#emit();
       }
