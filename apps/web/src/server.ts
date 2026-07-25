@@ -1,16 +1,28 @@
 import { randomUUID, timingSafeEqual } from "node:crypto";
-import { readdir, readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { createOfficialProjectTemplate } from "@kineweave/official-distribution";
+import {
+  createOfficialDistributionProfile,
+  createOfficialProjectTemplate,
+  KINEWEAVE_VERSION
+} from "@kineweave/official-distribution";
 import type { LoadedProjectBundle } from "@kineweave/project-format";
 import { NodeProjectRepository, type ProjectSnapshot } from "@kineweave/project-repository-node";
+import {
+  ProjectOutputJobManager,
+  type ProjectOutputJobSnapshot
+} from "@kineweave/project-session-node";
 import type { Diagnostic } from "@kineweave/protocol";
-import type {
-  OpenedStudioProject,
-  SavedStudioProject,
-  StudioHostResult
+import {
+  type OpenedStudioProject,
+  parseStudioOutputRequest,
+  type SavedStudioProject,
+  type StudioHostResult,
+  type StudioOutputJob,
+  type StudioOutputRequest
 } from "@kineweave/studio/host-api";
 import { CLOUD_PROJECT_LOCATOR } from "./shared.js";
 
@@ -18,6 +30,8 @@ import { CLOUD_PROJECT_LOCATOR } from "./shared.js";
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 const SESSION_TTL_MS = 12 * 60 * 60 * 1_000;
 const SESSION_PATH = /^\/api\/project\/sessions\/([A-Za-z0-9_-]+)$/;
+const OUTPUT_PATH =
+  /^\/api\/project\/sessions\/([A-Za-z0-9_-]+)\/outputs(?:\/([A-Za-z0-9_-]+)(?:\/(download))?)?$/;
 const AUTH_COOKIE_NAME = "kineweave_session";
 const LOGIN_FAILURE_LIMIT = 10;
 const LOGIN_FAILURE_WINDOW_MS = 5 * 60 * 1_000;
@@ -33,6 +47,7 @@ export interface KineWeaveWebServerOptions {
   readonly clientRoot?: string;
   readonly accessToken?: string;
   readonly displayLocation?: string;
+  readonly outputRoot?: string;
   readonly repository?: NodeProjectRepository;
 }
 
@@ -75,6 +90,39 @@ function failure<T>(caught: unknown): StudioHostResult<T> {
           : diagnostics
     }
   };
+}
+
+function publicOutputJob(job: ProjectOutputJobSnapshot): StudioOutputJob {
+  const result = job.result;
+  const resultPath =
+    result === undefined
+      ? undefined
+      : "outputDirectory" in result
+        ? result.outputDirectory
+        : result.outputPath;
+  return {
+    jobId: job.jobId,
+    status: job.status,
+    format: job.format,
+    completedFrames: job.completedFrames,
+    totalFrames: job.totalFrames,
+    ...(result === undefined || resultPath === undefined
+      ? {}
+      : { result: { fileName: path.basename(resultPath), mediaType: result.mediaType } }),
+    ...(job.error === undefined ? {} : { error: job.error })
+  };
+}
+
+function outputRequest(value: unknown): StudioOutputRequest {
+  try {
+    const request = parseStudioOutputRequest(value);
+    if (request.format !== "mp4" && request.format !== "webm") {
+      throw new TypeError("Cloud output currently supports mp4 and webm");
+    }
+    return request;
+  } catch (caught) {
+    throw new HttpError(400, caught instanceof Error ? caught.message : String(caught));
+  }
 }
 
 function sendJson(response: ServerResponse, statusCode: number, value: unknown): void {
@@ -121,6 +169,11 @@ function requestField(value: unknown, field: string): unknown {
     throw new HttpError(400, `Request is missing ${field}`);
   }
   return (value as Record<string, unknown>)[field];
+}
+
+function pathContains(root: string, candidate: string): boolean {
+  const relative = path.relative(root, candidate);
+  return relative === "" || (!relative.startsWith(`..${path.sep}`) && relative !== "..");
 }
 
 function tokenMatches(expected: string, presented: string): boolean {
@@ -287,23 +340,52 @@ export async function createKineWeaveWebServer(
   const clientRoot = path.resolve(
     options.clientRoot ?? path.join(moduleDirectory, "..", "dist-client")
   );
+  const outputRoot = path.resolve(
+    options.outputRoot ??
+      process.env.KINEWEAVE_OUTPUT_DIR ??
+      path.join(path.dirname(projectRoot), "outputs")
+  );
+  if (
+    outputRoot === path.parse(outputRoot).root ||
+    pathContains(projectRoot, outputRoot) ||
+    pathContains(outputRoot, projectRoot)
+  ) {
+    throw new Error("Cloud output directory must not overlap the project or filesystem root");
+  }
   const accessToken = options.accessToken ?? process.env.KINEWEAVE_ACCESS_TOKEN;
   const displayLocation =
     options.displayLocation ?? process.env.KINEWEAVE_PROJECT_LABEL ?? "Cloud workspace";
   const repository = options.repository ?? new NodeProjectRepository();
   const authenticationRequired = accessToken !== undefined && accessToken.length > 0;
   await initializeProject(repository, projectRoot);
+  await mkdir(outputRoot, { recursive: true });
 
   // ponytail: process-local sessions fit one container; use a shared session service before scaling horizontally.
   const sessions = new Map<string, HostedProject>();
+  const outputJobs = new ProjectOutputJobManager();
   const authenticationSessions = new Map<string, number>();
   // ponytail: managed hosting must overwrite forwarded client headers; add explicit trusted proxies for self-hosted chains.
   const loginFailures = new Map<string, { attempts: number; resetAt: number }>();
+  const removeOutputOwner = async (hostSessionId: string): Promise<void> => {
+    const jobs = await outputJobs.removeOwner(hostSessionId);
+    await Promise.all(
+      jobs.map(async (job) => {
+        const jobDirectory = path.dirname(job.outputPath);
+        if (jobDirectory === outputRoot || !pathContains(outputRoot, jobDirectory)) {
+          throw new Error(`Refusing to remove unsafe output directory ${jobDirectory}`);
+        }
+        await rm(jobDirectory, { recursive: true, force: true });
+      })
+    );
+  };
   const pruneSessions = () => {
     const now = Date.now();
     const staleBefore = now - SESSION_TTL_MS;
     for (const [sessionId, hosted] of sessions) {
-      if (hosted.lastAccess < staleBefore) sessions.delete(sessionId);
+      if (hosted.lastAccess < staleBefore) {
+        sessions.delete(sessionId);
+        void removeOutputOwner(sessionId).catch((caught) => console.error(caught));
+      }
     }
     for (const [sessionId, expiresAt] of authenticationSessions) {
       if (expiresAt <= now) authenticationSessions.delete(sessionId);
@@ -436,6 +518,101 @@ export async function createKineWeaveWebServer(
       return;
     }
 
+    const outputMatch = OUTPUT_PATH.exec(pathname);
+    if (outputMatch !== null) {
+      const hostSessionId = outputMatch[1]!;
+      const hosted = sessions.get(hostSessionId);
+      if (hosted === undefined) throw new HttpError(404, "Cloud project session has expired");
+      hosted.lastAccess = Date.now();
+      const jobId = outputMatch[2];
+      const action = outputMatch[3];
+
+      if (jobId === undefined && request.method === "POST") {
+        try {
+          const body = await readJsonBody(request);
+          const output = outputRequest(requestField(body, "request"));
+          await hosted.saveQueue;
+          const nextJobId = `output_${randomUUID().replaceAll("-", "")}`;
+          const outputPath = path.join(outputRoot, nextJobId, `KineWeave-output.${output.format}`);
+          const job = outputJobs.start({
+            jobId: nextJobId,
+            ownerId: hostSessionId,
+            outputPath,
+            bundle: hosted.snapshot.bundle,
+            kineweaveVersion: KINEWEAVE_VERSION,
+            distribution: createOfficialDistributionProfile(),
+            ...output
+          });
+          sendJson(response, 202, {
+            ok: true,
+            value: publicOutputJob(job)
+          } satisfies StudioHostResult<StudioOutputJob>);
+        } catch (caught) {
+          if (caught instanceof HttpError) throw caught;
+          sendJson(response, 200, failure<StudioOutputJob>(caught));
+        }
+        return;
+      }
+
+      if (jobId !== undefined && action === undefined && request.method === "GET") {
+        try {
+          const job = outputJobs.snapshot(hostSessionId, jobId);
+          sendJson(response, 200, {
+            ok: true,
+            value: publicOutputJob(job)
+          } satisfies StudioHostResult<StudioOutputJob>);
+        } catch (caught) {
+          sendJson(response, 200, failure<StudioOutputJob>(caught));
+        }
+        return;
+      }
+
+      if (jobId !== undefined && action === undefined && request.method === "DELETE") {
+        try {
+          const job = await outputJobs.cancel(hostSessionId, jobId);
+          sendJson(response, 200, {
+            ok: true,
+            value: publicOutputJob(job)
+          } satisfies StudioHostResult<StudioOutputJob>);
+        } catch (caught) {
+          sendJson(response, 200, failure<StudioOutputJob>(caught));
+        }
+        return;
+      }
+
+      if (
+        jobId !== undefined &&
+        action === "download" &&
+        (request.method === "GET" || request.method === "HEAD")
+      ) {
+        const job = outputJobs.snapshot(hostSessionId, jobId);
+        if (job.status !== "succeeded" || job.result === undefined) {
+          throw new HttpError(409, "Output is not ready to download");
+        }
+        if ("outputDirectory" in job.result) {
+          throw new HttpError(409, "Cloud sequence archives are not available");
+        }
+        const file = await stat(job.result.outputPath);
+        if (!file.isFile()) throw new HttpError(404, "Output file is missing");
+        const fileName = path.basename(job.result.outputPath).replaceAll('"', "_");
+        response.writeHead(200, {
+          "cache-control": "no-store",
+          "content-disposition": `attachment; filename="${fileName}"`,
+          "content-length": file.size,
+          "content-type": job.result.mediaType,
+          "x-content-type-options": "nosniff"
+        });
+        if (request.method === "HEAD") {
+          response.end();
+        } else {
+          const stream = createReadStream(job.result.outputPath);
+          stream.once("error", (caught) => response.destroy(caught));
+          stream.pipe(response);
+        }
+        return;
+      }
+    }
+
     const sessionMatch = SESSION_PATH.exec(pathname);
     if (sessionMatch !== null && request.method === "PUT") {
       try {
@@ -465,7 +642,9 @@ export async function createKineWeaveWebServer(
     }
 
     if (sessionMatch !== null && request.method === "DELETE") {
-      sessions.delete(sessionMatch[1]!);
+      const hostSessionId = sessionMatch[1]!;
+      sessions.delete(hostSessionId);
+      await removeOutputOwner(hostSessionId);
       sendEmpty(response, 204);
       return;
     }

@@ -24,6 +24,7 @@ function createHost(bundle: LoadedProjectBundle): {
   const success = <T>(value: T): StudioHostResult<T> => ({ ok: true, value });
   const host: StudioHostApi = {
     hostKind: "desktop",
+    outputFormats: ["svg-sequence", "png-sequence", "mp4", "webm"],
     chooseProject: async () => undefined,
     openProject: async (projectLocator): Promise<StudioHostResult<OpenedStudioProject>> =>
       success({
@@ -42,6 +43,14 @@ function createHost(bundle: LoadedProjectBundle): {
     closeProject: async (hostSessionId) => {
       closedSessions.push(hostSessionId);
     },
+    startOutput: async () => success(undefined),
+    getOutput: async () => {
+      throw new Error("No output job");
+    },
+    cancelOutput: async () => {
+      throw new Error("No output job");
+    },
+    openOutput: async () => success({ opened: true }),
     respondToClose: () => {},
     onInitialProject: () => () => {},
     onCommand: () => () => {}

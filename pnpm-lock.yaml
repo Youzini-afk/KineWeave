@@ -101,6 +101,9 @@ importers:
       '@kineweave/project-session':
         specifier: workspace:*
         version: link:../../packages/project-session
+      '@kineweave/project-session-node':
+        specifier: workspace:*
+        version: link:../../packages/project-session-node
       '@kineweave/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -129,6 +132,9 @@ importers:
       '@kineweave/project-repository-node':
         specifier: workspace:*
         version: link:../../packages/project-repository-node
+      '@kineweave/project-session-node':
+        specifier: workspace:*
+        version: link:../../packages/project-session-node
       '@kineweave/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -366,6 +372,9 @@ importers:
       '@kineweave/content-hash':
         specifier: workspace:*
         version: link:../content-hash
+      '@kineweave/project-format':
+        specifier: workspace:*
+        version: link:../project-format
       '@kineweave/project-repository-node':
         specifier: workspace:*
         version: link:../project-repository-node
@@ -375,6 +384,9 @@ importers:
       '@kineweave/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@kineweave/standard-motion-document':
+        specifier: workspace:*
+        version: link:../../extensions/standard-motion-document
       '@resvg/resvg-js':
         specifier: 2.6.2
         version: 2.6.2

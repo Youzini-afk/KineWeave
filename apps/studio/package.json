@@ -26,6 +26,7 @@
     "@kineweave/project-format": "workspace:*",
     "@kineweave/project-repository-node": "workspace:*",
     "@kineweave/project-session": "workspace:*",
+    "@kineweave/project-session-node": "workspace:*",
     "@kineweave/protocol": "workspace:*",
     "@kineweave/render-engine": "workspace:*",
     "@kineweave/standard-motion-document": "workspace:*"

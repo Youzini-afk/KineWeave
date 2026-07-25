@@ -1,6 +1,11 @@
-import type { JsonValue } from "@kineweave/protocol";
+import { compareRational, type JsonValue, type Rational, rational } from "@kineweave/protocol";
 import type { MotionNode } from "@kineweave/standard-motion-document";
-import type { StudioCommand } from "../bridge.js";
+import {
+  parseStudioRationalText,
+  type StudioCommand,
+  type StudioOutputFormat,
+  type StudioOutputRequest
+} from "../bridge.js";
 import type { StageAlignment } from "./stage-controller.js";
 import { StudioController, type StudioSnapshot } from "./studio-controller.js";
 import {
@@ -32,6 +37,7 @@ root.innerHTML = `
         <button id="undo" class="icon-button" type="button" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
         <button id="redo" class="icon-button" type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
         <button id="save" class="button primary" type="button">Save</button>
+        <button id="output" class="button subtle" type="button">Output</button>
       </div>
     </header>
 
@@ -172,6 +178,41 @@ root.innerHTML = `
       <div class="dialog-header"><div><span class="eyebrow">Runtime</span><h2>Diagnostics</h2></div><button id="close-diagnostics" class="icon-button" type="button">×</button></div>
       <div id="diagnostics-list" class="diagnostics-list"></div>
     </dialog>
+
+    <dialog id="output-dialog" aria-labelledby="output-title">
+      <div class="dialog-header">
+        <div><span class="eyebrow">Delivery</span><h2 id="output-title">Output</h2></div>
+        <button id="close-output" class="icon-button" type="button" aria-label="Close output dialog">×</button>
+      </div>
+      <form id="output-form" class="output-form">
+        <p id="output-description" class="output-description"></p>
+        <div class="output-fields">
+          <label><span>Format</span><select id="output-format" required></select></label>
+          <label><span>Quality</span><select id="output-quality">
+            <option value="high">High</option>
+            <option value="balanced" selected>Balanced</option>
+            <option value="compact">Compact</option>
+          </select></label>
+          <label><span>Start time</span><input id="output-start" type="text" inputmode="decimal" value="0" required /></label>
+          <label><span>End time</span><input id="output-end" type="text" inputmode="decimal" required /></label>
+          <label><span>Frame rate</span><input id="output-fps" type="text" inputmode="decimal" value="30" required /></label>
+          <label><span>Pixel ratio</span><input id="output-pixel-ratio" type="text" inputmode="decimal" value="1" required /></label>
+          <label><span>Width</span><input id="output-width" type="number" min="1" step="1" required /></label>
+          <label><span>Height</span><input id="output-height" type="number" min="1" step="1" required /></label>
+        </div>
+        <small class="output-rational-hint">Times and rates accept decimals or exact fractions such as 30000/1001.</small>
+        <section class="output-progress" aria-label="Output progress">
+          <div><strong id="output-status" aria-live="polite">Ready</strong><span id="output-count"></span></div>
+          <progress id="output-progress" max="1" value="0"></progress>
+        </section>
+        <div class="output-actions">
+          <button id="open-output" class="button subtle" type="button" hidden></button>
+          <span></span>
+          <button id="cancel-output" class="button subtle" type="button" disabled>Cancel</button>
+          <button id="start-output" class="button primary" type="submit">Start output</button>
+        </div>
+      </form>
+    </dialog>
   </div>
 `;
 
@@ -207,6 +248,7 @@ const elements = {
   timecode: required<HTMLElement>("#timecode"),
   durationLabel: required<HTMLElement>("#duration-label"),
   save: required<HTMLButtonElement>("#save"),
+  output: required<HTMLButtonElement>("#output"),
   undo: required<HTMLButtonElement>("#undo"),
   redo: required<HTMLButtonElement>("#redo"),
   deleteNode: required<HTMLButtonElement>("#delete-node"),
@@ -218,8 +260,28 @@ const elements = {
   saveState: required<HTMLElement>("#save-state"),
   diagnosticCount: required<HTMLElement>("#diagnostic-count"),
   diagnosticsDialog: required<HTMLDialogElement>("#diagnostics-dialog"),
-  diagnosticsList: required<HTMLElement>("#diagnostics-list")
+  diagnosticsList: required<HTMLElement>("#diagnostics-list"),
+  outputDialog: required<HTMLDialogElement>("#output-dialog"),
+  outputForm: required<HTMLFormElement>("#output-form"),
+  outputDescription: required<HTMLElement>("#output-description"),
+  outputFormat: required<HTMLSelectElement>("#output-format"),
+  outputQuality: required<HTMLSelectElement>("#output-quality"),
+  outputStart: required<HTMLInputElement>("#output-start"),
+  outputEnd: required<HTMLInputElement>("#output-end"),
+  outputFps: required<HTMLInputElement>("#output-fps"),
+  outputPixelRatio: required<HTMLInputElement>("#output-pixel-ratio"),
+  outputWidth: required<HTMLInputElement>("#output-width"),
+  outputHeight: required<HTMLInputElement>("#output-height"),
+  outputStatus: required<HTMLElement>("#output-status"),
+  outputCount: required<HTMLElement>("#output-count"),
+  outputProgress: required<HTMLProgressElement>("#output-progress"),
+  startOutput: required<HTMLButtonElement>("#start-output"),
+  cancelOutput: required<HTMLButtonElement>("#cancel-output"),
+  openOutput: required<HTMLButtonElement>("#open-output")
 };
+
+let outputDocumentKey: string | undefined;
+let outputFormError: string | undefined;
 
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
@@ -229,6 +291,110 @@ function formatTime(seconds: number): string {
 
 function run(action: Promise<unknown>): void {
   void action.catch((error) => controller.reportError(error));
+}
+
+function formatRational(value: Rational): string {
+  return value.denominator === "1" ? value.numerator : `${value.numerator}/${value.denominator}`;
+}
+
+function videoFormat(format: StudioOutputFormat): boolean {
+  return format === "mp4" || format === "webm";
+}
+
+function syncOutputFormat(): void {
+  const isVideo = videoFormat(elements.outputFormat.value as StudioOutputFormat);
+  elements.outputQuality.disabled = !isVideo;
+  elements.outputQuality.closest("label")?.classList.toggle("disabled", !isVideo);
+}
+
+function syncOutputForm(snapshot: StudioSnapshot): void {
+  const selectedFormat = elements.outputFormat.value;
+  const availableFormats = [...snapshot.outputFormats];
+  const renderedFormats = [...elements.outputFormat.options].map((option) => option.value);
+  if (renderedFormats.join("|") !== availableFormats.join("|")) {
+    elements.outputFormat.replaceChildren(
+      ...availableFormats.map((format) => {
+        const option = document.createElement("option");
+        option.value = format;
+        option.textContent =
+          format === "svg-sequence"
+            ? "SVG image sequence"
+            : format === "png-sequence"
+              ? "PNG image sequence"
+              : format === "mp4"
+                ? "MP4 · H.264"
+                : "WebM · VP9";
+        return option;
+      })
+    );
+    if (availableFormats.includes(selectedFormat as StudioOutputFormat)) {
+      elements.outputFormat.value = selectedFormat;
+    }
+  }
+  syncOutputFormat();
+  elements.outputDescription.textContent =
+    window.kineweaveHost.hostKind === "desktop"
+      ? "Render a saved project snapshot. You will choose a destination before rendering begins."
+      : "Render a saved project snapshot on this server, then download the completed video.";
+
+  const composition = snapshot.document;
+  const documentKey =
+    composition === undefined
+      ? undefined
+      : `${snapshot.projectLocation ?? ""}\0${composition.documentId}`;
+  if (composition === undefined || outputDocumentKey === documentKey) return;
+  outputDocumentKey = documentKey;
+  elements.outputStart.value = "0";
+  elements.outputEnd.value = formatRational(composition.data.duration.value);
+  elements.outputFps.value = "30";
+  elements.outputPixelRatio.value = "1";
+  elements.outputWidth.value = String(composition.data.canvas.width);
+  elements.outputHeight.value = String(composition.data.canvas.height);
+  elements.outputQuality.value = "balanced";
+}
+
+function outputRequest(): StudioOutputRequest {
+  const composition = latest.document;
+  if (composition === undefined) throw new Error("Open a project before creating output");
+  const format = elements.outputFormat.value as StudioOutputFormat;
+  if (!latest.outputFormats.includes(format)) throw new Error("Select a supported output format");
+  const startTime = parseStudioRationalText(elements.outputStart.value, "Start time");
+  const endTimeExclusive = parseStudioRationalText(elements.outputEnd.value, "End time");
+  const framesPerSecond = parseStudioRationalText(elements.outputFps.value, "Frame rate");
+  const pixelRatio = parseStudioRationalText(elements.outputPixelRatio.value, "Pixel ratio");
+  if (compareRational(startTime, rational(0)) < 0)
+    throw new RangeError("Start time cannot be negative");
+  if (compareRational(endTimeExclusive, startTime) <= 0) {
+    throw new RangeError("End time must be later than start time");
+  }
+  if (compareRational(framesPerSecond, rational(0)) <= 0) {
+    throw new RangeError("Frame rate must be positive");
+  }
+  if (compareRational(pixelRatio, rational(0)) <= 0) {
+    throw new RangeError("Pixel ratio must be positive");
+  }
+  const width = Number(elements.outputWidth.value);
+  const height = Number(elements.outputHeight.value);
+  if (!Number.isSafeInteger(width) || width <= 0 || !Number.isSafeInteger(height) || height <= 0) {
+    throw new RangeError("Output dimensions must be positive whole numbers");
+  }
+  return {
+    documentId: composition.documentId,
+    format,
+    startTime,
+    endTimeExclusive,
+    framesPerSecond,
+    viewport: { width, height, pixelRatio },
+    ...(videoFormat(format)
+      ? { quality: elements.outputQuality.value as "high" | "balanced" | "compact" }
+      : {})
+  };
+}
+
+function showOutputDialog(): void {
+  if (latest.phase !== "ready") return;
+  syncOutputForm(latest);
+  if (!elements.outputDialog.open) elements.outputDialog.showModal();
 }
 
 if (window.kineweaveHost.signOut !== undefined) {
@@ -525,6 +691,62 @@ function renderDiagnostics(snapshot: StudioSnapshot): void {
   }
 }
 
+function renderOutput(snapshot: StudioSnapshot): void {
+  syncOutputForm(snapshot);
+  const job = snapshot.outputJob;
+  const active =
+    snapshot.outputStarting || job?.status === "running" || job?.status === "cancelling";
+  elements.output.disabled = snapshot.phase !== "ready";
+  elements.output.dataset.active = String(active);
+  elements.output.title = active ? "Output is rendering" : "Create output";
+  for (const control of elements.outputForm.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
+    ".output-fields input, .output-fields select"
+  )) {
+    control.disabled =
+      active ||
+      (control === elements.outputQuality &&
+        !videoFormat(elements.outputFormat.value as StudioOutputFormat));
+  }
+  elements.startOutput.disabled = snapshot.phase !== "ready" || active;
+  elements.cancelOutput.disabled = job?.status !== "running";
+  elements.cancelOutput.textContent = job?.status === "cancelling" ? "Cancelling…" : "Cancel";
+  elements.openOutput.hidden = snapshot.outputStarting || job?.status !== "succeeded";
+  elements.openOutput.textContent =
+    window.kineweaveHost.hostKind === "web"
+      ? `Download ${job?.result?.fileName ?? "output"}`
+      : "Show in folder";
+
+  if (snapshot.outputStarting) {
+    elements.outputStatus.textContent = "Preparing output…";
+    elements.outputStatus.dataset.kind = "info";
+    elements.outputCount.textContent = "";
+    elements.outputProgress.removeAttribute("value");
+    return;
+  }
+  if (job === undefined) {
+    elements.outputStatus.textContent = outputFormError ?? "Ready to render";
+    elements.outputStatus.dataset.kind = outputFormError === undefined ? "info" : "error";
+    elements.outputCount.textContent = "";
+    elements.outputProgress.max = 1;
+    elements.outputProgress.value = 0;
+    return;
+  }
+  elements.outputStatus.dataset.kind = job.status === "failed" ? "error" : job.status;
+  elements.outputProgress.max = Math.max(1, job.totalFrames);
+  elements.outputProgress.value = Math.min(job.completedFrames, elements.outputProgress.max);
+  elements.outputCount.textContent = `${job.completedFrames} / ${job.totalFrames} frames`;
+  elements.outputStatus.textContent =
+    job.status === "running"
+      ? "Rendering…"
+      : job.status === "cancelling"
+        ? "Cancelling…"
+        : job.status === "succeeded"
+          ? "Output ready"
+          : job.status === "cancelled"
+            ? "Output cancelled"
+            : (job.error?.message ?? "Output failed");
+}
+
 function render(snapshot: StudioSnapshot): void {
   latest = snapshot;
   const ready = snapshot.phase === "ready";
@@ -592,6 +814,7 @@ function render(snapshot: StudioSnapshot): void {
   }
   timeline.render(snapshot);
   renderDiagnostics(snapshot);
+  renderOutput(snapshot);
 }
 
 controller.subscribe(render);
@@ -603,6 +826,7 @@ required<HTMLButtonElement>("#welcome-open").addEventListener("click", () =>
   run(controller.chooseAndOpenProject())
 );
 elements.save.addEventListener("click", () => run(controller.save()));
+elements.output.addEventListener("click", showOutputDialog);
 elements.undo.addEventListener("click", () => run(controller.undo()));
 elements.redo.addEventListener("click", () => run(controller.redo()));
 elements.play.addEventListener("click", () => controller.togglePlayback());
@@ -640,6 +864,35 @@ elements.status.addEventListener("click", () => elements.diagnosticsDialog.showM
 required<HTMLButtonElement>("#close-diagnostics").addEventListener("click", () =>
   elements.diagnosticsDialog.close()
 );
+required<HTMLButtonElement>("#close-output").addEventListener("click", () =>
+  elements.outputDialog.close()
+);
+elements.outputFormat.addEventListener("change", () => {
+  syncOutputFormat();
+  renderOutput(latest);
+});
+elements.outputForm.addEventListener("input", () => {
+  outputFormError = undefined;
+  if (latest.outputJob === undefined) renderOutput(latest);
+});
+elements.outputForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  try {
+    outputFormError = undefined;
+    const request = outputRequest();
+    void controller.startOutput(request).catch((error) => {
+      outputFormError = error instanceof Error ? error.message : String(error);
+      controller.reportError(error);
+      renderOutput(latest);
+    });
+  } catch (error) {
+    outputFormError = error instanceof Error ? error.message : String(error);
+    controller.reportError(error);
+    renderOutput(latest);
+  }
+});
+elements.cancelOutput.addEventListener("click", () => run(controller.cancelOutput()));
+elements.openOutput.addEventListener("click", () => run(controller.openOutput()));
 
 function editingText(): boolean {
   const active = document.activeElement;
@@ -659,6 +912,7 @@ function prepareToClose(): void {
 function handleCommand(command: StudioCommand): void {
   if (command === "open-project") run(controller.chooseAndOpenProject());
   else if (command === "save-project") run(controller.save());
+  else if (command === "show-output") showOutputDialog();
   else if (command === "undo") run(controller.undo());
   else if (command === "redo") run(controller.redo());
   else if (command === "toggle-playback" && !editingText()) controller.togglePlayback();
@@ -682,7 +936,9 @@ window.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("beforeunload", (event) => {
-  if (latest.dirty || latest.saving) {
+  const outputActive =
+    latest.outputJob?.status === "running" || latest.outputJob?.status === "cancelling";
+  if (latest.dirty || latest.saving || outputActive) {
     event.preventDefault();
     event.returnValue = "";
   }

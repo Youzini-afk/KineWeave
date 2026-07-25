@@ -1,8 +1,16 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  createOfficialDistributionProfile,
+  KINEWEAVE_VERSION
+} from "@kineweave/official-distribution";
 import type { LoadedProjectBundle } from "@kineweave/project-format";
 import { NodeProjectRepository, type ProjectSnapshot } from "@kineweave/project-repository-node";
+import {
+  ProjectOutputJobManager,
+  type ProjectOutputJobSnapshot
+} from "@kineweave/project-session-node";
 import type { Diagnostic } from "@kineweave/protocol";
 import {
   app,
@@ -15,15 +23,19 @@ import {
 } from "electron";
 import {
   type OpenedStudioProject,
+  parseStudioOutputRequest,
   type SavedStudioProject,
   STUDIO_IPC_CHANNELS,
   type StudioCommand,
-  type StudioHostResult
+  type StudioHostResult,
+  type StudioOutputJob,
+  type StudioOutputRequest
 } from "./bridge.js";
 
 interface HostedProject {
   snapshot: ProjectSnapshot;
   saveQueue: Promise<void>;
+  readonly ownerWebContentsId: number;
 }
 
 interface WindowCloseState {
@@ -34,6 +46,7 @@ interface WindowCloseState {
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repository = new NodeProjectRepository();
+const outputJobs = new ProjectOutputJobManager();
 const hostedProjects = new Map<string, HostedProject>();
 const windowCloseStates = new Map<number, WindowCloseState>();
 
@@ -62,6 +75,68 @@ function assertString(value: unknown, label: string): string {
   return value;
 }
 
+function ownedProject(event: Electron.IpcMainInvokeEvent, hostSessionId: string): HostedProject {
+  const hosted = hostedProjects.get(hostSessionId);
+  if (hosted === undefined || hosted.ownerWebContentsId !== event.sender.id) {
+    throw new Error(`Unknown Studio project session ${hostSessionId}`);
+  }
+  return hosted;
+}
+
+function publicOutputJob(job: ProjectOutputJobSnapshot): StudioOutputJob {
+  const result = job.result;
+  const resultPath =
+    result === undefined
+      ? undefined
+      : "outputDirectory" in result
+        ? result.outputDirectory
+        : result.outputPath;
+  return {
+    jobId: job.jobId,
+    status: job.status,
+    format: job.format,
+    completedFrames: job.completedFrames,
+    totalFrames: job.totalFrames,
+    ...(result === undefined || resultPath === undefined
+      ? {}
+      : { result: { fileName: path.basename(resultPath), mediaType: result.mediaType } }),
+    ...(job.error === undefined ? {} : { error: job.error })
+  };
+}
+
+function suggestedOutputPath(hosted: HostedProject, request: StudioOutputRequest): string {
+  const projectDirectory = hosted.snapshot.rootPath;
+  const baseName = path.basename(projectDirectory).replaceAll(/[<>:"/\\|?*]/g, "_");
+  const suffix =
+    request.format === "mp4"
+      ? ".mp4"
+      : request.format === "webm"
+        ? ".webm"
+        : request.format === "png-sequence"
+          ? " PNG sequence"
+          : " SVG sequence";
+  return path.join(path.dirname(projectDirectory), `${baseName} output${suffix}`);
+}
+
+async function closeHostedProject(hostSessionId: string): Promise<void> {
+  const hosted = hostedProjects.get(hostSessionId);
+  if (hosted === undefined) return;
+  await hosted.saveQueue;
+  await outputJobs.removeOwner(hostSessionId);
+  hostedProjects.delete(hostSessionId);
+}
+
+async function closeOwnedProjects(ownerWebContentsId: number): Promise<void> {
+  const sessionIds = [...hostedProjects.entries()]
+    .filter(([, hosted]) => hosted.ownerWebContentsId === ownerWebContentsId)
+    .map(([hostSessionId]) => hostSessionId);
+  await Promise.all(sessionIds.map(closeHostedProject));
+}
+
+async function closeAllHostedProjects(): Promise<void> {
+  await Promise.all([...hostedProjects.keys()].map(closeHostedProject));
+}
+
 function registerProjectHandlers(): void {
   ipcMain.on(STUDIO_IPC_CHANNELS.closeResponse, (event, rawShouldClose: unknown) => {
     if (typeof rawShouldClose !== "boolean") return;
@@ -69,10 +144,22 @@ function registerProjectHandlers(): void {
     if (owner === null) return;
     const state = windowCloseStates.get(owner.id);
     if (state === undefined || !state.pending) return;
-    state.pending = false;
-    if (!rawShouldClose) return;
-    state.authorized = true;
-    owner.close();
+    if (!rawShouldClose) {
+      state.pending = false;
+      return;
+    }
+    void closeOwnedProjects(event.sender.id).then(
+      () => {
+        state.pending = false;
+        state.authorized = true;
+        owner.close();
+      },
+      (caught: unknown) => {
+        state.pending = false;
+        const message = caught instanceof Error ? caught.message : String(caught);
+        dialog.showErrorBox("KineWeave Studio could not close", message);
+      }
+    );
   });
 
   ipcMain.handle(STUDIO_IPC_CHANNELS.chooseProject, async (event) => {
@@ -91,7 +178,7 @@ function registerProjectHandlers(): void {
 
   ipcMain.handle(
     STUDIO_IPC_CHANNELS.openProject,
-    async (_event, rawProjectLocator: unknown): Promise<StudioHostResult<OpenedStudioProject>> => {
+    async (event, rawProjectLocator: unknown): Promise<StudioHostResult<OpenedStudioProject>> => {
       try {
         const rootPath = assertString(rawProjectLocator, "Project path");
         const read = await repository.read(rootPath);
@@ -107,7 +194,8 @@ function registerProjectHandlers(): void {
         const hostSessionId = `studio_${randomUUID()}`;
         hostedProjects.set(hostSessionId, {
           snapshot: read.snapshot,
-          saveQueue: Promise.resolve()
+          saveQueue: Promise.resolve(),
+          ownerWebContentsId: event.sender.id
         });
         return {
           ok: true,
@@ -128,16 +216,13 @@ function registerProjectHandlers(): void {
   ipcMain.handle(
     STUDIO_IPC_CHANNELS.saveProject,
     async (
-      _event,
+      event,
       rawHostSessionId: unknown,
       rawBundle: unknown
     ): Promise<StudioHostResult<SavedStudioProject>> => {
       try {
         const hostSessionId = assertString(rawHostSessionId, "Host project session ID");
-        const hosted = hostedProjects.get(hostSessionId);
-        if (hosted === undefined) {
-          throw new Error(`Unknown Studio project session ${hostSessionId}`);
-        }
+        const hosted = ownedProject(event, hostSessionId);
         if (rawBundle === null || typeof rawBundle !== "object") {
           throw new TypeError("Project bundle must be an object");
         }
@@ -156,10 +241,91 @@ function registerProjectHandlers(): void {
     }
   );
 
-  ipcMain.handle(STUDIO_IPC_CHANNELS.closeProject, (_event, rawHostSessionId: unknown): void => {
-    if (typeof rawHostSessionId === "string") {
-      hostedProjects.delete(rawHostSessionId);
+  ipcMain.handle(STUDIO_IPC_CHANNELS.startOutput, async (event, rawSessionId, rawRequest) => {
+    try {
+      const hostSessionId = assertString(rawSessionId, "Host project session ID");
+      const hosted = ownedProject(event, hostSessionId);
+      const request = parseStudioOutputRequest(rawRequest);
+      await hosted.saveQueue;
+      const owner = BrowserWindow.fromWebContents(event.sender);
+      const dialogOptions: Electron.SaveDialogOptions = {
+        title: "Export KineWeave Output",
+        buttonLabel: "Export",
+        defaultPath: suggestedOutputPath(hosted, request),
+        ...(request.format === "mp4"
+          ? { filters: [{ name: "H.264 video", extensions: ["mp4"] }] }
+          : request.format === "webm"
+            ? { filters: [{ name: "VP9 video", extensions: ["webm"] }] }
+            : {})
+      };
+      const selected =
+        owner === null
+          ? await dialog.showSaveDialog(dialogOptions)
+          : await dialog.showSaveDialog(owner, dialogOptions);
+      if (selected.canceled || selected.filePath === undefined) {
+        return { ok: true, value: undefined } satisfies StudioHostResult<undefined>;
+      }
+      const job = outputJobs.start({
+        jobId: `output_${randomUUID().replaceAll("-", "")}`,
+        ownerId: hostSessionId,
+        outputPath: selected.filePath,
+        bundle: hosted.snapshot.bundle,
+        kineweaveVersion: KINEWEAVE_VERSION,
+        distribution: createOfficialDistributionProfile(),
+        ...request
+      });
+      return { ok: true, value: publicOutputJob(job) } satisfies StudioHostResult<StudioOutputJob>;
+    } catch (caught) {
+      return failure<StudioOutputJob | undefined>(caught);
     }
+  });
+
+  ipcMain.handle(STUDIO_IPC_CHANNELS.getOutput, (event, rawSessionId, rawJobId) => {
+    try {
+      const hostSessionId = assertString(rawSessionId, "Host project session ID");
+      ownedProject(event, hostSessionId);
+      const job = outputJobs.snapshot(hostSessionId, assertString(rawJobId, "Output job ID"));
+      return { ok: true, value: publicOutputJob(job) } satisfies StudioHostResult<StudioOutputJob>;
+    } catch (caught) {
+      return failure<StudioOutputJob>(caught);
+    }
+  });
+
+  ipcMain.handle(STUDIO_IPC_CHANNELS.cancelOutput, async (event, rawSessionId, rawJobId) => {
+    try {
+      const hostSessionId = assertString(rawSessionId, "Host project session ID");
+      ownedProject(event, hostSessionId);
+      const job = await outputJobs.cancel(hostSessionId, assertString(rawJobId, "Output job ID"));
+      return { ok: true, value: publicOutputJob(job) } satisfies StudioHostResult<StudioOutputJob>;
+    } catch (caught) {
+      return failure<StudioOutputJob>(caught);
+    }
+  });
+
+  ipcMain.handle(STUDIO_IPC_CHANNELS.openOutput, async (event, rawSessionId, rawJobId) => {
+    try {
+      const hostSessionId = assertString(rawSessionId, "Host project session ID");
+      ownedProject(event, hostSessionId);
+      const job = outputJobs.snapshot(hostSessionId, assertString(rawJobId, "Output job ID"));
+      if (job.status !== "succeeded" || job.result === undefined) {
+        throw new Error("Output is not ready to open");
+      }
+      if ("outputDirectory" in job.result) {
+        const error = await shell.openPath(job.result.outputDirectory);
+        if (error.length > 0) throw new Error(error);
+      } else {
+        shell.showItemInFolder(job.result.outputPath);
+      }
+      return { ok: true, value: { opened: true } } as const;
+    } catch (caught) {
+      return failure<{ readonly opened: true }>(caught);
+    }
+  });
+
+  ipcMain.handle(STUDIO_IPC_CHANNELS.closeProject, async (event, rawHostSessionId: unknown) => {
+    if (typeof rawHostSessionId !== "string") return;
+    ownedProject(event, rawHostSessionId);
+    await closeHostedProject(rawHostSessionId);
   });
 }
 
@@ -193,6 +359,11 @@ function installMenu(): void {
           label: "Save Project",
           accelerator: "CmdOrCtrl+S",
           click: () => sendCommand("save-project")
+        },
+        {
+          label: "Output…",
+          accelerator: "CmdOrCtrl+Shift+E",
+          click: () => sendCommand("show-output")
         },
         { type: "separator" },
         process.platform === "darwin" ? { role: "close" } : { role: "quit" }
@@ -267,6 +438,7 @@ async function createWindow(): Promise<BrowserWindow> {
     }
   });
   const windowId = window.id;
+  const ownerWebContentsId = window.webContents.id;
   const closeState: WindowCloseState = {
     authorized: false,
     pending: false,
@@ -280,7 +452,10 @@ async function createWindow(): Promise<BrowserWindow> {
     closeState.pending = true;
     window.webContents.send(STUDIO_IPC_CHANNELS.command, "prepare-close");
   });
-  window.on("closed", () => windowCloseStates.delete(windowId));
+  window.on("closed", () => {
+    windowCloseStates.delete(windowId);
+    void closeOwnedProjects(ownerWebContentsId).catch((caught) => console.error(caught));
+  });
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https://")) void shell.openExternal(url);
     return { action: "deny" };
@@ -321,6 +496,7 @@ app.on("activate", () => {
 });
 
 app.on("window-all-closed", () => {
-  hostedProjects.clear();
-  if (process.platform !== "darwin") app.quit();
+  if (process.platform !== "darwin") {
+    void closeAllHostedProjects().finally(() => app.quit());
+  }
 });

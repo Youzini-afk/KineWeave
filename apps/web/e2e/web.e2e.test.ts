@@ -1,5 +1,5 @@
 import { once } from "node:events";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -13,6 +13,7 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
   const temporaryRoot = await mkdtemp(path.join(tmpdir(), "kineweave-web-e2e-"));
   const server = await createKineWeaveWebServer({
     projectRoot: path.join(temporaryRoot, "project"),
+    outputRoot: path.join(temporaryRoot, "outputs"),
     clientRoot: path.join(repositoryRoot, "apps", "web", "dist-client"),
     displayLocation: "Web E2E cloud",
     accessToken: "e2e-access-token"
@@ -57,6 +58,40 @@ test("opens, edits, saves and reloads the cloud project in a browser", async () 
     await expect.poll(() => page.locator('[role="treeitem"]').count()).toBe(6);
     await page.locator("#save").click();
     await expect.poll(() => page.locator("#save-state").textContent()).toBe("Saved");
+
+    await page.locator("#output").click();
+    await expect.poll(() => page.locator("#output-dialog").getAttribute("open")).not.toBeNull();
+    const fullDuration = await page.locator("#output-end").inputValue();
+    await page.locator("#output-end").fill("1/30");
+    await page.locator("#output-width").fill("64");
+    await page.locator("#output-height").fill("64");
+    await page.locator("#output-quality").selectOption("compact");
+    await page.locator("#start-output").click();
+    await expect
+      .poll(() => page.locator("#output-status").textContent(), { timeout: 30_000 })
+      .toBe("Output ready");
+    expect(
+      await page
+        .locator("#output-progress")
+        .evaluate((element) => (element as HTMLProgressElement).value)
+    ).toBe(1);
+
+    const downloadEvent = page.waitForEvent("download");
+    await page.locator("#open-output").click();
+    const download = await downloadEvent;
+    expect(download.suggestedFilename()).toBe("KineWeave-output.mp4");
+    const downloadedPath = await download.path();
+    if (downloadedPath === null) throw new Error("Output download did not produce a file");
+    expect((await stat(downloadedPath)).size).toBeGreaterThan(0);
+
+    await page.locator("#output-end").fill(fullDuration);
+    await page.locator("#start-output").click();
+    await expect.poll(() => page.locator("#cancel-output").isEnabled()).toBe(true);
+    await page.locator("#cancel-output").click();
+    await expect
+      .poll(() => page.locator("#output-status").textContent(), { timeout: 30_000 })
+      .toBe("Output cancelled");
+    await page.locator("#close-output").click();
 
     await page.reload();
     await expect.poll(() => page.locator(".studio-shell").getAttribute("data-phase")).toBe("ready");

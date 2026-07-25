@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -216,6 +216,29 @@ test("authors motion, aligns layers, and reopens the saved project", async () =>
     await window.locator("#save").click();
     await expect.poll(() => attribute(application!, ".studio-shell", "data-dirty")).toBe("false");
     expect(await window.locator("#save-state").textContent()).toBe("Saved");
+
+    const outputDirectory = path.join(temporaryRoot, "studio-svg-output");
+    await application.evaluate(({ dialog }, targetPath) => {
+      dialog.showSaveDialog = (async () => ({
+        canceled: false,
+        filePath: targetPath
+      })) as typeof dialog.showSaveDialog;
+    }, outputDirectory);
+    await window.locator("#output").click();
+    await window.locator("#output-end").fill("1/30");
+    await window.locator("#output-width").fill("64");
+    await window.locator("#output-height").fill("64");
+    await window.locator("#start-output").click();
+    await expect
+      .poll(() => window.locator("#output-status").textContent(), { timeout: 30_000 })
+      .toBe("Output ready");
+    expect(
+      await readFile(path.join(outputDirectory, "frames", "frame_000000.svg"), "utf8")
+    ).toContain("<svg");
+    expect(
+      JSON.parse(await readFile(path.join(outputDirectory, "manifest.json"), "utf8"))
+    ).toMatchObject({ frameCount: 1, mediaType: "image/svg+xml" });
+    await window.locator("#close-output").click();
 
     await window.locator("#layer-name").fill("Persisted on close");
     await window.locator("#layer-name").blur();

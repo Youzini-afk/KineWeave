@@ -16,6 +16,7 @@
     "@kineweave/official-distribution": "workspace:*",
     "@kineweave/project-format": "workspace:*",
     "@kineweave/project-repository-node": "workspace:*",
+    "@kineweave/project-session-node": "workspace:*",
     "@kineweave/protocol": "workspace:*"
   },
   "devDependencies": {

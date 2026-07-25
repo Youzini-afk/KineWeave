@@ -2,7 +2,8 @@ import type {
   OpenedStudioProject,
   SavedStudioProject,
   StudioHostApi,
-  StudioHostResult
+  StudioHostResult,
+  StudioOutputJob
 } from "@kineweave/studio/host-api";
 import { CLOUD_PROJECT_LOCATOR } from "../shared.js";
 import { requireWebAuthentication, signOutWebAuthentication } from "./web-auth.js";
@@ -62,6 +63,7 @@ async function requestResult<T>(path: string, init: RequestInit): Promise<Studio
 export function createWebStudioHost(authenticationRequired: boolean): StudioHostApi {
   return {
     hostKind: "web",
+    outputFormats: ["mp4", "webm"],
     ...(authenticationRequired ? { signOut: signOutWebAuthentication } : {}),
     chooseProject: async () => CLOUD_PROJECT_LOCATOR,
     openProject: (projectLocator) =>
@@ -86,6 +88,42 @@ export function createWebStudioHost(authenticationRequired: boolean): StudioHost
       );
       if (!response.ok && response.status !== 404) {
         throw new Error(`Cloud project session could not close (HTTP ${response.status})`);
+      }
+    },
+    startOutput: (hostSessionId, outputRequest) =>
+      requestResult<StudioOutputJob | undefined>(
+        `./api/project/sessions/${encodeURIComponent(hostSessionId)}/outputs`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ request: outputRequest })
+        }
+      ),
+    getOutput: (hostSessionId, jobId) =>
+      requestResult<StudioOutputJob>(
+        `./api/project/sessions/${encodeURIComponent(hostSessionId)}/outputs/${encodeURIComponent(jobId)}`,
+        { method: "GET" }
+      ),
+    cancelOutput: (hostSessionId, jobId) =>
+      requestResult<StudioOutputJob>(
+        `./api/project/sessions/${encodeURIComponent(hostSessionId)}/outputs/${encodeURIComponent(jobId)}`,
+        { method: "DELETE" }
+      ),
+    async openOutput(hostSessionId, jobId) {
+      try {
+        const downloadPath = `./api/project/sessions/${encodeURIComponent(hostSessionId)}/outputs/${encodeURIComponent(jobId)}/download`;
+        const response = await request(downloadPath, { method: "HEAD" });
+        if (!response.ok) throw new Error(`Output download failed with HTTP ${response.status}`);
+        const link = document.createElement("a");
+        link.href = downloadPath;
+        link.download = "";
+        link.hidden = true;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        return { ok: true, value: { opened: true } };
+      } catch (caught) {
+        return failure(caught);
       }
     },
     respondToClose: () => {},

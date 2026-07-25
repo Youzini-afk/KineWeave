@@ -103,6 +103,33 @@ describe("KineWeave Web server", () => {
         }
       );
       expect(saveResponse.status).toBe(200);
+
+      const rejectedOutput = await fetch(
+        `${baseUrl}/api/project/sessions/${opened.value.hostSessionId}/outputs`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            request: {
+              documentId: "document_main",
+              format: "png-sequence",
+              startTime: { numerator: "0", denominator: "1" },
+              endTimeExclusive: { numerator: "1", denominator: "30" },
+              framesPerSecond: { numerator: "30", denominator: "1" },
+              viewport: {
+                width: 64,
+                height: 64,
+                pixelRatio: { numerator: "1", denominator: "1" }
+              }
+            }
+          })
+        }
+      );
+      expect(rejectedOutput.status).toBe(400);
+      expect(await rejectedOutput.json()).toEqual({
+        error: "Cloud output currently supports mp4 and webm"
+      });
+
       await fetch(`${baseUrl}/api/project/sessions/${opened.value.hostSessionId}`, {
         method: "DELETE",
         headers: { cookie }

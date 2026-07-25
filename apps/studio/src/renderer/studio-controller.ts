@@ -14,7 +14,13 @@ import {
   STANDARD_NODE_TYPES,
   type StandardCompositionDocument
 } from "@kineweave/standard-motion-document";
-import type { StudioHostApi } from "../bridge.js";
+import type {
+  StudioHostApi,
+  StudioHostResult,
+  StudioOutputFormat,
+  StudioOutputJob,
+  StudioOutputRequest
+} from "../bridge.js";
 import {
   type StageAlignment,
   StageController,
@@ -62,6 +68,9 @@ export interface StudioSnapshot {
   readonly diagnostics: readonly Diagnostic[];
   readonly status: StudioStatus;
   readonly panelRevision: number;
+  readonly outputFormats: readonly StudioOutputFormat[];
+  readonly outputStarting: boolean;
+  readonly outputJob?: StudioOutputJob;
 }
 
 type Listener = (snapshot: StudioSnapshot) => void;
@@ -79,6 +88,21 @@ function diagnosticFromError(error: unknown): readonly Diagnostic[] {
 
 function messageFromError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function hostValue<T>(result: StudioHostResult<T>): T {
+  if (!result.ok) throw new StudioProjectError(result.error.message, result.error.diagnostics);
+  return result.value;
+}
+
+function outputJobActive(
+  job: StudioOutputJob | undefined
+): job is StudioOutputJob & { readonly status: "running" | "cancelling" } {
+  return job?.status === "running" || job?.status === "cancelling";
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function newNodeId(kind: string): string {
@@ -111,6 +135,9 @@ export class StudioController {
   #evaluationRequested = false;
   #evaluationLoop: Promise<void> | undefined;
   #savePromise: Promise<void> | undefined;
+  #outputStartPromise: Promise<void> | undefined;
+  #outputJob: StudioOutputJob | undefined;
+  #outputPolling: Promise<void> | undefined;
   #prepareClosePromise: Promise<void> | undefined;
   #autoSaveTimer: ReturnType<typeof setTimeout> | undefined;
   #playbackFrame: number | undefined;
@@ -160,7 +187,10 @@ export class StudioController {
       history: this.#project?.historyEntries() ?? [],
       diagnostics: this.#diagnostics,
       status: this.#status,
-      panelRevision: this.#panelRevision
+      panelRevision: this.#panelRevision,
+      outputFormats: this.#host.outputFormats,
+      outputStarting: this.#outputStartPromise !== undefined,
+      ...(this.#outputJob === undefined ? {} : { outputJob: this.#outputJob })
     };
   }
 
@@ -174,6 +204,10 @@ export class StudioController {
     if (this.#phase === "opening" || this.#prepareClosePromise !== undefined) return;
     this.pause();
     this.#stage.cancelActiveGesture();
+    await this.#outputStartPromise?.catch(() => {});
+    if (outputJobActive(this.#outputJob)) await this.cancelOutput();
+    await this.#outputPolling;
+    this.#outputJob = undefined;
     const previousProject = this.#project;
     let candidate: StudioProject | undefined;
     let stageWasTouched = false;
@@ -545,6 +579,57 @@ export class StudioController {
     return save;
   }
 
+  startOutput(request: StudioOutputRequest): Promise<void> {
+    if (this.#prepareClosePromise !== undefined) {
+      return Promise.reject(new StudioProjectError("Studio is preparing to close"));
+    }
+    if (this.#outputStartPromise !== undefined || outputJobActive(this.#outputJob)) {
+      return Promise.reject(new StudioProjectError("An output job is already starting or running"));
+    }
+    const project = this.#requiredProject();
+    this.#outputJob = undefined;
+    const starting = (async () => {
+      await this.#mutationQueue;
+      if (project !== this.#project) throw new StudioProjectError("The project changed");
+      await this.save();
+      const job = hostValue(await this.#host.startOutput(project.hostSessionId, request));
+      if (job === undefined) {
+        this.#status = { kind: "info", message: "Output cancelled" };
+        return;
+      }
+      if (project !== this.#project) {
+        await this.#host.cancelOutput(project.hostSessionId, job.jobId);
+        throw new StudioProjectError("The project changed while output was starting");
+      }
+      this.#outputJob = job;
+      this.#startOutputPolling(project, job.jobId);
+    })().finally(() => {
+      if (this.#outputStartPromise === starting) this.#outputStartPromise = undefined;
+      this.#emit();
+    });
+    this.#outputStartPromise = starting;
+    this.#emit();
+    return starting;
+  }
+
+  async cancelOutput(): Promise<void> {
+    const project = this.#project;
+    const job = this.#outputJob;
+    if (project === undefined || !outputJobActive(job)) return;
+    this.#outputJob = { ...job, status: "cancelling" };
+    this.#emit();
+    this.#outputJob = hostValue(await this.#host.cancelOutput(project.hostSessionId, job.jobId));
+    this.#applyOutputTerminalStatus();
+    this.#emit();
+  }
+
+  async openOutput(): Promise<void> {
+    const project = this.#requiredProject();
+    const job = this.#outputJob;
+    if (job?.status !== "succeeded") throw new StudioProjectError("Output is not ready");
+    hostValue(await this.#host.openOutput(project.hostSessionId, job.jobId));
+  }
+
   reportError(error: unknown): void {
     this.#diagnostics = diagnosticFromError(error);
     this.#status = { kind: "error", message: messageFromError(error) };
@@ -578,6 +663,9 @@ export class StudioController {
       this.#autoSaveTimer = undefined;
     }
     const preparation = (async () => {
+      await this.#outputStartPromise?.catch(() => {});
+      if (outputJobActive(this.#outputJob)) await this.cancelOutput();
+      await this.#outputPolling;
       await this.#mutationQueue;
       await this.#evaluationLoop;
       if (this.#dirty || this.#savePromise !== undefined) await this.save();
@@ -663,6 +751,37 @@ export class StudioController {
       this.#autoSaveTimer = undefined;
       void this.save().catch(() => {});
     }, 900);
+  }
+
+  #startOutputPolling(project: StudioProject, jobId: string): void {
+    const polling = (async () => {
+      while (project === this.#project && outputJobActive(this.#outputJob)) {
+        await wait(250);
+        if (project !== this.#project) return;
+        this.#outputJob = hostValue(await this.#host.getOutput(project.hostSessionId, jobId));
+        this.#applyOutputTerminalStatus();
+        this.#emit();
+      }
+    })()
+      .catch((error) => {
+        this.reportError(error);
+      })
+      .finally(() => {
+        if (this.#outputPolling === polling) this.#outputPolling = undefined;
+      });
+    this.#outputPolling = polling;
+  }
+
+  #applyOutputTerminalStatus(): void {
+    const job = this.#outputJob;
+    if (job?.status === "succeeded") {
+      this.#status = { kind: "success", message: "Output is ready" };
+    } else if (job?.status === "failed") {
+      this.#diagnostics = job.error?.diagnostics ?? [];
+      this.#status = { kind: "error", message: job.error?.message ?? "Output failed" };
+    } else if (job?.status === "cancelled") {
+      this.#status = { kind: "info", message: "Output cancelled" };
+    }
   }
 
   #requestEvaluation(): Promise<void> {

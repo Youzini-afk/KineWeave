@@ -6,7 +6,8 @@ import type {
   SavedStudioProject,
   StudioCommand,
   StudioHostApi,
-  StudioHostResult
+  StudioHostResult,
+  StudioOutputJob
 } from "./bridge.js";
 
 const channels = {
@@ -14,6 +15,10 @@ const channels = {
   openProject: "studio.project.open",
   saveProject: "studio.project.save",
   closeProject: "studio.project.close",
+  startOutput: "studio.output.start",
+  getOutput: "studio.output.get",
+  cancelOutput: "studio.output.cancel",
+  openOutput: "studio.output.open",
   initialProject: "studio.project.initial",
   command: "studio.command",
   closeResponse: "studio.window.close-response"
@@ -21,6 +26,7 @@ const channels = {
 
 const api: StudioHostApi = {
   hostKind: "desktop",
+  outputFormats: ["svg-sequence", "png-sequence", "mp4", "webm"],
   chooseProject: () => ipcRenderer.invoke(channels.chooseProject) as Promise<string | undefined>,
   openProject: (projectLocator) =>
     ipcRenderer.invoke(channels.openProject, projectLocator) as Promise<
@@ -32,6 +38,22 @@ const api: StudioHostApi = {
     >,
   closeProject: (hostSessionId) =>
     ipcRenderer.invoke(channels.closeProject, hostSessionId) as Promise<void>,
+  startOutput: (hostSessionId, request) =>
+    ipcRenderer.invoke(channels.startOutput, hostSessionId, request) as ReturnType<
+      StudioHostApi["startOutput"]
+    >,
+  getOutput: (hostSessionId, jobId) =>
+    ipcRenderer.invoke(channels.getOutput, hostSessionId, jobId) as Promise<
+      StudioHostResult<StudioOutputJob>
+    >,
+  cancelOutput: (hostSessionId, jobId) =>
+    ipcRenderer.invoke(channels.cancelOutput, hostSessionId, jobId) as Promise<
+      StudioHostResult<StudioOutputJob>
+    >,
+  openOutput: (hostSessionId, jobId) =>
+    ipcRenderer.invoke(channels.openOutput, hostSessionId, jobId) as ReturnType<
+      StudioHostApi["openOutput"]
+    >,
   respondToClose: (shouldClose) => {
     ipcRenderer.send(channels.closeResponse, shouldClose);
   },

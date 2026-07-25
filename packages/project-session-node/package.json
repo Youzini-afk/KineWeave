@@ -17,9 +17,11 @@
   "dependencies": {
     "@fontsource-variable/noto-sans-sc": "5.3.0",
     "@kineweave/content-hash": "workspace:*",
+    "@kineweave/project-format": "workspace:*",
     "@kineweave/project-repository-node": "workspace:*",
     "@kineweave/project-session": "workspace:*",
     "@kineweave/protocol": "workspace:*",
+    "@kineweave/standard-motion-document": "workspace:*",
     "@resvg/resvg-js": "2.6.2"
   },
   "devDependencies": {

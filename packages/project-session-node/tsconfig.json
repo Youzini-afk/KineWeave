@@ -9,8 +9,10 @@
   "references": [
     { "path": "../protocol" },
     { "path": "../content-hash" },
+    { "path": "../project-format" },
     { "path": "../project-repository-node" },
     { "path": "../project-session" },
-    { "path": "../official-distribution" }
+    { "path": "../official-distribution" },
+    { "path": "../../extensions/standard-motion-document" }
   ]
 }

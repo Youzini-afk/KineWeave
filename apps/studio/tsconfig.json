@@ -11,6 +11,7 @@
     { "path": "../../packages/project-format" },
     { "path": "../../packages/project-repository-node" },
     { "path": "../../packages/project-session" },
+    { "path": "../../packages/project-session-node" },
     { "path": "../../packages/protocol" },
     { "path": "../../packages/render-engine" },
     { "path": "../../packages/official-distribution" },
