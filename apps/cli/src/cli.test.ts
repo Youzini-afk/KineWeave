@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -199,6 +199,104 @@ describe("KineWeave CLI", () => {
       mediaType: "image/svg+xml",
       rendererProviderId: "org.kineweave.renderer/svg"
     });
+    expect(capture.output().stderr).toBe("");
+  });
+
+  it("exports a deterministic, commit-pinned SVG frame sequence", async () => {
+    const projectPath = await temporaryProjectPath();
+    await runCli(["init", projectPath], captureIo().io);
+    const firstOutput = path.join(projectPath, "outputs", "sequence-a");
+    const secondOutput = path.join(projectPath, "outputs", "sequence-b");
+    const capture = captureIo();
+
+    expect(
+      await runCli(
+        [
+          "export",
+          projectPath,
+          "document_main",
+          firstOutput,
+          "--format",
+          "svg-sequence",
+          "--to",
+          "1/10",
+          "--fps",
+          "24",
+          "--json"
+        ],
+        capture.io
+      )
+    ).toBe(0);
+    expect(
+      await runCli(
+        [
+          "export",
+          projectPath,
+          "document_main",
+          secondOutput,
+          "--format",
+          "svg-sequence",
+          "--to",
+          "1/10",
+          "--fps",
+          "24",
+          "--json"
+        ],
+        captureIo().io
+      )
+    ).toBe(0);
+
+    const firstManifest = JSON.parse(
+      await readFile(path.join(firstOutput, "manifest.json"), "utf8")
+    ) as {
+      source: { commitId: string };
+      timing: { frameCount: number; endTimeExclusive: { numerator: string } };
+      frames: Array<{
+        frameIndex: number;
+        time: { numerator: string; denominator: string };
+        file: string;
+        contentHash: string;
+      }>;
+    };
+    const secondManifest = JSON.parse(
+      await readFile(path.join(secondOutput, "manifest.json"), "utf8")
+    ) as typeof firstManifest;
+    const history = JSON.parse(
+      await readFile(path.join(projectPath, ".kineweave", "history", "history.json"), "utf8")
+    ) as { branches: { main: string } };
+
+    expect(firstManifest.source.commitId).toBe(history.branches.main);
+    expect(firstManifest.timing).toMatchObject({
+      frameCount: 3,
+      endTimeExclusive: { numerator: "1" }
+    });
+    expect(firstManifest.frames.map((frame) => frame.time)).toEqual([
+      { numerator: "0", denominator: "1" },
+      { numerator: "1", denominator: "24" },
+      { numerator: "1", denominator: "12" }
+    ]);
+    expect(await readdir(path.join(firstOutput, "frames"))).toEqual([
+      "frame_000000.svg",
+      "frame_000001.svg",
+      "frame_000002.svg"
+    ]);
+    expect(await readFile(path.join(firstOutput, firstManifest.frames[0]!.file), "utf8")).toContain(
+      "Hello KineWeave"
+    );
+    expect(secondManifest.frames.map((frame) => frame.contentHash)).toEqual(
+      firstManifest.frames.map((frame) => frame.contentHash)
+    );
+    expect(JSON.parse(capture.output().stdout)).toMatchObject({
+      frameCount: 3,
+      sourceCommitId: history.branches.main,
+      mediaType: "image/svg+xml"
+    });
+    expect(
+      await runCli(
+        ["export", projectPath, "document_main", firstOutput, "--format", "svg-sequence"],
+        captureIo().io
+      )
+    ).toBe(2);
     expect(capture.output().stderr).toBe("");
   });
 

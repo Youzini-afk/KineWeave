@@ -15,6 +15,7 @@
     "dist"
   ],
   "dependencies": {
+    "@kineweave/content-hash": "workspace:*",
     "@kineweave/project-repository-node": "workspace:*",
     "@kineweave/project-session": "workspace:*",
     "@kineweave/protocol": "workspace:*"

@@ -12,15 +12,26 @@ import {
   ProjectRepositoryError,
   type ProjectSnapshot
 } from "@kineweave/project-repository-node";
-import type { ProjectSession } from "@kineweave/project-session";
-import type { NodeProjectSession } from "@kineweave/project-session-node";
 import {
+  createOutputFramePlan,
+  type ProjectSession,
+  renderOutputFrames
+} from "@kineweave/project-session";
+import {
+  type NodeProjectSession,
+  publishOutputFrameSequence
+} from "@kineweave/project-session-node";
+import {
+  compareRational,
   createProjectResourceUri,
   type Diagnostic,
   type EvaluationMode,
+  type EvaluationRequest,
   hasErrorDiagnostics,
   type JsonObject,
   type JsonValue,
+  type OutputProfile,
+  type ProjectDocumentEnvelope,
   type Rational,
   rational,
   STANDARD_TIME_DOMAINS,
@@ -56,6 +67,7 @@ Usage:
   kineweave inspect <project> [--json]
   kineweave evaluate <project> <documentId> <time> [--domain <id>] [--branch <name> | --commit <commitId>] [--width <px>] [--height <px>] [--pixel-ratio <rational>] [--color-space <id>] [--locale <tag>] [--seed <value>] [--mode <interactive|deterministic|live>] [--signals <jsonObject>] [--json]
   kineweave render <project> <documentId> <time> <outputPath> [evaluation options] [--profile <id>] [--provider <providerId>]
+  kineweave export <project> <documentId> <outputDirectory> --format svg-sequence [--from <seconds>] [--to <seconds>] [--fps <rational>] [--branch <name> | --commit <commitId>] [--width <px>] [--height <px>] [--pixel-ratio <rational>] [--color-space <id>] [--locale <tag>] [--seed <value>] [--signals <jsonObject>] [--profile <id>] [--provider <providerId>] [--json]
   kineweave history <project> [--json]
   kineweave undo <project> [--branch <name>]
   kineweave redo <project> [--branch <name>] [--commit <commitId>]
@@ -178,16 +190,16 @@ async function openValidProject(
   return result.project;
 }
 
-async function evaluateRuntime(
-  snapshot: ProjectSnapshot,
-  runtime: ProjectSession,
+function createEvaluationRequest(
+  document: ProjectDocumentEnvelope | undefined,
   documentId: string,
   rawTime: string,
-  options: EvaluationCliOptions
-): Promise<{
-  readonly result: EvaluationExecutionResult;
+  options: EvaluationCliOptions,
+  outputProfileId?: string
+): {
+  readonly request: EvaluationRequest;
   readonly mode: EvaluationMode;
-}> {
+} {
   const mode = options.mode ?? "deterministic";
   if (mode !== "interactive" && mode !== "deterministic" && mode !== "live") {
     throw new TypeError("--mode must be interactive, deterministic or live");
@@ -208,7 +220,6 @@ async function evaluateRuntime(
     externalSignals = parsed as Record<string, JsonValue>;
   }
 
-  const document = snapshot.bundle.documents[documentId];
   const standardComposition =
     document?.documentType === STANDARD_COMPOSITION_TYPE
       ? (document as StandardCompositionDocument)
@@ -221,35 +232,80 @@ async function evaluateRuntime(
     options.height === undefined
       ? (standardComposition?.data.canvas.height ?? 1080)
       : positiveIntegerArgument(options.height, "--height");
-  const result = await runtime.evaluate({
-    documentId,
-    ...(options.branchName === undefined
-      ? options.commitId === undefined
-        ? {}
-        : { state: { kind: "commit" as const, commitId: options.commitId } }
-      : { state: { kind: "branch" as const, branchName: options.branchName } }),
-    time: timeValue(
-      rationalArgument(rawTime, "time"),
-      options.domain ?? STANDARD_TIME_DOMAINS.seconds
-    ),
+  return {
     mode,
-    viewport: {
-      width,
-      height,
-      pixelRatio:
-        options.pixelRatio === undefined
-          ? rational(1)
-          : rationalArgument(options.pixelRatio, "--pixel-ratio")
-    },
-    colorSpace:
-      options.colorSpace ??
-      standardComposition?.data.canvas.colorSpace ??
-      "org.kineweave.color/srgb",
-    locale: options.locale ?? "en-US",
-    randomSeed: options.seed ?? "cli-deterministic",
-    externalSignals
-  });
-  return { result, mode };
+    request: {
+      documentId,
+      ...(options.branchName === undefined
+        ? options.commitId === undefined
+          ? {}
+          : { state: { kind: "commit" as const, commitId: options.commitId } }
+        : { state: { kind: "branch" as const, branchName: options.branchName } }),
+      time: timeValue(
+        rationalArgument(rawTime, "time"),
+        options.domain ?? STANDARD_TIME_DOMAINS.seconds
+      ),
+      mode,
+      viewport: {
+        width,
+        height,
+        pixelRatio:
+          options.pixelRatio === undefined
+            ? rational(1)
+            : rationalArgument(options.pixelRatio, "--pixel-ratio")
+      },
+      colorSpace:
+        options.colorSpace ??
+        standardComposition?.data.canvas.colorSpace ??
+        "org.kineweave.color/srgb",
+      locale: options.locale ?? "en-US",
+      randomSeed: options.seed ?? "cli-deterministic",
+      ...(outputProfileId === undefined ? {} : { outputProfileId }),
+      externalSignals
+    }
+  };
+}
+
+async function evaluateRuntime(
+  runtime: ProjectSession,
+  documentId: string,
+  rawTime: string,
+  options: EvaluationCliOptions,
+  outputProfileId?: string
+): Promise<{
+  readonly result: EvaluationExecutionResult;
+  readonly mode: EvaluationMode;
+}> {
+  const document = (options.commitId === undefined
+    ? runtime.history.stateOfBranch(options.branchName ?? runtime.history.mainBranchName)
+    : runtime.history.stateAt(options.commitId))[documentId] as unknown as
+    | ProjectDocumentEnvelope
+    | undefined;
+  const { request, mode } = createEvaluationRequest(
+    document,
+    documentId,
+    rawTime,
+    options,
+    outputProfileId
+  );
+  return { result: await runtime.evaluate(request), mode };
+}
+
+function selectOutputProfile(
+  snapshot: ProjectSnapshot,
+  requestedProfileId: string | undefined
+): { readonly profileId: string; readonly profile: OutputProfile } {
+  const profileId =
+    requestedProfileId ??
+    (snapshot.bundle.manifest.outputProfiles.svg === undefined
+      ? Object.keys(snapshot.bundle.manifest.outputProfiles).sort()[0]
+      : "svg");
+  if (profileId === undefined) throw new TypeError("Project defines no output profile");
+  const profile = snapshot.bundle.manifest.outputProfiles[profileId];
+  if (profile === undefined) {
+    throw new TypeError(`Unknown output profile ${profileId}`);
+  }
+  return { profileId, profile };
 }
 
 function operationProposal(
@@ -418,9 +474,9 @@ async function evaluateCommand(args: readonly string[], io: CliIo): Promise<numb
 
   const repository = new NodeProjectRepository();
   const project = await openValidProject(repository, projectPath);
-  const { snapshot, session: runtime } = project;
+  const runtime = project.session;
   try {
-    const { result } = await evaluateRuntime(snapshot, runtime, documentId, rawTime, options);
+    const { result } = await evaluateRuntime(runtime, documentId, rawTime, options);
     if (options.json) io.stdout(`${JSON.stringify(result.graph, null, 2)}\n`);
     else {
       io.stdout(
@@ -456,27 +512,14 @@ async function renderCommand(args: readonly string[], io: CliIo): Promise<number
   const project = await openValidProject(repository, projectPath);
   const { snapshot, session: runtime } = project;
   try {
+    const { profileId, profile } = selectOutputProfile(snapshot, profileOption.value);
     const { result: evaluation, mode } = await evaluateRuntime(
-      snapshot,
       runtime,
       documentId,
       rawTime,
-      options
+      options,
+      profileId
     );
-    const profileId =
-      profileOption.value ??
-      (snapshot.bundle.manifest.outputProfiles.svg === undefined
-        ? Object.keys(snapshot.bundle.manifest.outputProfiles).sort()[0]
-        : "svg");
-    const profile =
-      profileId === undefined ? undefined : snapshot.bundle.manifest.outputProfiles[profileId];
-    if (profile === undefined) {
-      throw new TypeError(
-        profileId === undefined
-          ? "Project defines no output profile"
-          : `Unknown output profile ${profileId}`
-      );
-    }
     const rendered = await runtime.renderOutput({
       graph: evaluation.graph,
       evaluationMode: mode,
@@ -519,6 +562,124 @@ async function renderCommand(args: readonly string[], io: CliIo): Promise<number
     } else {
       io.stdout(
         `Rendered ${documentId} with ${rendered.provider.providerId} to ${absoluteOutputPath}.\n`
+      );
+    }
+    return 0;
+  } finally {
+    await project.dispose();
+  }
+}
+
+async function exportCommand(args: readonly string[], io: CliIo): Promise<number> {
+  const formatOption = option(args, "--format");
+  const fromOption = option(formatOption.remaining, "--from");
+  const toOption = option(fromOption.remaining, "--to");
+  const frameRateOption = option(toOption.remaining, "--fps");
+  const profileOption = option(frameRateOption.remaining, "--profile");
+  const providerOption = option(profileOption.remaining, "--provider");
+  const options = evaluationCliOptions(providerOption.remaining);
+  const [projectPath, documentId, outputDirectory, ...extra] = options.remaining;
+  if (
+    projectPath === undefined ||
+    documentId === undefined ||
+    outputDirectory === undefined ||
+    formatOption.value === undefined ||
+    extra.length > 0
+  ) {
+    throw new TypeError(HELP);
+  }
+  if (formatOption.value !== "svg-sequence") {
+    throw new TypeError("--format currently supports svg-sequence");
+  }
+  if (options.mode !== undefined && options.mode !== "deterministic") {
+    throw new TypeError("Animation export requires deterministic evaluation mode");
+  }
+  if (options.domain !== undefined && options.domain !== STANDARD_TIME_DOMAINS.seconds) {
+    throw new TypeError("Animation export currently requires the seconds time domain");
+  }
+
+  const repository = new NodeProjectRepository();
+  const project = await openValidProject(repository, projectPath);
+  const { snapshot, session: runtime } = project;
+  try {
+    const { profileId, profile } = selectOutputProfile(snapshot, profileOption.value);
+    const sourceCommitId =
+      options.commitId ??
+      runtime.history.getBranchHead(options.branchName ?? runtime.history.mainBranchName);
+    if (!runtime.history.hasCommit(sourceCommitId)) {
+      throw new TypeError(`Unknown commit ${sourceCommitId}`);
+    }
+    const document = runtime.history.stateAt(sourceCommitId)[documentId] as unknown as
+      | ProjectDocumentEnvelope
+      | undefined;
+    if (document?.documentType !== STANDARD_COMPOSITION_TYPE) {
+      throw new TypeError(`Animation export requires a Standard Motion composition: ${documentId}`);
+    }
+    const composition = document as StandardCompositionDocument;
+    if (composition.data.duration.domain !== STANDARD_TIME_DOMAINS.seconds) {
+      throw new TypeError(
+        `Animation export requires a time-domain mapper for ${composition.data.duration.domain}`
+      );
+    }
+
+    const startTime = rationalArgument(fromOption.value ?? "0", "--from");
+    const endTimeExclusive =
+      toOption.value === undefined
+        ? rational(
+            composition.data.duration.value.numerator,
+            composition.data.duration.value.denominator
+          )
+        : rationalArgument(toOption.value, "--to");
+    if (compareRational(endTimeExclusive, composition.data.duration.value) > 0) {
+      throw new TypeError("--to cannot exceed the composition duration");
+    }
+    const plan = createOutputFramePlan({
+      startTime,
+      endTimeExclusive,
+      framesPerSecond: rationalArgument(frameRateOption.value ?? "30", "--fps")
+    });
+    const { request: firstEvaluation } = createEvaluationRequest(
+      composition,
+      documentId,
+      `${startTime.numerator}/${startTime.denominator}`,
+      options,
+      profileId
+    );
+
+    const evaluation = {
+      documentId,
+      state: { kind: "commit" as const, commitId: sourceCommitId },
+      viewport: firstEvaluation.viewport,
+      colorSpace: firstEvaluation.colorSpace,
+      locale: firstEvaluation.locale,
+      randomSeed: firstEvaluation.randomSeed,
+      outputProfileId: profileId,
+      externalSignals: firstEvaluation.externalSignals
+    };
+    const rendering = {
+      target: profile.target,
+      requiredFeatures: profile.requiredFeatures ?? [],
+      settings: profile.settings,
+      ...(providerOption.value === undefined
+        ? {}
+        : { preferredProviderIds: [providerOption.value] })
+    };
+    const summary = await publishOutputFrameSequence({
+      outputDirectory,
+      projectId: snapshot.bundle.manifest.projectId,
+      documentId,
+      sourceCommitId,
+      profileId,
+      plan,
+      evaluation,
+      rendering,
+      expectedArtifact: { mediaType: "image/svg+xml", fileExtension: ".svg" },
+      frames: renderOutputFrames(runtime, { plan, evaluation, rendering })
+    });
+    if (options.json) io.stdout(`${JSON.stringify(summary, null, 2)}\n`);
+    else {
+      io.stdout(
+        `Exported ${plan.frameCount} frames from ${documentId}@${sourceCommitId} to ${summary.outputDirectory}.\n`
       );
     }
     return 0;
@@ -759,6 +920,8 @@ export async function runCli(argv: readonly string[], io: CliIo = defaultIo): Pr
         return await evaluateCommand(args, io);
       case "render":
         return await renderCommand(args, io);
+      case "export":
+        return await exportCommand(args, io);
       case "history":
         return await historyCommand(args, io);
       case "undo":
